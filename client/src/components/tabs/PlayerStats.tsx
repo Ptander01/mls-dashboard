@@ -3,9 +3,10 @@ import { useFilters } from '@/contexts/FilterContext';
 import { getTeam } from '@/lib/mlsData';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
+import { ChartModal, MaximizeButton } from '@/components/ChartModal';
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
 import { ArrowUpDown, TrendingUp, Crosshair, Shield, Zap } from 'lucide-react';
 
@@ -16,6 +17,7 @@ export default function PlayerStats() {
   const [sortKey, setSortKey] = useState<SortKey>('goals');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [maximized, setMaximized] = useState<string | null>(null);
 
   const sorted = useMemo(() => {
     return [...filteredPlayers].sort((a, b) => {
@@ -77,6 +79,32 @@ export default function PlayerStats() {
     </th>
   );
 
+  const ScatterContent = ({ height = 280 }: { height?: number }) => (
+    <div style={{ height }}>
+      <ResponsiveContainer>
+        <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <XAxis dataKey="xG" name="xG" type="number" stroke="#8892b0" fontSize={10} tickLine={false} label={{ value: 'xG', position: 'bottom', fill: '#8892b0', fontSize: 10 }} />
+          <YAxis dataKey="goals" name="Goals" stroke="#8892b0" fontSize={10} tickLine={false} label={{ value: 'Goals', angle: -90, position: 'insideLeft', fill: '#8892b0', fontSize: 10 }} />
+          <Tooltip
+            content={({ payload }) => {
+              if (!payload?.length) return null;
+              const d = payload[0].payload;
+              return (
+                <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                  <div className="text-cyan font-semibold">{d.name}</div>
+                  <div className="text-muted-foreground">{d.team} · {d.position}</div>
+                  <div>xG: <span className="text-amber">{d.xG}</span> | Goals: <span className="text-emerald">{d.goals}</span></div>
+                </div>
+              );
+            }}
+          />
+          <Scatter data={scatterData} fill="#00d4ff" fillOpacity={0.6} r={4} />
+        </ScatterChart>
+      </ResponsiveContainer>
+    </div>
+  );
+
   return (
     <div className="space-y-4 mt-4">
       {/* Summary Cards */}
@@ -114,44 +142,22 @@ export default function PlayerStats() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* xG vs Goals Scatter */}
         <NeuCard delay={0.15} className="p-4 lg:col-span-2">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ fontFamily: 'Space Grotesk' }}>
-            <Crosshair size={14} className="text-cyan" />
-            Expected Goals (xG) vs Actual Goals
-          </h3>
-          <div style={{ height: 280 }}>
-            <ResponsiveContainer>
-              <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="xG" name="xG" type="number" stroke="#8892b0" fontSize={10} tickLine={false} label={{ value: 'xG', position: 'bottom', fill: '#8892b0', fontSize: 10 }} />
-                <YAxis dataKey="goals" name="Goals" stroke="#8892b0" fontSize={10} tickLine={false} label={{ value: 'Goals', angle: -90, position: 'insideLeft', fill: '#8892b0', fontSize: 10 }} />
-                <Tooltip
-                  contentStyle={{ background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 11, fontFamily: 'JetBrains Mono' }}
-                  formatter={(val: number, name: string) => [val, name]}
-                  labelFormatter={() => ''}
-                  content={({ payload }) => {
-                    if (!payload?.length) return null;
-                    const d = payload[0].payload;
-                    return (
-                      <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
-                        <div className="text-cyan font-semibold">{d.name}</div>
-                        <div className="text-muted-foreground">{d.team} · {d.position}</div>
-                        <div>xG: <span className="text-amber">{d.xG}</span> | Goals: <span className="text-emerald">{d.goals}</span></div>
-                      </div>
-                    );
-                  }}
-                />
-                <Scatter data={scatterData} fill="#00d4ff" fillOpacity={0.6} r={4} />
-                {/* Reference line y=x */}
-              </ScatterChart>
-            </ResponsiveContainer>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2" style={{ fontFamily: 'Space Grotesk' }}>
+              <Crosshair size={14} className="text-cyan" />
+              Expected Goals (xG) vs Actual Goals
+            </h3>
+            <MaximizeButton onClick={() => setMaximized('scatter')} />
           </div>
+          <ScatterContent />
         </NeuCard>
 
         {/* Top Scorers */}
         <NeuCard delay={0.25} className="p-4">
-          <h3 className="text-sm font-semibold mb-3" style={{ fontFamily: 'Space Grotesk' }}>
-            Top Scorers
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Top Scorers</h3>
+            <MaximizeButton onClick={() => setMaximized('scorers')} />
+          </div>
           <div className="space-y-1.5">
             {topScorers.map((p, i) => (
               <div
@@ -160,17 +166,11 @@ export default function PlayerStats() {
                 onClick={() => setSelectedPlayer(p.id)}
               >
                 <span className="font-mono text-muted-foreground w-4">{i + 1}</span>
-                <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: getTeam(p.teamId)?.primaryColor }}
-                />
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getTeam(p.teamId)?.primaryColor }} />
                 <span className="flex-1 truncate">{p.name}</span>
                 <span className="font-mono text-cyan font-semibold">{p.goals}</span>
                 <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-cyan to-cyan/40"
-                    style={{ width: `${(p.goals / (topScorers[0]?.goals || 1)) * 100}%` }}
-                  />
+                  <div className="h-full rounded-full bg-gradient-to-r from-cyan to-cyan/40" style={{ width: `${(p.goals / (topScorers[0]?.goals || 1)) * 100}%` }} />
                 </div>
               </div>
             ))}
@@ -183,16 +183,13 @@ export default function PlayerStats() {
         <NeuCard delay={0} animate={false} glow="cyan" className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-                {selPlayer.name}
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {getTeam(selPlayer.teamId)?.shortName} · {selPlayer.positionDetail} · Age {selPlayer.age}
-              </p>
+              <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>{selPlayer.name}</h3>
+              <p className="text-xs text-muted-foreground">{getTeam(selPlayer.teamId)?.shortName} · {selPlayer.positionDetail} · Age {selPlayer.age}</p>
             </div>
-            <button onClick={() => setSelectedPlayer(null)} className="text-xs text-muted-foreground hover:text-foreground">
-              Close
-            </button>
+            <div className="flex items-center gap-2">
+              <MaximizeButton onClick={() => setMaximized('radar')} />
+              <button onClick={() => setSelectedPlayer(null)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div style={{ height: 220 }}>
@@ -235,10 +232,11 @@ export default function PlayerStats() {
       {/* Full Player Table */}
       <NeuCard delay={0.35} className="overflow-hidden">
         <div className="p-3 border-b border-white/5 flex items-center justify-between">
-          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-            Player Database
-          </h3>
-          <span className="text-xs text-muted-foreground font-mono">{sorted.length} players</span>
+          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Player Database</h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-mono">{sorted.length} players</span>
+            <MaximizeButton onClick={() => setMaximized('table')} />
+          </div>
         </div>
         <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
           <table className="data-table">
@@ -266,24 +264,10 @@ export default function PlayerStats() {
             </thead>
             <tbody>
               {sorted.slice(0, 100).map(p => (
-                <tr
-                  key={p.id}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedPlayer(p.id)}
-                >
+                <tr key={p.id} className="cursor-pointer" onClick={() => setSelectedPlayer(p.id)}>
                   <td className="font-sans text-xs font-medium">{p.name}</td>
-                  <td>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getTeam(p.teamId)?.primaryColor }} />
-                      {getTeam(p.teamId)?.shortName}
-                    </span>
-                  </td>
-                  <td><span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                    p.position === 'FW' ? 'bg-red-500/15 text-red-400' :
-                    p.position === 'MF' ? 'bg-blue-500/15 text-blue-400' :
-                    p.position === 'DF' ? 'bg-green-500/15 text-green-400' :
-                    'bg-yellow-500/15 text-yellow-400'
-                  }`}>{p.position}</span></td>
+                  <td><span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: getTeam(p.teamId)?.primaryColor }} />{getTeam(p.teamId)?.shortName}</span></td>
+                  <td><span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.position === 'FW' ? 'bg-red-500/15 text-red-400' : p.position === 'MF' ? 'bg-blue-500/15 text-blue-400' : p.position === 'DF' ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'}`}>{p.position}</span></td>
                   <td>{p.age}</td>
                   <td>{p.gamesPlayed}</td>
                   <td>{p.minutesPlayed.toLocaleString()}</td>
@@ -305,6 +289,96 @@ export default function PlayerStats() {
           </table>
         </div>
       </NeuCard>
+
+      {/* Maximize Modals */}
+      <ChartModal isOpen={maximized === 'scatter'} onClose={() => setMaximized(null)} title="Expected Goals (xG) vs Actual Goals">
+        <ScatterContent height={600} />
+      </ChartModal>
+
+      <ChartModal isOpen={maximized === 'scorers'} onClose={() => setMaximized(null)} title="Top Scorers">
+        <div className="space-y-2">
+          {[...filteredPlayers].sort((a, b) => b.goals - a.goals).slice(0, 30).map((p, i) => (
+            <div key={p.id} className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg hover:bg-white/3 transition-colors">
+              <span className="font-mono text-muted-foreground w-6 text-right">{i + 1}</span>
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: getTeam(p.teamId)?.primaryColor }} />
+              <span className="flex-1 font-medium">{p.name}</span>
+              <span className="text-xs text-muted-foreground">{getTeam(p.teamId)?.shortName}</span>
+              <span className="font-mono text-cyan font-bold text-lg">{p.goals}</span>
+              <div className="w-32 h-2 rounded-full bg-white/5 overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-r from-cyan to-cyan/40" style={{ width: `${(p.goals / (filteredPlayers[0]?.goals || 1)) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </ChartModal>
+
+      <ChartModal isOpen={maximized === 'radar'} onClose={() => setMaximized(null)} title={selPlayer ? `${selPlayer.name} — Performance Radar` : 'Player Radar'}>
+        {selPlayer && radarData && (
+          <div className="flex items-center justify-center" style={{ height: 500 }}>
+            <ResponsiveContainer>
+              <RadarChart data={radarData}>
+                <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                <PolarAngleAxis dataKey="stat" tick={{ fill: '#8892b0', fontSize: 14 }} />
+                <PolarRadiusAxis tick={false} axisLine={false} domain={[0, 100]} />
+                <Radar dataKey="value" stroke="#00d4ff" fill="#00d4ff" fillOpacity={0.15} strokeWidth={3} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </ChartModal>
+
+      <ChartModal isOpen={maximized === 'table'} onClose={() => setMaximized(null)} title={`Player Database — ${sorted.length} players`}>
+        <div className="overflow-x-auto max-h-[75vh] overflow-y-auto">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <SortHeader label="Player" k="name" w="180px" />
+                <th>Team</th>
+                <th>Pos</th>
+                <th>Age</th>
+                <SortHeader label="GP" k="minutesPlayed" />
+                <SortHeader label="Min" k="minutesPlayed" />
+                <SortHeader label="Goals" k="goals" />
+                <SortHeader label="Assists" k="assists" />
+                <SortHeader label="Shots" k="shots" />
+                <th>SOT</th>
+                <SortHeader label="Pass %" k="passAccuracy" />
+                <SortHeader label="Tackles" k="tackles" />
+                <th>Int</th>
+                <th>Fouls</th>
+                <th>YC</th>
+                <th>RC</th>
+                <SortHeader label="xG" k="xG" />
+                <SortHeader label="Salary" k="salary" />
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map(p => (
+                <tr key={p.id} className="cursor-pointer" onClick={() => { setSelectedPlayer(p.id); setMaximized(null); }}>
+                  <td className="font-sans text-xs font-medium">{p.name}</td>
+                  <td><span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: getTeam(p.teamId)?.primaryColor }} />{getTeam(p.teamId)?.shortName}</span></td>
+                  <td><span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.position === 'FW' ? 'bg-red-500/15 text-red-400' : p.position === 'MF' ? 'bg-blue-500/15 text-blue-400' : p.position === 'DF' ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'}`}>{p.position}</span></td>
+                  <td>{p.age}</td>
+                  <td>{p.gamesPlayed}</td>
+                  <td>{p.minutesPlayed.toLocaleString()}</td>
+                  <td className="text-cyan font-semibold">{p.goals}</td>
+                  <td className="text-amber">{p.assists}</td>
+                  <td>{p.shots}</td>
+                  <td>{p.shotsOnTarget}</td>
+                  <td>{p.passAccuracy}%</td>
+                  <td>{p.tackles}</td>
+                  <td>{p.interceptions}</td>
+                  <td>{p.foulsCommitted}</td>
+                  <td className={p.yellowCards > 5 ? 'text-amber' : ''}>{p.yellowCards}</td>
+                  <td className={p.redCards > 0 ? 'text-coral' : ''}>{p.redCards}</td>
+                  <td>{p.xG.toFixed(1)}</td>
+                  <td className="text-emerald">{p.salary >= 1000000 ? `$${(p.salary/1000000).toFixed(1)}M` : `$${(p.salary/1000).toFixed(0)}K`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </ChartModal>
     </div>
   );
 }

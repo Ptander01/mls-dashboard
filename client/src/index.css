@@ -419,3 +419,35 @@ input[type="range"]::-webkit-slider-thumb {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* ============ MODAL ANIMATION ============ */
+@keyframes modal-enter {
+  0% {
+    opacity: 0;
+    transform: perspective(1200px) translateZ(200px) scale(0.9);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1200px) translateZ(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* ============ GOOGLE MAPS DARK THEME ============ */
+.gm-style .gm-style-iw-c {
+  background: #252538 !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 12px !important;
+  padding: 0 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+}
+.gm-style .gm-style-iw-d {
+  overflow: auto !important;
+}
+.gm-style .gm-style-iw-tc::after {
+  background: #252538 !important;
+}
+.gm-style .gm-ui-hover-effect {
+  display: none !important;
+}

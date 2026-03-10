@@ -1,77 +1,6 @@
 /**
- * GOOGLE MAPS FRONTEND INTEGRATION - ESSENTIAL GUIDE
- *
- * USAGE FROM PARENT COMPONENT:
- * ======
- *
- * const mapRef = useRef<google.maps.Map | null>(null);
- *
- * <MapView
- *   initialCenter={{ lat: 40.7128, lng: -74.0060 }}
- *   initialZoom={15}
- *   onMapReady={(map) => {
- *     mapRef.current = map; // Store to control map from parent anytime, google map itself is in charge of the re-rendering, not react state.
- * </MapView>
- *
- * ======
- * Available Libraries and Core Features:
- * -------------------------------
- * 📍 MARKER (from `marker` library)
- * - Attaches to map using { map, position }
- * new google.maps.marker.AdvancedMarkerElement({
- *   map,
- *   position: { lat: 37.7749, lng: -122.4194 },
- *   title: "San Francisco",
- * });
- *
- * -------------------------------
- * 🏢 PLACES (from `places` library)
- * - Does not attach directly to map; use data with your map manually.
- * const place = new google.maps.places.Place({ id: PLACE_ID });
- * await place.fetchFields({ fields: ["displayName", "location"] });
- * map.setCenter(place.location);
- * new google.maps.marker.AdvancedMarkerElement({ map, position: place.location });
- *
- * -------------------------------
- * 🧭 GEOCODER (from `geocoding` library)
- * - Standalone service; manually apply results to map.
- * const geocoder = new google.maps.Geocoder();
- * geocoder.geocode({ address: "New York" }, (results, status) => {
- *   if (status === "OK" && results[0]) {
- *     map.setCenter(results[0].geometry.location);
- *     new google.maps.marker.AdvancedMarkerElement({
- *       map,
- *       position: results[0].geometry.location,
- *     });
- *   }
- * });
- *
- * -------------------------------
- * 📐 GEOMETRY (from `geometry` library)
- * - Pure utility functions; not attached to map.
- * const dist = google.maps.geometry.spherical.computeDistanceBetween(p1, p2);
- *
- * -------------------------------
- * 🛣️ ROUTES (from `routes` library)
- * - Combines DirectionsService (standalone) + DirectionsRenderer (map-attached)
- * const directionsService = new google.maps.DirectionsService();
- * const directionsRenderer = new google.maps.DirectionsRenderer({ map });
- * directionsService.route(
- *   { origin, destination, travelMode: "DRIVING" },
- *   (res, status) => status === "OK" && directionsRenderer.setDirections(res)
- * );
- *
- * -------------------------------
- * 🌦️ MAP LAYERS (attach directly to map)
- * - new google.maps.TrafficLayer().setMap(map);
- * - new google.maps.TransitLayer().setMap(map);
- * - new google.maps.BicyclingLayer().setMap(map);
- *
- * -------------------------------
- * ✅ SUMMARY
- * - “map-attached” → AdvancedMarkerElement, DirectionsRenderer, Layers.
- * - “standalone” → Geocoder, DirectionsService, DistanceMatrixService, ElevationService.
- * - “data-only” → Place, Geometry utilities.
+ * GOOGLE MAPS FRONTEND INTEGRATION
+ * Modified to support dark styling while keeping AdvancedMarkerElement
  */
 
 /// <reference types="@types/google.maps" />
@@ -92,21 +21,30 @@ const FORGE_BASE_URL =
   "https://forge.butterfly-effect.dev";
 const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
 
+let scriptLoaded = false;
+let scriptPromise: Promise<unknown> | null = null;
+
 function loadMapScript() {
-  return new Promise(resolve => {
+  if (scriptLoaded && window.google?.maps) return Promise.resolve();
+  if (scriptPromise) return scriptPromise;
+  
+  scriptPromise = new Promise(resolve => {
     const script = document.createElement("script");
     script.src = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry`;
     script.async = true;
     script.crossOrigin = "anonymous";
     script.onload = () => {
+      scriptLoaded = true;
       resolve(null);
-      script.remove(); // Clean up immediately
+      script.remove();
     };
     script.onerror = () => {
       console.error("Failed to load Google Maps script");
+      scriptPromise = null;
     };
     document.head.appendChild(script);
   });
+  return scriptPromise;
 }
 
 interface MapViewProps {
@@ -114,13 +52,33 @@ interface MapViewProps {
   initialCenter?: google.maps.LatLngLiteral;
   initialZoom?: number;
   onMapReady?: (map: google.maps.Map) => void;
+  darkMode?: boolean;
 }
+
+// Dark map styles
+const DARK_STYLES: google.maps.MapTypeStyle[] = [
+  { elementType: 'geometry', stylers: [{ color: '#0d0d1a' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0d0d1a' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#4a4a6a' }] },
+  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#1a1a2e' }] },
+  { featureType: 'administrative.land_parcel', elementType: 'labels.text.fill', stylers: [{ color: '#3a3a5a' }] },
+  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#111122' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1a1a30' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1a1a2e' }] },
+  { featureType: 'road', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#1e1e35' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#080815' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#2a2a4a' }] },
+];
 
 export function MapView({
   className,
   initialCenter = { lat: 37.7749, lng: -122.4194 },
   initialZoom = 12,
   onMapReady,
+  darkMode = false,
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null);
@@ -131,15 +89,26 @@ export function MapView({
       console.error("Map container not found");
       return;
     }
-    map.current = new window.google.maps.Map(mapContainer.current, {
+    
+    const mapOptions: google.maps.MapOptions = {
       zoom: initialZoom,
       center: initialCenter,
-      mapTypeControl: true,
+      mapTypeControl: false,
       fullscreenControl: true,
       zoomControl: true,
-      streetViewControl: true,
+      streetViewControl: false,
       mapId: "DEMO_MAP_ID",
-    });
+    };
+    
+    map.current = new window.google!.maps.Map(mapContainer.current, mapOptions);
+    
+    // Apply dark styles via StyledMapType as an overlay
+    if (darkMode) {
+      const styledMap = new google.maps.StyledMapType(DARK_STYLES, { name: 'Dark' });
+      map.current.mapTypes.set('dark', styledMap);
+      map.current.setMapTypeId('dark');
+    }
+    
     if (onMapReady) {
       onMapReady(map.current);
     }
