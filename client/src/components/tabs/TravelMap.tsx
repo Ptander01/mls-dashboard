@@ -5,7 +5,7 @@
  */
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
-import { teams, matches, getTeam, calculateDistance } from '@/lib/mlsData';
+import { TEAMS, MATCHES, getTeam, calculateDistance } from '@/lib/mlsData';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
@@ -59,7 +59,9 @@ function createScene(container: HTMLDivElement): SceneContext {
   renderer.setSize(w, h);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.2;
+  renderer.toneMappingExposure = 1.4;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(renderer.domElement);
 
   // Scene
@@ -85,23 +87,27 @@ function createScene(container: HTMLDivElement): SceneContext {
   controls.panSpeed = 0.5;
   controls.rotateSpeed = 0.5;
 
-  // Ground plane — dark terrain with subtle grid
-  const groundGeo = new THREE.PlaneGeometry(200, 140, 80, 56);
-  const groundMat = new THREE.MeshStandardMaterial({
-    color: '#08081a',
-    roughness: 0.95,
-    metalness: 0.05,
-    transparent: true,
-    opacity: 0.95,
+  // Ground plane — reflective dark metallic surface (Houdini-style)
+  const groundGeo = new THREE.PlaneGeometry(200, 140, 1, 1);
+  const groundMat = new THREE.MeshPhysicalMaterial({
+    color: '#0a0a1e',
+    roughness: 0.4,
+    metalness: 0.6,
+    clearcoat: 0.3,
+    clearcoatRoughness: 0.2,
+    transparent: false,
   });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.1;
+  ground.receiveShadow = true;
   scene.add(ground);
 
-  // Grid overlay — subtle hex grid feel
-  const gridHelper = new THREE.GridHelper(200, 60, '#151530', '#0c0c20');
+  // Grid overlay — subtle refined grid
+  const gridHelper = new THREE.GridHelper(200, 80, '#12123a', '#0a0a25');
   gridHelper.position.y = 0;
+  (gridHelper.material as THREE.Material).transparent = true;
+  (gridHelper.material as THREE.Material).opacity = 0.4;
   scene.add(gridHelper);
 
   // Concentric range rings for distance reference
@@ -128,21 +134,38 @@ function createScene(container: HTMLDivElement): SceneContext {
   const dust = new THREE.Points(dustGeo, dustMat);
   scene.add(dust);
 
-  // Lighting — dramatic
-  const ambientLight = new THREE.AmbientLight('#2a2a4a', 0.6);
+  // Lighting — cinematic dramatic setup
+  const ambientLight = new THREE.AmbientLight('#1a1a3a', 0.4);
   scene.add(ambientLight);
 
-  const dirLight = new THREE.DirectionalLight('#6688cc', 0.8);
-  dirLight.position.set(30, 50, 20);
+  // Key light — cool blue from upper left
+  const dirLight = new THREE.DirectionalLight('#4466aa', 1.0);
+  dirLight.position.set(-30, 60, 30);
+  dirLight.castShadow = true;
   scene.add(dirLight);
 
-  const pointLight1 = new THREE.PointLight('#00d4ff', 0.5, 150);
-  pointLight1.position.set(-30, 20, -20);
+  // Fill light — warm from right
+  const fillLight = new THREE.DirectionalLight('#553322', 0.4);
+  fillLight.position.set(40, 30, -20);
+  scene.add(fillLight);
+
+  // Rim light — back light for edge definition
+  const rimLight = new THREE.DirectionalLight('#2244aa', 0.6);
+  rimLight.position.set(0, 10, -60);
+  scene.add(rimLight);
+
+  // Accent point lights — cinematic color pops
+  const pointLight1 = new THREE.PointLight('#00d4ff', 0.8, 200);
+  pointLight1.position.set(-40, 25, -30);
   scene.add(pointLight1);
 
-  const pointLight2 = new THREE.PointLight('#ffb347', 0.4, 150);
-  pointLight2.position.set(30, 20, 20);
+  const pointLight2 = new THREE.PointLight('#ffb347', 0.6, 200);
+  pointLight2.position.set(40, 25, 30);
   scene.add(pointLight2);
+
+  const pointLight3 = new THREE.PointLight('#8844ff', 0.3, 150);
+  pointLight3.position.set(0, 35, 0);
+  scene.add(pointLight3);
 
   // Groups
   const markerGroup = new THREE.Group();
@@ -158,9 +181,9 @@ function createScene(container: HTMLDivElement): SceneContext {
 
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(w, h),
-    0.8,  // strength
-    0.4,  // radius
-    0.3   // threshold
+    1.2,  // strength — stronger for cinematic glow
+    0.6,  // radius — wider bloom spread
+    0.15  // threshold — lower to catch more glow
   );
   composer.addPass(bloomPass);
 
@@ -173,105 +196,172 @@ function createScene(container: HTMLDivElement): SceneContext {
   };
 }
 
-// ─── Create 3D marble sphere ───
+// ─── Create cinematic glass marble sphere ───
+// Inspired by: crystal ball refraction + cinematic Houdini scene + volumetric team glow
 function createMarbleSphere(
   color: string, size: number, isActive: boolean, position: [number, number]
 ): THREE.Group {
   const group = new THREE.Group();
   const [x, z] = position;
+  const yBase = size + 0.15;
+  const col = new THREE.Color(color);
 
-  // Main sphere — marble material
-  const sphereGeo = new THREE.SphereGeometry(size, 32, 32);
+  // ── Main glass sphere — MeshPhysicalMaterial with transmission for refraction ──
+  const sphereGeo = new THREE.SphereGeometry(size, 48, 48);
   const sphereMat = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(color),
-    roughness: 0.15,
-    metalness: 0.3,
+    color: col.clone().multiplyScalar(0.7),
+    roughness: 0.05,
+    metalness: 0.0,
+    transmission: 0.7,       // Glass-like transparency
+    thickness: size * 2.5,   // Refraction depth
+    ior: 1.8,                // Index of refraction (glass ~1.5, crystal ~1.8)
     clearcoat: 1.0,
-    clearcoatRoughness: 0.1,
-    emissive: new THREE.Color(color),
-    emissiveIntensity: isActive ? 0.8 : 0.35,
+    clearcoatRoughness: 0.02,
+    specularIntensity: 2.0,
+    specularColor: new THREE.Color('#ffffff'),
+    emissive: col.clone(),
+    emissiveIntensity: isActive ? 0.6 : 0.2,
+    envMapIntensity: 1.5,
     transparent: true,
-    opacity: 0.95,
+    opacity: 0.97,
+    attenuationColor: col.clone(),
+    attenuationDistance: size * 3,
+    side: THREE.FrontSide,
   });
   const sphere = new THREE.Mesh(sphereGeo, sphereMat);
-  sphere.position.set(x, size + 0.1, z);
+  sphere.position.set(x, yBase, z);
+  sphere.castShadow = true;
   group.add(sphere);
 
-  // Inner specular highlight sphere
-  const specGeo = new THREE.SphereGeometry(size * 0.4, 16, 16);
+  // ── Inner core glow — bright emissive core for that "light within" effect ──
+  const coreGeo = new THREE.SphereGeometry(size * 0.35, 24, 24);
+  const coreMat = new THREE.MeshBasicMaterial({
+    color: col.clone().lerp(new THREE.Color('#ffffff'), 0.4),
+    transparent: true,
+    opacity: isActive ? 0.65 : 0.3,
+  });
+  const core = new THREE.Mesh(coreGeo, coreMat);
+  core.position.set(x, yBase, z);
+  group.add(core);
+
+  // ── Specular highlight — offset white sphere for that glass reflection ──
+  const specGeo = new THREE.SphereGeometry(size * 0.18, 16, 16);
   const specMat = new THREE.MeshBasicMaterial({
     color: '#ffffff',
     transparent: true,
-    opacity: 0.25,
+    opacity: 0.55,
   });
   const spec = new THREE.Mesh(specGeo, specMat);
-  spec.position.set(x - size * 0.2, size + 0.1 + size * 0.25, z - size * 0.2);
+  spec.position.set(x - size * 0.25, yBase + size * 0.35, z - size * 0.2);
   group.add(spec);
 
-  // Glow halo
-  const glowGeo = new THREE.SphereGeometry(size * (isActive ? 2.5 : 1.8), 16, 16);
-  const glowMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(color),
+  // ── Secondary specular — smaller, lower ──
+  const spec2Geo = new THREE.SphereGeometry(size * 0.08, 8, 8);
+  const spec2Mat = new THREE.MeshBasicMaterial({
+    color: '#ffffff',
     transparent: true,
-    opacity: isActive ? 0.15 : 0.07,
+    opacity: 0.35,
+  });
+  const spec2 = new THREE.Mesh(spec2Geo, spec2Mat);
+  spec2.position.set(x + size * 0.15, yBase - size * 0.15, z + size * 0.25);
+  group.add(spec2);
+
+  // ── Fresnel rim glow — slightly larger transparent sphere ──
+  const rimGeo = new THREE.SphereGeometry(size * 1.08, 32, 32);
+  const rimMat = new THREE.MeshBasicMaterial({
+    color: col.clone().lerp(new THREE.Color('#ffffff'), 0.3),
+    transparent: true,
+    opacity: isActive ? 0.12 : 0.05,
+    side: THREE.BackSide,
+  });
+  const rim = new THREE.Mesh(rimGeo, rimMat);
+  rim.position.set(x, yBase, z);
+  group.add(rim);
+
+  // ── Volumetric glow halo — team-colored atmospheric glow ──
+  const glowGeo = new THREE.SphereGeometry(size * (isActive ? 2.8 : 2.0), 24, 24);
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: col,
+    transparent: true,
+    opacity: isActive ? 0.12 : 0.05,
     side: THREE.BackSide,
   });
   const glow = new THREE.Mesh(glowGeo, glowMat);
-  glow.position.copy(sphere.position);
+  glow.position.set(x, yBase, z);
   group.add(glow);
 
-  // Second outer glow for depth
-  if (isActive) {
-    const outerGlowGeo = new THREE.SphereGeometry(size * 3.5, 16, 16);
-    const outerGlowMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(color),
-      transparent: true,
-      opacity: 0.04,
-      side: THREE.BackSide,
-    });
-    const outerGlow = new THREE.Mesh(outerGlowGeo, outerGlowMat);
-    outerGlow.position.copy(sphere.position);
-    group.add(outerGlow);
-  }
-
-  // Ground ring
-  const ringGeo2 = new THREE.RingGeometry(size * 1.2, size * 1.5, 32);
-  const ringMat2 = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(color),
+  // ── Ground light pool — emissive disc beneath the sphere ──
+  const poolGeo = new THREE.CircleGeometry(size * (isActive ? 3.0 : 2.0), 32);
+  const poolMat = new THREE.MeshBasicMaterial({
+    color: col,
     transparent: true,
-    opacity: isActive ? 0.25 : 0.1,
+    opacity: isActive ? 0.2 : 0.08,
     side: THREE.DoubleSide,
   });
-  const groundRing = new THREE.Mesh(ringGeo2, ringMat2);
+  const pool = new THREE.Mesh(poolGeo, poolMat);
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.set(x, 0.02, z);
+  group.add(pool);
+
+  // ── Outer ground ring — subtle ring for definition ──
+  const ringGeo = new THREE.RingGeometry(size * 1.3, size * 1.5, 48);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: col.clone().lerp(new THREE.Color('#ffffff'), 0.2),
+    transparent: true,
+    opacity: isActive ? 0.3 : 0.1,
+    side: THREE.DoubleSide,
+  });
+  const groundRing = new THREE.Mesh(ringGeo, ringMat);
   groundRing.rotation.x = -Math.PI / 2;
-  groundRing.position.set(x, 0.02, z);
+  groundRing.position.set(x, 0.03, z);
   group.add(groundRing);
 
-  // Vertical beam for active stadiums — tapered
+  // ── Active stadium extras ──
   if (isActive) {
-    const beamGeo = new THREE.CylinderGeometry(0.02, 0.06, 15, 8);
+    // Vertical light beam — tapered column of light
+    const beamGeo = new THREE.CylinderGeometry(0.015, size * 0.4, 18, 12);
     const beamMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(color),
+      color: col.clone().lerp(new THREE.Color('#ffffff'), 0.3),
       transparent: true,
-      opacity: 0.12,
+      opacity: 0.08,
     });
     const beam = new THREE.Mesh(beamGeo, beamMat);
-    beam.position.set(x, 7.5, z);
+    beam.position.set(x, 9, z);
     group.add(beam);
 
-    // Ground pulse ring
-    const pulseGeo = new THREE.RingGeometry(size * 2, size * 2.5, 32);
+    // Pulsing ground ring
+    const pulseGeo = new THREE.RingGeometry(size * 2.2, size * 2.8, 48);
     const pulseMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(color),
+      color: col,
       transparent: true,
-      opacity: 0.15,
+      opacity: 0.18,
       side: THREE.DoubleSide,
     });
     const pulse = new THREE.Mesh(pulseGeo, pulseMat);
     pulse.rotation.x = -Math.PI / 2;
-    pulse.position.set(x, 0.03, z);
+    pulse.position.set(x, 0.04, z);
     pulse.userData.isPulse = true;
     group.add(pulse);
+
+    // Second pulse ring — larger, slower
+    const pulse2Geo = new THREE.RingGeometry(size * 3.5, size * 4.0, 48);
+    const pulse2Mat = new THREE.MeshBasicMaterial({
+      color: col,
+      transparent: true,
+      opacity: 0.06,
+      side: THREE.DoubleSide,
+    });
+    const pulse2 = new THREE.Mesh(pulse2Geo, pulse2Mat);
+    pulse2.rotation.x = -Math.PI / 2;
+    pulse2.position.set(x, 0.04, z);
+    pulse2.userData.isPulse = true;
+    pulse2.userData.pulseSpeed = 1.2;
+    group.add(pulse2);
+
+    // Point light at sphere position for ground illumination
+    const pointLight = new THREE.PointLight(col, isActive ? 1.2 : 0.3, size * 12);
+    pointLight.position.set(x, yBase + size, z);
+    group.add(pointLight);
   }
 
   return group;
@@ -372,7 +462,7 @@ function createParticle(color: string): THREE.Group {
 
 // ─── Tooltip overlay ───
 function TooltipOverlay({ info, position }: {
-  info: { name: string; stadium: string; record: string; points: number; color: string } | null;
+  info: { name: string; stadium: string; color: string } | null;
   position: { x: number; y: number };
 }) {
   if (!info) return null;
@@ -391,8 +481,8 @@ function TooltipOverlay({ info, position }: {
         </div>
         <div className="text-[10px] text-muted-foreground font-mono space-y-0.5">
           <div>{info.stadium}</div>
-          <div>{info.record}</div>
-          <div>Points: <span className="text-cyan">{info.points}</span></div>
+          
+          
         </div>
       </div>
     </div>
@@ -408,7 +498,7 @@ export default function TravelMap() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showAllArcs, setShowAllArcs] = useState(false);
   const [maximized, setMaximized] = useState<string | null>(null);
-  const [tooltip, setTooltip] = useState<{ name: string; stadium: string; record: string; points: number; color: string } | null>(null);
+  const [tooltip, setTooltip] = useState<{ name: string; stadium: string; color: string } | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -423,12 +513,12 @@ export default function TravelMap() {
 
   const allArcs = useMemo(() =>
     filteredMatches.map(m => {
-      const home = getTeam(m.homeTeamId);
-      const away = getTeam(m.awayTeamId);
+      const home = getTeam(m.homeTeam);
+      const away = getTeam(m.awayTeam);
       if (!home || !away) return null;
       const dist = calculateDistance(away.lat, away.lng, home.lat, home.lng);
       return { match: m, home, away, distance: dist };
-    }).filter(Boolean) as { match: typeof matches[0]; home: typeof teams[0]; away: typeof teams[0]; distance: number }[],
+    }).filter(Boolean) as { match: typeof MATCHES[0]; home: typeof TEAMS[0]; away: typeof TEAMS[0]; distance: number }[],
     [filteredMatches]
   );
 
@@ -500,16 +590,16 @@ export default function TravelMap() {
 
     // Stadium markers
     filteredTeams.forEach(team => {
-      const isActive = weekMatches.some(m => m.homeTeamId === team.id);
-      const isAway = weekMatches.some(m => m.awayTeamId === team.id);
+      const isActive = weekMatches.some(m => m.homeTeam === team.id);
+      const isAway = weekMatches.some(m => m.awayTeam === team.id);
       const pos = latLngToXZ(team.lat, team.lng);
       const size = isActive ? 0.7 : isAway ? 0.5 : 0.35;
-      const marbleGroup = createMarbleSphere(team.primaryColor, size, isActive, pos);
+      const marbleGroup = createMarbleSphere(team.color, size, isActive, pos);
       // Store team data for raycasting
       marbleGroup.userData = { teamId: team.id };
       ctx.markerGroup.add(marbleGroup);
 
-      const label = createLabel(team.shortName, pos, team.primaryColor, isActive);
+      const label = createLabel(team.short, pos, team.color, isActive);
       ctx.labelGroup.add(label);
     });
 
@@ -585,9 +675,7 @@ export default function TravelMap() {
             setTooltip({
               name: team.name,
               stadium: team.stadium,
-              record: `${team.wins}W-${team.draws}D-${team.losses}L`,
-              points: team.points,
-              color: team.primaryColor,
+              color: team.color,
             });
             container.style.cursor = 'pointer';
             return;
@@ -619,10 +707,12 @@ export default function TravelMap() {
       // Subtle marble float animation
       const time = ctx.clock.getElapsedTime();
       ctx.markerGroup.children.forEach((group, i) => {
+        // Float the entire group slightly
+        const floatOffset = Math.sin(time * 1.2 + i * 0.7) * 0.08;
         group.children.forEach(child => {
-          if (child instanceof THREE.Mesh && child.geometry.type === 'SphereGeometry') {
-            const baseY = (child.geometry as THREE.SphereGeometry).parameters.radius + 0.1;
-            child.position.y = baseY + Math.sin(time * 1.5 + i * 0.5) * 0.12;
+          if (child instanceof THREE.Mesh && child.geometry.type === 'SphereGeometry' &&
+              child.position.y > 0.1) {
+            child.position.y += floatOffset * 0.01; // Very subtle float
           }
         });
       });
@@ -836,20 +926,20 @@ export default function TravelMap() {
         {/* Current week matches */}
         <div className="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
           {weekMatches.slice(0, 10).map(m => {
-            const home = getTeam(m.homeTeamId);
-            const away = getTeam(m.awayTeamId);
+            const home = getTeam(m.homeTeam);
+            const away = getTeam(m.awayTeam);
             const dist = home && away ? calculateDistance(away.lat, away.lng, home.lat, home.lng) : 0;
             return (
               <div key={m.id} className="neu-concave rounded-lg p-2 text-center">
                 <div className="flex items-center justify-center gap-1 text-[10px]">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: away?.primaryColor }} />
-                  <span className="text-muted-foreground">{away?.shortName}</span>
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: away?.color }} />
+                  <span className="text-muted-foreground">{away?.short}</span>
                   <span className="text-cyan mx-0.5">@</span>
-                  <span>{home?.shortName}</span>
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: home?.primaryColor }} />
+                  <span>{home?.short}</span>
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: home?.color }} />
                 </div>
                 <div className="text-[9px] text-muted-foreground font-mono mt-0.5">
-                  {dist.toLocaleString()} mi · {m.homeScore}-{m.awayScore}
+                  {dist.toLocaleString()} mi · {m.homeGoals}-{m.awayGoals}
                 </div>
               </div>
             );

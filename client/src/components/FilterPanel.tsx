@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
-import { teams, players } from '@/lib/mlsData';
-import { ChevronLeft, ChevronRight, Filter, X, RotateCcw } from 'lucide-react';
+import { TEAMS } from '@/lib/mlsData';
+import { ChevronLeft, ChevronRight, Filter, RotateCcw } from 'lucide-react';
 
 export default function FilterPanel() {
   const { filters, setFilters, resetFilters, isFilterActive } = useFilters();
@@ -43,7 +43,7 @@ export default function FilterPanel() {
     return `$${val}`;
   };
 
-  const sortedTeams = useMemo(() => [...teams].sort((a, b) => a.shortName.localeCompare(b.shortName)), []);
+  const sortedTeams = useMemo(() => [...TEAMS].sort((a, b) => a.short.localeCompare(b.short)), []);
 
   return (
     <>
@@ -150,9 +150,9 @@ export default function FilterPanel() {
                   >
                     <span
                       className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: team.primaryColor }}
+                      style={{ backgroundColor: team.color }}
                     />
-                    {team.shortName}
+                    {team.short}
                   </button>
                 ))}
               </div>
@@ -201,7 +201,7 @@ export default function FilterPanel() {
               <input
                 type="range"
                 min={0}
-                max={3100}
+                max={3500}
                 step={50}
                 value={filters.minutesRange[1]}
                 onChange={e => setFilters(prev => ({ ...prev, minutesRange: [prev.minutesRange[0], +e.target.value] }))}

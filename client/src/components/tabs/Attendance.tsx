@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
-import { teams, getTeam } from '@/lib/mlsData';
+import { TEAMS, getTeam } from '@/lib/mlsData';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
@@ -16,8 +16,9 @@ export default function Attendance() {
   const [maximized, setMaximized] = useState<string | null>(null);
 
   const avgAttendance = useMemo(() => {
-    if (filteredMatches.length === 0) return 0;
-    return filteredMatches.reduce((s, m) => s + m.attendance, 0) / filteredMatches.length;
+    const withAtt = filteredMatches.filter(m => m.attendance > 0);
+    if (withAtt.length === 0) return 0;
+    return withAtt.reduce((s, m) => s + m.attendance, 0) / withAtt.length;
   }, [filteredMatches]);
 
   const totalAttendance = useMemo(() => filteredMatches.reduce((s, m) => s + m.attendance, 0), [filteredMatches]);
@@ -29,18 +30,18 @@ export default function Attendance() {
 
   const homeAvgData = useMemo(() => {
     return filteredTeams.map(t => {
-      const homeMatches = filteredMatches.filter(m => m.homeTeamId === t.id);
+      const homeMatches = filteredMatches.filter(m => m.homeTeam === t.id && m.attendance > 0);
       const avg = homeMatches.length > 0 ? homeMatches.reduce((s, m) => s + m.attendance, 0) / homeMatches.length : 0;
-      return {
-        name: t.shortName, id: t.id, avg: Math.round(avg), capacity: t.capacity,
-        fillRate: t.capacity > 0 ? +((avg / t.capacity) * 100).toFixed(1) : 0, color: t.primaryColor,
-      };
+      return { name: t.short, id: t.id, avg: Math.round(avg), color: t.color };
     }).sort((a, b) => b.avg - a.avg);
   }, [filteredTeams, filteredMatches]);
 
   const weeklyData = useMemo(() => {
     const byWeek: Record<number, number[]> = {};
-    filteredMatches.forEach(m => { if (!byWeek[m.week]) byWeek[m.week] = []; byWeek[m.week].push(m.attendance); });
+    filteredMatches.filter(m => m.attendance > 0).forEach(m => {
+      if (!byWeek[m.week]) byWeek[m.week] = [];
+      byWeek[m.week].push(m.attendance);
+    });
     return Object.entries(byWeek).map(([week, atts]) => ({
       week: +week, avg: Math.round(atts.reduce((s, a) => s + a, 0) / atts.length),
       max: Math.max(...atts), min: Math.min(...atts),
@@ -48,24 +49,27 @@ export default function Attendance() {
   }, [filteredMatches]);
 
   const awayEffect = useMemo(() => {
-    const homeMatches = filteredMatches.filter(m => m.homeTeamId === selectedHome);
+    const homeMatches = filteredMatches.filter(m => m.homeTeam === selectedHome && m.attendance > 0);
     if (homeMatches.length === 0) return [];
     const avgHome = homeMatches.reduce((s, m) => s + m.attendance, 0) / homeMatches.length;
     const byAway: Record<string, number[]> = {};
-    homeMatches.forEach(m => { if (!byAway[m.awayTeamId]) byAway[m.awayTeamId] = []; byAway[m.awayTeamId].push(m.attendance); });
+    homeMatches.forEach(m => {
+      if (!byAway[m.awayTeam]) byAway[m.awayTeam] = [];
+      byAway[m.awayTeam].push(m.attendance);
+    });
     return Object.entries(byAway).map(([awayId, atts]) => {
       const awayAvg = atts.reduce((s, a) => s + a, 0) / atts.length;
       return {
-        awayTeam: getTeam(awayId)?.shortName || awayId, awayId,
+        awayTeam: getTeam(awayId)?.short || awayId, awayId,
         delta: Math.round(awayAvg - avgHome), avgAtt: Math.round(awayAvg),
-        matches: atts.length, color: getTeam(awayId)?.primaryColor || '#666',
+        matches: atts.length, color: getTeam(awayId)?.color || '#666',
       };
     }).sort((a, b) => b.delta - a.delta);
   }, [filteredMatches, selectedHome]);
 
   const homeTeam = getTeam(selectedHome);
   const homeAvg = useMemo(() => {
-    const hm = filteredMatches.filter(m => m.homeTeamId === selectedHome);
+    const hm = filteredMatches.filter(m => m.homeTeam === selectedHome && m.attendance > 0);
     return hm.length > 0 ? Math.round(hm.reduce((s, m) => s + m.attendance, 0) / hm.length) : 0;
   }, [filteredMatches, selectedHome]);
 
@@ -83,8 +87,6 @@ export default function Attendance() {
               <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
                 <div className="text-cyan font-semibold">{d.name}</div>
                 <div>Avg: <span className="text-amber">{d.avg.toLocaleString()}</span></div>
-                <div>Capacity: <span className="text-muted-foreground">{d.capacity.toLocaleString()}</span></div>
-                <div>Fill Rate: <span className="text-emerald">{d.fillRate}%</span></div>
               </div>
             );
           }} />
@@ -131,7 +133,7 @@ export default function Attendance() {
             const d = payload[0].payload;
             return (
               <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
-                <div className="font-semibold">{d.awayTeam} visiting {homeTeam?.shortName}</div>
+                <div className="font-semibold">{d.awayTeam} visiting {homeTeam?.short}</div>
                 <div>Delta: <span className={d.delta >= 0 ? 'text-emerald' : 'text-coral'}>{d.delta >= 0 ? '+' : ''}{d.delta.toLocaleString()}</span></div>
                 <div>Avg Attendance: <span className="text-cyan">{d.avgAtt.toLocaleString()}</span></div>
                 <div>Matches: <span className="text-muted-foreground">{d.matches}</span></div>
@@ -174,7 +176,7 @@ export default function Attendance() {
           <AnimatedCounter value={highestMatch?.attendance || 0} className="text-2xl text-emerald" />
           {highestMatch && (
             <div className="text-[10px] text-muted-foreground mt-1 font-mono">
-              {getTeam(highestMatch.homeTeamId)?.shortName} vs {getTeam(highestMatch.awayTeamId)?.shortName}
+              {getTeam(highestMatch.homeTeam)?.short} vs {getTeam(highestMatch.awayTeam)?.short}
             </div>
           )}
         </NeuCard>
@@ -216,15 +218,13 @@ export default function Attendance() {
               Attendance delta when each away team visits. Baseline avg: <span className="text-cyan font-mono">{homeAvg.toLocaleString()}</span>
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <MaximizeButton onClick={() => setMaximized('away')} />
-          </div>
+          <MaximizeButton onClick={() => setMaximized('away')} />
         </div>
         <div className="flex flex-wrap gap-1 mb-3">
           {filteredTeams.map(t => (
             <button key={t.id} onClick={() => setSelectedHome(t.id)}
               className={`text-[10px] px-2 py-0.5 rounded transition-all ${selectedHome === t.id ? 'neu-pressed text-cyan' : 'text-muted-foreground hover:text-foreground'}`}>
-              {t.shortName}
+              {t.short}
             </button>
           ))}
         </div>

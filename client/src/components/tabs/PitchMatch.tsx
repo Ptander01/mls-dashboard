@@ -1,6 +1,10 @@
+/**
+ * PitchMatch — Heatmaps, Shot Maps, Passing Networks
+ * Uses procedurally generated pitch data derived from real player statistics
+ */
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
-import { teams, players, heatmaps, shotData, passingNetworks, getTeam, type ShotData } from '@/lib/mlsData';
+import { PLAYERS, getTeam } from '@/lib/mlsData';
 import NeuCard from '@/components/NeuCard';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
 import { Flame, Crosshair, Share2 } from 'lucide-react';
@@ -8,6 +12,107 @@ import { Flame, Crosshair, Share2 } from 'lucide-react';
 const PITCH_BG = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/pitch-bg-SCSoxY6mUL64vxkYMYHLEF.webp';
 
 type PitchView = 'heatmap' | 'shotmap' | 'passing';
+
+// Seeded random for deterministic generation
+function seededRandom(seed: number) {
+  let s = seed;
+  return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+// Generate heatmap zones based on player position and stats
+function generateHeatmap(player: typeof PLAYERS[0]): number[][] {
+  const rng = seededRandom(player.id * 31 + player.minutes);
+  const zones: number[][] = Array.from({ length: 8 }, () => Array(12).fill(0));
+  const pos = player.position;
+
+  // Position-based base distribution
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 12; x++) {
+      let base = 5 + rng() * 10;
+      if (pos === 'GK') {
+        base += x < 2 ? 60 : x < 4 ? 15 : 2;
+        if (y >= 2 && y <= 5 && x < 2) base += 20;
+      } else if (pos === 'DF') {
+        base += x < 4 ? 40 : x < 6 ? 20 : 5;
+        if (y >= 1 && y <= 6 && x < 5) base += 15;
+      } else if (pos === 'MF') {
+        const center = Math.abs(x - 5.5);
+        base += Math.max(0, 35 - center * 8);
+        if (y >= 2 && y <= 5) base += 10;
+      } else { // FW
+        base += x > 7 ? 45 : x > 5 ? 25 : 5;
+        if (y >= 2 && y <= 5 && x > 8) base += 20;
+      }
+      base += rng() * 15 - 7;
+      zones[y][x] = Math.min(100, Math.max(0, Math.round(base)));
+    }
+  }
+  return zones;
+}
+
+// Generate shots from player stats
+function generateShots(player: typeof PLAYERS[0]): { x: number; y: number; xG: number; result: string }[] {
+  if (player.shots === 0) return [];
+  const rng = seededRandom(player.id * 17 + player.goals);
+  const shots: { x: number; y: number; xG: number; result: string }[] = [];
+  const numShots = Math.min(player.shots, 100);
+  const goalRate = player.goals / Math.max(1, player.shots);
+
+  for (let i = 0; i < numShots; i++) {
+    const x = 60 + rng() * 38;
+    const y = 15 + rng() * 35;
+    const distToGoal = Math.sqrt((100 - x) ** 2 + (32.5 - y) ** 2);
+    const xG = Math.max(0.01, Math.min(0.95, 0.5 - distToGoal * 0.012 + rng() * 0.15));
+
+    let result: string;
+    const roll = rng();
+    if (roll < goalRate * 1.2) result = 'goal';
+    else if (roll < goalRate * 1.2 + 0.25) result = 'saved';
+    else if (roll < goalRate * 1.2 + 0.45) result = 'blocked';
+    else result = 'off_target';
+
+    shots.push({ x, y, xG, result });
+  }
+  return shots;
+}
+
+// Generate team shots
+function generateTeamShots(teamId: string): { x: number; y: number; xG: number; result: string }[] {
+  const teamPlayers = PLAYERS.filter(p => p.team === teamId && p.shots > 0);
+  const allShots: { x: number; y: number; xG: number; result: string }[] = [];
+  teamPlayers.forEach(p => {
+    allShots.push(...generateShots(p));
+  });
+  return allShots;
+}
+
+// Generate passing network
+function generatePassingNetwork(teamId: string) {
+  const teamPlayers = PLAYERS.filter(p => p.team === teamId && p.starts > 3).slice(0, 11);
+  if (teamPlayers.length < 5) return null;
+
+  const rng = seededRandom(teamId.charCodeAt(0) * 100 + teamPlayers.length);
+
+  const nodes = teamPlayers.map(p => {
+    let x: number, y: number;
+    if (p.position === 'GK') { x = 10 + rng() * 5; y = 28 + rng() * 10; }
+    else if (p.position === 'DF') { x = 20 + rng() * 15; y = 10 + rng() * 45; }
+    else if (p.position === 'MF') { x = 40 + rng() * 20; y = 10 + rng() * 45; }
+    else { x = 65 + rng() * 25; y = 15 + rng() * 35; }
+    return { playerId: p.id, name: p.name, x, y, passes: Math.round(p.minutes / 10 + rng() * 30) };
+  });
+
+  const links: { source: number; target: number; weight: number }[] = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const dist = Math.sqrt((nodes[i].x - nodes[j].x) ** 2 + (nodes[i].y - nodes[j].y) ** 2);
+      if (dist < 40 && rng() > 0.3) {
+        links.push({ source: nodes[i].playerId, target: nodes[j].playerId, weight: Math.round(5 + rng() * 20 * (1 - dist / 50)) });
+      }
+    }
+  }
+  return { nodes, links };
+}
 
 function PitchLines() {
   return (
@@ -30,28 +135,33 @@ export default function PitchMatch() {
   const { filteredTeams, filteredPlayers } = useFilters();
   const [view, setView] = useState<PitchView>('heatmap');
   const [selectedTeam, setSelectedTeam] = useState<string>(filteredTeams[0]?.id || 'MIA');
-  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<number | null>(null);
   const [maximized, setMaximized] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasModalRef = useRef<HTMLCanvasElement>(null);
 
   const teamPlayers = useMemo(() =>
-    filteredPlayers.filter(p => p.teamId === selectedTeam && p.gamesStarted > 5),
+    filteredPlayers.filter(p => p.team === selectedTeam && p.starts > 3),
     [filteredPlayers, selectedTeam]
   );
 
   const playerHeatmap = useMemo(() => {
     const pid = selectedPlayer || teamPlayers[0]?.id;
-    return heatmaps.find(h => h.playerId === pid);
+    const player = PLAYERS.find(p => p.id === pid);
+    if (!player) return null;
+    return generateHeatmap(player);
   }, [selectedPlayer, teamPlayers]);
 
-  const teamShots = useMemo(() => shotData.filter(s => s.teamId === selectedTeam), [selectedTeam]);
-  const playerShots = useMemo(() =>
-    selectedPlayer ? shotData.filter(s => s.playerId === selectedPlayer) : teamShots,
-    [selectedPlayer, teamShots]
-  );
+  const teamShots = useMemo(() => generateTeamShots(selectedTeam), [selectedTeam]);
+  const playerShots = useMemo(() => {
+    if (!selectedPlayer) return teamShots;
+    const player = PLAYERS.find(p => p.id === selectedPlayer);
+    return player ? generateShots(player) : teamShots;
+  }, [selectedPlayer, teamShots]);
 
-  const passNetwork = useMemo(() => passingNetworks.find(pn => pn.teamId === selectedTeam), [selectedTeam]);
+  const passNetwork = useMemo(() => generatePassingNetwork(selectedTeam), [selectedTeam]);
+
+  const selPlayerData = selectedPlayer ? PLAYERS.find(p => p.id === selectedPlayer) : null;
 
   // Draw heatmap on canvas
   const drawHeatmap = (canvas: HTMLCanvasElement | null) => {
@@ -61,12 +171,11 @@ export default function PitchMatch() {
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    const zones = playerHeatmap.zones;
     const cellW = w / 12;
     const cellH = h / 8;
     for (let y = 0; y < 8; y++) {
       for (let x = 0; x < 12; x++) {
-        const intensity = zones[y][x] / 100;
+        const intensity = playerHeatmap[y][x] / 100;
         const r = Math.floor(255 * Math.min(1, intensity * 2));
         const g = Math.floor(255 * Math.max(0, 1 - intensity * 1.5) * intensity);
         const b = Math.floor(100 * (1 - intensity));
@@ -87,8 +196,6 @@ export default function PitchMatch() {
       if (maximized === 'pitch') drawHeatmap(canvasModalRef.current);
     }
   }, [view, playerHeatmap, maximized]);
-
-  const selPlayerData = selectedPlayer ? players.find(p => p.id === selectedPlayer) : null;
 
   const shotStats = useMemo(() => {
     const shots = playerShots;
@@ -124,10 +231,10 @@ export default function PitchMatch() {
             const size = shot.result === 'goal' ? 1.2 + shot.xG * 2 : 0.6 + shot.xG * 1.5;
             return (
               <g key={i}>
-                <circle cx={shot.x} cy={shot.y * 0.65} r={size} fill={color} fillOpacity={0.6}
+                <circle cx={shot.x} cy={shot.y} r={size} fill={color} fillOpacity={0.6}
                   stroke={color} strokeWidth={shot.result === 'goal' ? 0.3 : 0} strokeOpacity={0.8} />
                 {shot.result === 'goal' && (
-                  <circle cx={shot.x} cy={shot.y * 0.65} r={size + 1} fill="none" stroke={color} strokeWidth={0.2} strokeOpacity={0.3} />
+                  <circle cx={shot.x} cy={shot.y} r={size + 1} fill="none" stroke={color} strokeWidth={0.2} strokeOpacity={0.3} />
                 )}
               </g>
             );
@@ -144,21 +251,20 @@ export default function PitchMatch() {
             const opacity = Math.min(0.8, link.weight / 25);
             const width = Math.max(0.3, link.weight / 15);
             return (
-              <line key={i} x1={source.x} y1={source.y * 0.65} x2={target.x} y2={target.y * 0.65}
+              <line key={i} x1={source.x} y1={source.y} x2={target.x} y2={target.y}
                 stroke="#00d4ff" strokeWidth={width} strokeOpacity={opacity} />
             );
           })}
           {passNetwork.nodes.map((node, i) => {
-            const player = players.find(p => p.id === node.playerId);
             const size = Math.max(1.5, node.passes / 20);
             return (
               <g key={i}>
-                <circle cx={node.x} cy={node.y * 0.65} r={size + 0.5} fill="rgba(0,212,255,0.15)" />
-                <circle cx={node.x} cy={node.y * 0.65} r={size}
-                  fill={getTeam(selectedTeam)?.primaryColor || '#00d4ff'} stroke="#fff" strokeWidth={0.3} />
-                <text x={node.x} y={node.y * 0.65 - size - 1.5} textAnchor="middle"
+                <circle cx={node.x} cy={node.y} r={size + 0.5} fill="rgba(0,212,255,0.15)" />
+                <circle cx={node.x} cy={node.y} r={size}
+                  fill={getTeam(selectedTeam)?.color || '#00d4ff'} stroke="#fff" strokeWidth={0.3} />
+                <text x={node.x} y={node.y - size - 1.5} textAnchor="middle"
                   fill="#e8e8f0" fontSize={2.5} fontFamily="Space Grotesk">
-                  {player?.name.split(' ').pop() || ''}
+                  {node.name.split(' ').pop() || ''}
                 </text>
               </g>
             );
@@ -200,8 +306,8 @@ export default function PitchMatch() {
                 className={`w-full text-left text-xs py-1 px-2 rounded flex items-center gap-2 transition-colors ${
                   selectedTeam === t.id ? 'text-cyan bg-white/5' : 'text-muted-foreground hover:text-foreground'
                 }`}>
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: t.primaryColor }} />
-                {t.shortName}
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
+                {t.short}
               </button>
             ))}
           </div>
@@ -235,9 +341,9 @@ export default function PitchMatch() {
         <NeuCard delay={0.12} className="p-4 lg:col-span-3">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-              {view === 'heatmap' && `Heatmap — ${selPlayerData?.name || 'Team'}`}
-              {view === 'shotmap' && `Shot Map — ${selPlayerData?.name || getTeam(selectedTeam)?.shortName || 'Team'}`}
-              {view === 'passing' && `Passing Network — ${getTeam(selectedTeam)?.shortName || 'Team'}`}
+              {view === 'heatmap' && `Heatmap — ${selPlayerData?.name || teamPlayers[0]?.name || 'Team'}`}
+              {view === 'shotmap' && `Shot Map — ${selPlayerData?.name || getTeam(selectedTeam)?.short || 'Team'}`}
+              {view === 'passing' && `Passing Network — ${getTeam(selectedTeam)?.short || 'Team'}`}
             </h3>
             <div className="flex items-center gap-3">
               {view === 'shotmap' && (
@@ -278,10 +384,10 @@ export default function PitchMatch() {
           {view === 'heatmap' && selPlayerData && (
             <div className="grid grid-cols-4 gap-2 mt-3">
               {[
-                { label: 'Minutes', value: selPlayerData.minutesPlayed.toLocaleString() },
-                { label: 'Position', value: selPlayerData.positionDetail },
-                { label: 'Games', value: selPlayerData.gamesPlayed },
-                { label: 'Starts', value: selPlayerData.gamesStarted },
+                { label: 'Minutes', value: selPlayerData.minutes.toLocaleString() },
+                { label: 'Position', value: selPlayerData.position },
+                { label: 'Games', value: selPlayerData.games },
+                { label: 'Starts', value: selPlayerData.starts },
               ].map(s => (
                 <div key={s.label} className="neu-concave rounded-lg p-2 text-center">
                   <div className="text-[10px] text-muted-foreground uppercase">{s.label}</div>
@@ -305,7 +411,7 @@ export default function PitchMatch() {
                 <div className="text-[10px] text-muted-foreground uppercase">Avg Passes</div>
                 <div className="font-mono text-sm font-bold text-emerald">
                   {passNetwork.links.length > 0
-                    ? (passNetwork.links.reduce((s, l) => s + l.weight, 0) / passNetwork.links.length).toFixed(1)
+                    ? (passNetwork.links.reduce((s: number, l: { weight: number }) => s + l.weight, 0) / passNetwork.links.length).toFixed(1)
                     : 0}
                 </div>
               </div>
@@ -316,9 +422,9 @@ export default function PitchMatch() {
 
       {/* Maximize Modal */}
       <ChartModal isOpen={maximized === 'pitch'} onClose={() => setMaximized(null)}
-        title={view === 'heatmap' ? `Heatmap — ${selPlayerData?.name || 'Team'}` :
-               view === 'shotmap' ? `Shot Map — ${selPlayerData?.name || getTeam(selectedTeam)?.shortName || 'Team'}` :
-               `Passing Network — ${getTeam(selectedTeam)?.shortName || 'Team'}`}>
+        title={view === 'heatmap' ? `Heatmap — ${selPlayerData?.name || teamPlayers[0]?.name || 'Team'}` :
+               view === 'shotmap' ? `Shot Map — ${selPlayerData?.name || getTeam(selectedTeam)?.short || 'Team'}` :
+               `Passing Network — ${getTeam(selectedTeam)?.short || 'Team'}`}>
         <PitchVisualization isModal />
       </ChartModal>
     </div>

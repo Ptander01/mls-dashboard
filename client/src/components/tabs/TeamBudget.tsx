@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
-import { getTeam } from '@/lib/mlsData';
+import { getTeam, TEAM_BUDGETS } from '@/lib/mlsData';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, ScatterChart, Scatter
+  PieChart, Pie, Cell
 } from 'recharts';
 import { DollarSign, TrendingUp, Users, Trophy } from 'lucide-react';
 
@@ -16,30 +16,28 @@ export default function TeamBudget() {
   const [maximized, setMaximized] = useState<string | null>(null);
 
   const budgetData = useMemo(() =>
-    [...filteredTeams].sort((a, b) => b.budget - a.budget).map(t => ({
-      name: t.shortName, id: t.id, budget: t.budget, dp: t.dpSpend, tam: t.tamSpend, gam: t.gamSpend, points: t.points, color: t.primaryColor,
-    })),
+    [...filteredTeams].map(t => {
+      const b = TEAM_BUDGETS[t.id];
+      return {
+        name: t.short, id: t.id,
+        total: b ? +(b.totalSalary / 1000000).toFixed(2) : 0,
+        dp: b ? +(b.dpSalary / 1000000).toFixed(2) : 0,
+        tam: b ? +(b.tamSalary / 1000000).toFixed(2) : 0,
+        regular: b ? +(b.regularSalary / 1000000).toFixed(2) : 0,
+        color: t.color,
+      };
+    }).sort((a, b) => b.total - a.total),
     [filteredTeams]
   );
 
-  const totalBudget = filteredTeams.reduce((s, t) => s + t.budget, 0);
-  const avgBudget = filteredTeams.length > 0 ? totalBudget / filteredTeams.length : 0;
-  const maxBudget = Math.max(...filteredTeams.map(t => t.budget), 0);
-  const costPerPoint = useMemo(() => {
-    const valid = filteredTeams.filter(t => t.points > 0);
-    return valid.length > 0 ? valid.reduce((s, t) => s + t.budget / t.points, 0) / valid.length : 0;
-  }, [filteredTeams]);
+  const totalBudget = budgetData.reduce((s, t) => s + t.total, 0);
+  const avgBudget = budgetData.length > 0 ? totalBudget / budgetData.length : 0;
+  const maxBudget = Math.max(...budgetData.map(t => t.total), 0);
 
-  const efficiencyData = useMemo(() =>
-    filteredTeams.map(t => ({
-      name: t.shortName, budget: t.budget, points: t.points, color: t.primaryColor,
-      ppd: +(t.points / t.budget).toFixed(2),
-    })),
-    [filteredTeams]
-  );
+  const selTeam = selectedTeam ? getTeam(selectedTeam) : null;
+  const selBudget = selectedTeam ? TEAM_BUDGETS[selectedTeam] : null;
+  const selPlayers = selectedTeam ? filteredPlayers.filter(p => p.team === selectedTeam) : [];
 
-  const selTeam = selectedTeam ? filteredTeams.find(t => t.id === selectedTeam) : null;
-  const selPlayers = selectedTeam ? filteredPlayers.filter(p => p.teamId === selectedTeam) : [];
   const salaryBreakdown = useMemo(() => {
     if (!selPlayers.length) return [];
     const byPos: Record<string, number> = {};
@@ -59,47 +57,26 @@ export default function TeamBudget() {
         <BarChart data={budgetData} margin={{ top: 5, right: 10, bottom: 60, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
           <XAxis dataKey="name" stroke="#8892b0" fontSize={9} tickLine={false} angle={-45} textAnchor="end" interval={0} />
-          <YAxis stroke="#8892b0" fontSize={10} tickLine={false} />
-          <Tooltip contentStyle={{ background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 11, fontFamily: 'JetBrains Mono' }} />
-          <Bar dataKey="dp" stackId="a" fill="#00d4ff" name="DP Spend" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="tam" stackId="a" fill="#ffb347" name="TAM Spend" />
-          <Bar dataKey="gam" stackId="a" fill="#00c897" name="GAM Spend" radius={[3, 3, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-
-  const EfficiencyContent = ({ height = 280 }: { height?: number }) => (
-    <div style={{ height }}>
-      <ResponsiveContainer>
-        <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <XAxis dataKey="budget" name="Budget ($M)" stroke="#8892b0" fontSize={10} tickLine={false}
-            label={{ value: 'Budget ($M)', position: 'bottom', fill: '#8892b0', fontSize: 10 }} />
-          <YAxis dataKey="points" name="Points" stroke="#8892b0" fontSize={10} tickLine={false}
-            label={{ value: 'Points', angle: -90, position: 'insideLeft', fill: '#8892b0', fontSize: 10 }} />
+          <YAxis stroke="#8892b0" fontSize={10} tickLine={false} label={{ value: '$ Millions', angle: -90, position: 'insideLeft', fill: '#8892b0', fontSize: 10 }} />
           <Tooltip
             content={({ payload }) => {
               if (!payload?.length) return null;
               const d = payload[0].payload;
               return (
                 <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
-                  <div className="text-cyan font-semibold">{d.name}</div>
-                  <div>Budget: <span className="text-amber">${d.budget}M</span></div>
-                  <div>Points: <span className="text-emerald">{d.points}</span></div>
-                  <div>Points/$M: <span className="text-purple-400">{d.ppd}</span></div>
+                  <div className="text-amber font-semibold">{d.name}</div>
+                  <div>Total: <span className="text-amber">${d.total}M</span></div>
+                  <div>DP: <span className="text-cyan">${d.dp}M</span></div>
+                  <div>TAM: <span className="text-emerald">${d.tam}M</span></div>
+                  <div>Regular: <span className="text-muted-foreground">${d.regular}M</span></div>
                 </div>
               );
             }}
           />
-          <Scatter data={efficiencyData}>
-            {efficiencyData.map((d, i) => (
-              <Cell key={i} fill={d.color} fillOpacity={0.7} r={6} cursor="pointer"
-                onClick={() => setSelectedTeam(d.name === selTeam?.shortName ? null : filteredTeams.find(t => t.shortName === d.name)?.id || null)}
-              />
-            ))}
-          </Scatter>
-        </ScatterChart>
+          <Bar dataKey="dp" stackId="a" fill="#00d4ff" name="DP Spend" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="tam" stackId="a" fill="#ffb347" name="TAM Spend" />
+          <Bar dataKey="regular" stackId="a" fill="#00c897" name="Regular" radius={[3, 3, 0, 0]} />
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );
@@ -132,21 +109,21 @@ export default function TeamBudget() {
         <NeuCard delay={0.3} className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Users size={14} className="text-purple-400" />
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">Avg $/Point</span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Teams</span>
           </div>
-          <AnimatedCounter value={costPerPoint} prefix="$" suffix="M" decimals={2} className="text-2xl text-purple-400" />
+          <AnimatedCounter value={filteredTeams.length} className="text-2xl text-purple-400" />
         </NeuCard>
       </div>
 
       {/* Budget Breakdown */}
       <NeuCard delay={0.15} className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Team Budget Breakdown ($ Millions)</h3>
+          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Team Salary Breakdown ($ Millions)</h3>
           <MaximizeButton onClick={() => setMaximized('budget')} />
         </div>
         <BudgetBarContent />
         <div className="flex justify-center gap-6 mt-2">
-          {[{ label: 'Designated Players', color: '#00d4ff' }, { label: 'TAM', color: '#ffb347' }, { label: 'GAM', color: '#00c897' }].map(l => (
+          {[{ label: 'Designated Players', color: '#00d4ff' }, { label: 'TAM', color: '#ffb347' }, { label: 'Regular', color: '#00c897' }].map(l => (
             <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: l.color }} />
               {l.label}
@@ -156,17 +133,8 @@ export default function TeamBudget() {
       </NeuCard>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Efficiency */}
-        <NeuCard delay={0.25} className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Budget vs Points (Efficiency)</h3>
-            <MaximizeButton onClick={() => setMaximized('efficiency')} />
-          </div>
-          <EfficiencyContent />
-        </NeuCard>
-
         {/* Salary Pie */}
-        <NeuCard delay={0.35} className="p-4">
+        <NeuCard delay={0.25} className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Team Salary by Position</h3>
             <MaximizeButton onClick={() => setMaximized('salary')} />
@@ -175,7 +143,7 @@ export default function TeamBudget() {
             {filteredTeams.slice(0, 15).map(t => (
               <button key={t.id} onClick={() => setSelectedTeam(t.id === selectedTeam ? null : t.id)}
                 className={`text-[10px] px-2 py-1 rounded transition-all ${selectedTeam === t.id ? 'neu-pressed text-cyan' : 'neu-raised text-muted-foreground hover:text-foreground'}`}>
-                {t.shortName}
+                {t.short}
               </button>
             ))}
           </div>
@@ -195,45 +163,45 @@ export default function TeamBudget() {
             <div className="h-48 flex items-center justify-center text-xs text-muted-foreground">Select a team to view salary breakdown</div>
           )}
         </NeuCard>
+
+        {/* Top Earners */}
+        <NeuCard delay={0.35} className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
+              {selTeam ? `${selTeam.short} — Top Earners` : 'Top Earners (select team)'}
+            </h3>
+            {selTeam && <button onClick={() => setSelectedTeam(null)} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>}
+          </div>
+          {topEarners.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr><th>#</th><th>Player</th><th>Pos</th><th>Salary</th><th>Goals</th><th>Min</th><th>$/Goal</th></tr>
+                </thead>
+                <tbody>
+                  {topEarners.map((p, i) => (
+                    <tr key={p.id}>
+                      <td className="text-muted-foreground">{i + 1}</td>
+                      <td className="font-sans text-xs font-medium">{p.name}</td>
+                      <td><span className={`px-1 py-0.5 rounded text-[9px] ${p.position === 'FW' ? 'bg-red-500/15 text-red-400' : p.position === 'MF' ? 'bg-blue-500/15 text-blue-400' : p.position === 'DF' ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'}`}>{p.position}</span></td>
+                      <td className="text-amber">{p.salary >= 1000000 ? `$${(p.salary/1000000).toFixed(1)}M` : `$${(p.salary/1000).toFixed(0)}K`}</td>
+                      <td className="text-cyan">{p.goals}</td>
+                      <td>{p.minutes.toLocaleString()}</td>
+                      <td className="text-muted-foreground">{p.goals > 0 ? `$${(p.salary / p.goals / 1000).toFixed(0)}K` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="h-48 flex items-center justify-center text-xs text-muted-foreground">Select a team above</div>
+          )}
+        </NeuCard>
       </div>
 
-      {/* Top Earners */}
-      {selTeam && topEarners.length > 0 && (
-        <NeuCard delay={0} animate={false} className="overflow-hidden">
-          <div className="p-3 border-b border-white/5 flex items-center justify-between">
-            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Top Earners — {selTeam.name}</h3>
-            <MaximizeButton onClick={() => setMaximized('earners')} />
-          </div>
-          <div className="overflow-x-auto">
-            <table className="data-table">
-              <thead>
-                <tr><th>#</th><th>Player</th><th>Position</th><th>Salary</th><th>Goals</th><th>Assists</th><th>Minutes</th><th>$/Goal</th></tr>
-              </thead>
-              <tbody>
-                {topEarners.map((p, i) => (
-                  <tr key={p.id}>
-                    <td className="text-muted-foreground">{i + 1}</td>
-                    <td className="font-sans text-xs font-medium">{p.name}</td>
-                    <td><span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.position === 'FW' ? 'bg-red-500/15 text-red-400' : p.position === 'MF' ? 'bg-blue-500/15 text-blue-400' : p.position === 'DF' ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'}`}>{p.position}</span></td>
-                    <td className="text-amber">{p.salary >= 1000000 ? `$${(p.salary/1000000).toFixed(1)}M` : `$${(p.salary/1000).toFixed(0)}K`}</td>
-                    <td className="text-cyan">{p.goals}</td>
-                    <td>{p.assists}</td>
-                    <td>{p.minutesPlayed.toLocaleString()}</td>
-                    <td className="text-muted-foreground">{p.goals > 0 ? `$${(p.salary / p.goals / 1000).toFixed(0)}K` : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </NeuCard>
-      )}
-
       {/* Maximize Modals */}
-      <ChartModal isOpen={maximized === 'budget'} onClose={() => setMaximized(null)} title="Team Budget Breakdown ($ Millions)">
+      <ChartModal isOpen={maximized === 'budget'} onClose={() => setMaximized(null)} title="Team Salary Breakdown ($ Millions)">
         <BudgetBarContent height={600} />
-      </ChartModal>
-      <ChartModal isOpen={maximized === 'efficiency'} onClose={() => setMaximized(null)} title="Budget vs Points (Efficiency)">
-        <EfficiencyContent height={600} />
       </ChartModal>
       <ChartModal isOpen={maximized === 'salary'} onClose={() => setMaximized(null)} title={`Salary by Position${selTeam ? ` — ${selTeam.name}` : ''}`}>
         {salaryBreakdown.length > 0 ? (
@@ -249,29 +217,6 @@ export default function TeamBudget() {
             </ResponsiveContainer>
           </div>
         ) : <div className="h-96 flex items-center justify-center text-muted-foreground">Select a team first</div>}
-      </ChartModal>
-      <ChartModal isOpen={maximized === 'earners'} onClose={() => setMaximized(null)} title={`Top Earners${selTeam ? ` — ${selTeam.name}` : ''}`}>
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr><th>#</th><th>Player</th><th>Position</th><th>Salary</th><th>Goals</th><th>Assists</th><th>Minutes</th><th>$/Goal</th></tr>
-            </thead>
-            <tbody>
-              {[...selPlayers].sort((a, b) => b.salary - a.salary).map((p, i) => (
-                <tr key={p.id}>
-                  <td className="text-muted-foreground">{i + 1}</td>
-                  <td className="font-sans text-xs font-medium">{p.name}</td>
-                  <td><span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.position === 'FW' ? 'bg-red-500/15 text-red-400' : p.position === 'MF' ? 'bg-blue-500/15 text-blue-400' : p.position === 'DF' ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'}`}>{p.position}</span></td>
-                  <td className="text-amber">{p.salary >= 1000000 ? `$${(p.salary/1000000).toFixed(1)}M` : `$${(p.salary/1000).toFixed(0)}K`}</td>
-                  <td className="text-cyan">{p.goals}</td>
-                  <td>{p.assists}</td>
-                  <td>{p.minutesPlayed.toLocaleString()}</td>
-                  <td className="text-muted-foreground">{p.goals > 0 ? `$${(p.salary / p.goals / 1000).toFixed(0)}K` : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </ChartModal>
     </div>
   );

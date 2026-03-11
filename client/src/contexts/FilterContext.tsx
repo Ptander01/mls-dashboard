@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
-import { teams, players, matches, type Player, type Match, type Team } from '@/lib/mlsData';
+import { TEAMS, PLAYERS, MATCHES, type Player, type Match, type Team } from '@/lib/mlsData';
 
 export interface Filters {
   selectedTeams: string[];
@@ -25,7 +25,7 @@ const defaultFilters: Filters = {
   selectedTeams: [],
   selectedPlayers: [],
   ageRange: [16, 42],
-  minutesRange: [0, 3100],
+  minutesRange: [0, 3500],
   salaryRange: [0, 15000000],
   positionFilter: [],
   conferenceFilter: [],
@@ -44,12 +44,12 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
       filters.positionFilter.length > 0 ||
       filters.conferenceFilter.length > 0 ||
       filters.ageRange[0] !== 16 || filters.ageRange[1] !== 42 ||
-      filters.minutesRange[0] !== 0 || filters.minutesRange[1] !== 3100 ||
+      filters.minutesRange[0] !== 0 || filters.minutesRange[1] !== 3500 ||
       filters.salaryRange[0] !== 0 || filters.salaryRange[1] !== 15000000;
   }, [filters]);
 
   const filteredTeams = useMemo(() => {
-    let t = [...teams];
+    let t = [...TEAMS];
     if (filters.conferenceFilter.length > 0) {
       t = t.filter(team => filters.conferenceFilter.includes(team.conference));
     }
@@ -60,27 +60,27 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
   }, [filters.selectedTeams, filters.conferenceFilter]);
 
   const filteredPlayers = useMemo(() => {
-    let p = [...players];
+    let p = [...PLAYERS];
     const teamIds = filteredTeams.map(t => t.id);
     if (filters.selectedTeams.length > 0 || filters.conferenceFilter.length > 0) {
-      p = p.filter(player => teamIds.includes(player.teamId));
+      p = p.filter(player => teamIds.includes(player.team));
     }
     if (filters.selectedPlayers.length > 0) {
-      p = p.filter(player => filters.selectedPlayers.includes(player.id));
+      p = p.filter(player => filters.selectedPlayers.includes(String(player.id)));
     }
     if (filters.positionFilter.length > 0) {
       p = p.filter(player => filters.positionFilter.includes(player.position));
     }
     p = p.filter(player => player.age >= filters.ageRange[0] && player.age <= filters.ageRange[1]);
-    p = p.filter(player => player.minutesPlayed >= filters.minutesRange[0] && player.minutesPlayed <= filters.minutesRange[1]);
+    p = p.filter(player => player.minutes >= filters.minutesRange[0] && player.minutes <= filters.minutesRange[1]);
     p = p.filter(player => player.salary >= filters.salaryRange[0] && player.salary <= filters.salaryRange[1]);
     return p;
   }, [filters, filteredTeams]);
 
   const filteredMatches = useMemo(() => {
-    if (filters.selectedTeams.length === 0 && filters.conferenceFilter.length === 0) return matches;
+    if (filters.selectedTeams.length === 0 && filters.conferenceFilter.length === 0) return MATCHES;
     const teamIds = filteredTeams.map(t => t.id);
-    return matches.filter(m => teamIds.includes(m.homeTeamId) || teamIds.includes(m.awayTeamId));
+    return MATCHES.filter(m => teamIds.includes(m.homeTeam) || teamIds.includes(m.awayTeam));
   }, [filters.selectedTeams, filters.conferenceFilter, filteredTeams]);
 
   return (

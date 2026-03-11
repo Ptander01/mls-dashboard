@@ -10,13 +10,13 @@ import {
 } from 'recharts';
 import { ArrowUpDown, TrendingUp, Crosshair, Shield, Zap } from 'lucide-react';
 
-type SortKey = 'goals' | 'assists' | 'minutesPlayed' | 'passAccuracy' | 'tackles' | 'shots' | 'xG' | 'salary' | 'name';
+type SortKey = 'goals' | 'assists' | 'minutes' | 'shotAccuracy' | 'tackles' | 'shots' | 'salary' | 'name';
 
 export default function PlayerStats() {
   const { filteredPlayers } = useFilters();
   const [sortKey, setSortKey] = useState<SortKey>('goals');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<number | null>(null);
   const [maximized, setMaximized] = useState<string | null>(null);
 
   const sorted = useMemo(() => {
@@ -39,11 +39,11 @@ export default function PlayerStats() {
   );
 
   const scatterData = useMemo(() =>
-    filteredPlayers.filter(p => p.position !== 'GK' && p.minutesPlayed > 300).map(p => ({
+    filteredPlayers.filter(p => p.position !== 'GK' && p.minutes > 300).map(p => ({
       name: p.name,
-      xG: p.xG,
+      shots: p.shots,
       goals: p.goals,
-      team: getTeam(p.teamId)?.shortName || '',
+      team: getTeam(p.team)?.short || '',
       position: p.position,
     })),
     [filteredPlayers]
@@ -52,18 +52,18 @@ export default function PlayerStats() {
   const avgGoals = filteredPlayers.length > 0 ? filteredPlayers.reduce((s, p) => s + p.goals, 0) / filteredPlayers.length : 0;
   const avgAssists = filteredPlayers.length > 0 ? filteredPlayers.reduce((s, p) => s + p.assists, 0) / filteredPlayers.length : 0;
   const totalGoals = filteredPlayers.reduce((s, p) => s + p.goals, 0);
-  const avgPassAcc = filteredPlayers.filter(p => p.passAccuracy > 0).length > 0
-    ? filteredPlayers.filter(p => p.passAccuracy > 0).reduce((s, p) => s + p.passAccuracy, 0) / filteredPlayers.filter(p => p.passAccuracy > 0).length
+  const avgShotAcc = filteredPlayers.filter(p => p.shotAccuracy > 0).length > 0
+    ? filteredPlayers.filter(p => p.shotAccuracy > 0).reduce((s, p) => s + p.shotAccuracy, 0) / filteredPlayers.filter(p => p.shotAccuracy > 0).length
     : 0;
 
   const selPlayer = selectedPlayer ? filteredPlayers.find(p => p.id === selectedPlayer) : null;
   const radarData = selPlayer ? [
     { stat: 'Goals', value: Math.min(100, (selPlayer.goals / 20) * 100) },
     { stat: 'Assists', value: Math.min(100, (selPlayer.assists / 15) * 100) },
-    { stat: 'Pass %', value: selPlayer.passAccuracy },
-    { stat: 'Tackles', value: Math.min(100, (selPlayer.tackles / 100) * 100) },
-    { stat: 'Shots', value: Math.min(100, (selPlayer.shots / 100) * 100) },
-    { stat: 'Minutes', value: Math.min(100, (selPlayer.minutesPlayed / 3000) * 100) },
+    { stat: 'Shot Acc', value: selPlayer.shotAccuracy },
+    { stat: 'Tackles', value: Math.min(100, (selPlayer.tackles / 80) * 100) },
+    { stat: 'Shots', value: Math.min(100, (selPlayer.shots / 80) * 100) },
+    { stat: 'Minutes', value: Math.min(100, (selPlayer.minutes / 3000) * 100) },
   ] : null;
 
   const SortHeader = ({ label, k, w }: { label: string; k: SortKey; w?: string }) => (
@@ -84,7 +84,7 @@ export default function PlayerStats() {
       <ResponsiveContainer>
         <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <XAxis dataKey="xG" name="xG" type="number" stroke="#8892b0" fontSize={10} tickLine={false} label={{ value: 'xG', position: 'bottom', fill: '#8892b0', fontSize: 10 }} />
+          <XAxis dataKey="shots" name="Shots" type="number" stroke="#8892b0" fontSize={10} tickLine={false} label={{ value: 'Shots', position: 'bottom', fill: '#8892b0', fontSize: 10 }} />
           <YAxis dataKey="goals" name="Goals" stroke="#8892b0" fontSize={10} tickLine={false} label={{ value: 'Goals', angle: -90, position: 'insideLeft', fill: '#8892b0', fontSize: 10 }} />
           <Tooltip
             content={({ payload }) => {
@@ -94,7 +94,7 @@ export default function PlayerStats() {
                 <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
                   <div className="text-cyan font-semibold">{d.name}</div>
                   <div className="text-muted-foreground">{d.team} · {d.position}</div>
-                  <div>xG: <span className="text-amber">{d.xG}</span> | Goals: <span className="text-emerald">{d.goals}</span></div>
+                  <div>Shots: <span className="text-amber">{d.shots}</span> | Goals: <span className="text-emerald">{d.goals}</span></div>
                 </div>
               );
             }}
@@ -133,19 +133,19 @@ export default function PlayerStats() {
         <NeuCard delay={0.3} className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Shield size={14} className="text-purple-400" />
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">Avg Pass Acc</span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Avg Shot Acc</span>
           </div>
-          <AnimatedCounter value={avgPassAcc} decimals={1} suffix="%" className="text-2xl text-purple-400" />
+          <AnimatedCounter value={avgShotAcc} decimals={1} suffix="%" className="text-2xl text-purple-400" />
         </NeuCard>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* xG vs Goals Scatter */}
+        {/* Shots vs Goals Scatter */}
         <NeuCard delay={0.15} className="p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold flex items-center gap-2" style={{ fontFamily: 'Space Grotesk' }}>
               <Crosshair size={14} className="text-cyan" />
-              Expected Goals (xG) vs Actual Goals
+              Shots vs Goals
             </h3>
             <MaximizeButton onClick={() => setMaximized('scatter')} />
           </div>
@@ -166,7 +166,7 @@ export default function PlayerStats() {
                 onClick={() => setSelectedPlayer(p.id)}
               >
                 <span className="font-mono text-muted-foreground w-4">{i + 1}</span>
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getTeam(p.teamId)?.primaryColor }} />
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getTeam(p.team)?.color }} />
                 <span className="flex-1 truncate">{p.name}</span>
                 <span className="font-mono text-cyan font-semibold">{p.goals}</span>
                 <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden">
@@ -184,7 +184,7 @@ export default function PlayerStats() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>{selPlayer.name}</h3>
-              <p className="text-xs text-muted-foreground">{getTeam(selPlayer.teamId)?.shortName} · {selPlayer.positionDetail} · Age {selPlayer.age}</p>
+              <p className="text-xs text-muted-foreground">{getTeam(selPlayer.team)?.short} · {selPlayer.position} · Age {selPlayer.age}</p>
             </div>
             <div className="flex items-center gap-2">
               <MaximizeButton onClick={() => setMaximized('radar')} />
@@ -207,20 +207,18 @@ export default function PlayerStats() {
                 { label: 'Goals', value: selPlayer.goals, color: '#00d4ff' },
                 { label: 'Assists', value: selPlayer.assists, color: '#ffb347' },
                 { label: 'Shots', value: selPlayer.shots, color: '#00c897' },
-                { label: 'Pass %', value: selPlayer.passAccuracy, color: '#a78bfa', suffix: '%' },
+                { label: 'Shot Acc', value: selPlayer.shotAccuracy, color: '#a78bfa', suffix: '%' },
                 { label: 'Tackles', value: selPlayer.tackles, color: '#ff6b6b' },
-                { label: 'xG', value: selPlayer.xG, color: '#00d4ff', decimals: 1 },
-                { label: 'Minutes', value: selPlayer.minutesPlayed, color: '#8892b0' },
+                { label: 'Fouls', value: selPlayer.fouls, color: '#ff8c42' },
+                { label: 'Minutes', value: selPlayer.minutes, color: '#8892b0' },
                 { label: 'Yellow', value: selPlayer.yellowCards, color: '#ffb347' },
-                { label: 'Salary', value: selPlayer.salary, color: '#00c897', prefix: '$', format: true },
-              ] as { label: string; value: number; color: string; suffix?: string; prefix?: string; decimals?: number; format?: boolean }[]).map(s => (
+                { label: 'Salary', value: selPlayer.salary, color: '#00c897' },
+              ] as { label: string; value: number; color: string; suffix?: string }[]).map(s => (
                 <div key={s.label} className="neu-concave rounded-lg p-2 text-center">
                   <div className="text-[10px] text-muted-foreground uppercase">{s.label}</div>
                   <div className="font-mono text-sm font-bold" style={{ color: s.color }}>
-                    {s.format ? (s.value >= 1000000 ? `$${(s.value / 1000000).toFixed(1)}M` : `$${(s.value / 1000).toFixed(0)}K`) :
-                      s.prefix ? `${s.prefix}${s.decimals ? s.value.toFixed(s.decimals) : s.value}` :
-                      s.suffix ? `${s.decimals ? s.value.toFixed(s.decimals) : s.value}${s.suffix}` :
-                      s.decimals ? s.value.toFixed(s.decimals) : s.value.toLocaleString()}
+                    {s.label === 'Salary' ? (s.value >= 1000000 ? `$${(s.value/1000000).toFixed(1)}M` : `$${(s.value/1000).toFixed(0)}K`) :
+                     s.suffix ? `${s.value}${s.suffix}` : s.value.toLocaleString()}
                   </div>
                 </div>
               ))}
@@ -246,19 +244,18 @@ export default function PlayerStats() {
                 <th>Team</th>
                 <th>Pos</th>
                 <th>Age</th>
-                <SortHeader label="GP" k="minutesPlayed" />
-                <SortHeader label="Min" k="minutesPlayed" />
+                <th>GP</th>
+                <SortHeader label="Min" k="minutes" />
                 <SortHeader label="Goals" k="goals" />
                 <SortHeader label="Assists" k="assists" />
                 <SortHeader label="Shots" k="shots" />
                 <th>SOT</th>
-                <SortHeader label="Pass %" k="passAccuracy" />
+                <SortHeader label="Shot %" k="shotAccuracy" />
                 <SortHeader label="Tackles" k="tackles" />
                 <th>Int</th>
                 <th>Fouls</th>
                 <th>YC</th>
                 <th>RC</th>
-                <SortHeader label="xG" k="xG" />
                 <SortHeader label="Salary" k="salary" />
               </tr>
             </thead>
@@ -266,22 +263,21 @@ export default function PlayerStats() {
               {sorted.slice(0, 100).map(p => (
                 <tr key={p.id} className="cursor-pointer" onClick={() => setSelectedPlayer(p.id)}>
                   <td className="font-sans text-xs font-medium">{p.name}</td>
-                  <td><span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: getTeam(p.teamId)?.primaryColor }} />{getTeam(p.teamId)?.shortName}</span></td>
+                  <td><span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: getTeam(p.team)?.color }} />{getTeam(p.team)?.short}</span></td>
                   <td><span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.position === 'FW' ? 'bg-red-500/15 text-red-400' : p.position === 'MF' ? 'bg-blue-500/15 text-blue-400' : p.position === 'DF' ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'}`}>{p.position}</span></td>
                   <td>{p.age}</td>
-                  <td>{p.gamesPlayed}</td>
-                  <td>{p.minutesPlayed.toLocaleString()}</td>
+                  <td>{p.games}</td>
+                  <td>{p.minutes.toLocaleString()}</td>
                   <td className="text-cyan font-semibold">{p.goals}</td>
                   <td className="text-amber">{p.assists}</td>
                   <td>{p.shots}</td>
                   <td>{p.shotsOnTarget}</td>
-                  <td>{p.passAccuracy}%</td>
+                  <td>{p.shotAccuracy}%</td>
                   <td>{p.tackles}</td>
                   <td>{p.interceptions}</td>
-                  <td>{p.foulsCommitted}</td>
+                  <td>{p.fouls}</td>
                   <td className={p.yellowCards > 5 ? 'text-amber' : ''}>{p.yellowCards}</td>
                   <td className={p.redCards > 0 ? 'text-coral' : ''}>{p.redCards}</td>
-                  <td>{p.xG.toFixed(1)}</td>
                   <td className="text-emerald">{p.salary >= 1000000 ? `$${(p.salary/1000000).toFixed(1)}M` : `$${(p.salary/1000).toFixed(0)}K`}</td>
                 </tr>
               ))}
@@ -291,7 +287,7 @@ export default function PlayerStats() {
       </NeuCard>
 
       {/* Maximize Modals */}
-      <ChartModal isOpen={maximized === 'scatter'} onClose={() => setMaximized(null)} title="Expected Goals (xG) vs Actual Goals">
+      <ChartModal isOpen={maximized === 'scatter'} onClose={() => setMaximized(null)} title="Shots vs Goals">
         <ScatterContent height={600} />
       </ChartModal>
 
@@ -300,9 +296,9 @@ export default function PlayerStats() {
           {[...filteredPlayers].sort((a, b) => b.goals - a.goals).slice(0, 30).map((p, i) => (
             <div key={p.id} className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg hover:bg-white/3 transition-colors">
               <span className="font-mono text-muted-foreground w-6 text-right">{i + 1}</span>
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: getTeam(p.teamId)?.primaryColor }} />
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: getTeam(p.team)?.color }} />
               <span className="flex-1 font-medium">{p.name}</span>
-              <span className="text-xs text-muted-foreground">{getTeam(p.teamId)?.shortName}</span>
+              <span className="text-xs text-muted-foreground">{getTeam(p.team)?.short}</span>
               <span className="font-mono text-cyan font-bold text-lg">{p.goals}</span>
               <div className="w-32 h-2 rounded-full bg-white/5 overflow-hidden">
                 <div className="h-full rounded-full bg-gradient-to-r from-cyan to-cyan/40" style={{ width: `${(p.goals / (filteredPlayers[0]?.goals || 1)) * 100}%` }} />
@@ -336,19 +332,18 @@ export default function PlayerStats() {
                 <th>Team</th>
                 <th>Pos</th>
                 <th>Age</th>
-                <SortHeader label="GP" k="minutesPlayed" />
-                <SortHeader label="Min" k="minutesPlayed" />
+                <th>GP</th>
+                <SortHeader label="Min" k="minutes" />
                 <SortHeader label="Goals" k="goals" />
                 <SortHeader label="Assists" k="assists" />
                 <SortHeader label="Shots" k="shots" />
                 <th>SOT</th>
-                <SortHeader label="Pass %" k="passAccuracy" />
+                <SortHeader label="Shot %" k="shotAccuracy" />
                 <SortHeader label="Tackles" k="tackles" />
                 <th>Int</th>
                 <th>Fouls</th>
                 <th>YC</th>
                 <th>RC</th>
-                <SortHeader label="xG" k="xG" />
                 <SortHeader label="Salary" k="salary" />
               </tr>
             </thead>
@@ -356,22 +351,21 @@ export default function PlayerStats() {
               {sorted.map(p => (
                 <tr key={p.id} className="cursor-pointer" onClick={() => { setSelectedPlayer(p.id); setMaximized(null); }}>
                   <td className="font-sans text-xs font-medium">{p.name}</td>
-                  <td><span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: getTeam(p.teamId)?.primaryColor }} />{getTeam(p.teamId)?.shortName}</span></td>
+                  <td><span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: getTeam(p.team)?.color }} />{getTeam(p.team)?.short}</span></td>
                   <td><span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.position === 'FW' ? 'bg-red-500/15 text-red-400' : p.position === 'MF' ? 'bg-blue-500/15 text-blue-400' : p.position === 'DF' ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'}`}>{p.position}</span></td>
                   <td>{p.age}</td>
-                  <td>{p.gamesPlayed}</td>
-                  <td>{p.minutesPlayed.toLocaleString()}</td>
+                  <td>{p.games}</td>
+                  <td>{p.minutes.toLocaleString()}</td>
                   <td className="text-cyan font-semibold">{p.goals}</td>
                   <td className="text-amber">{p.assists}</td>
                   <td>{p.shots}</td>
                   <td>{p.shotsOnTarget}</td>
-                  <td>{p.passAccuracy}%</td>
+                  <td>{p.shotAccuracy}%</td>
                   <td>{p.tackles}</td>
                   <td>{p.interceptions}</td>
-                  <td>{p.foulsCommitted}</td>
+                  <td>{p.fouls}</td>
                   <td className={p.yellowCards > 5 ? 'text-amber' : ''}>{p.yellowCards}</td>
                   <td className={p.redCards > 0 ? 'text-coral' : ''}>{p.redCards}</td>
-                  <td>{p.xG.toFixed(1)}</td>
                   <td className="text-emerald">{p.salary >= 1000000 ? `$${(p.salary/1000000).toFixed(1)}M` : `$${(p.salary/1000).toFixed(0)}K`}</td>
                 </tr>
               ))}
