@@ -204,52 +204,63 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation — Raised Neumorphic Platform */}
       <nav
-        className="sticky top-0 z-30 px-4 py-2.5"
+        className="sticky top-0 z-30 px-4 py-2"
         style={{
           background: 'var(--nav-bg)',
-          borderBottom: '1px solid var(--table-border)',
           backdropFilter: 'blur(16px) saturate(1.5)',
           opacity: loaded ? 1 : 0,
           transform: loaded ? 'translateY(0)' : 'translateY(-20px)',
           transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.8s',
         }}
       >
-        <div className="max-w-[1600px] mx-auto flex gap-1 overflow-x-auto items-center">
-          {tabs.map((tab, i) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className="relative group"
-                style={{
-                  opacity: loaded ? 1 : 0,
-                  transform: loaded ? 'perspective(800px) translateZ(0)' : `perspective(800px) translateZ(${150 + i * 60}px)`,
-                  filter: loaded ? 'blur(0)' : `blur(${4 + i}px)`,
-                  transition: `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${0.9 + i * 0.06}s`,
-                }}
-              >
-                <div className={`tab-btn flex items-center gap-2 whitespace-nowrap ${isActive ? 'active' : ''}`}>
-                  <Icon size={14} />
-                  {tab.label}
-                </div>
-                {/* Active indicator line */}
-                {isActive && (
-                  <div
-                    className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-cyan"
-                    style={{
-                      boxShadow: '0 0 8px var(--cyan)',
-                      animation: 'slide-up-fade 0.3s ease-out',
-                    }}
-                  />
-                )}
-              </button>
-            );
-          })}
-          <div className="ml-auto flex-shrink-0 pl-4 flex items-center gap-3">
+        <div
+          className="max-w-[1600px] mx-auto neu-raised rounded-xl px-3 py-2 flex items-center"
+          style={{
+            boxShadow: isDark
+              ? '4px 4px 12px rgba(0,0,0,0.5), -2px -2px 8px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.04)'
+              : '4px 4px 12px rgba(0,0,0,0.1), -2px -2px 8px rgba(255,255,255,0.7), inset 0 1px 0 rgba(255,255,255,0.6)',
+          }}
+        >
+          {/* Tabs spread across the width */}
+          <div className="flex flex-1 items-center justify-between">
+            {tabs.map((tab, i) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className="relative group flex-1"
+                  style={{
+                    opacity: loaded ? 1 : 0,
+                    transform: loaded ? 'perspective(800px) translateZ(0)' : `perspective(800px) translateZ(${150 + i * 60}px)`,
+                    filter: loaded ? 'blur(0)' : `blur(${4 + i}px)`,
+                    transition: `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${0.9 + i * 0.06}s`,
+                  }}
+                >
+                  <div className={`tab-btn flex items-center justify-center gap-2 whitespace-nowrap ${isActive ? 'active' : ''}`}>
+                    <Icon size={14} />
+                    {tab.label}
+                  </div>
+                  {/* Active indicator line */}
+                  {isActive && (
+                    <div
+                      className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-cyan"
+                      style={{
+                        boxShadow: '0 0 8px var(--cyan)',
+                        animation: 'slide-up-fade 0.3s ease-out',
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right side: filter badge + theme toggle */}
+          <div className="flex-shrink-0 pl-3 flex items-center gap-3 border-l ml-3" style={{ borderColor: 'var(--table-border)' }}>
             {isFilterActive && (
               <div className="flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-lg"
                 style={{
