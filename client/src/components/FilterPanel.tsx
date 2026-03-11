@@ -194,18 +194,42 @@ export default function FilterPanel() {
                 Minutes Played
               </label>
               <div className="flex items-center gap-2 text-xs font-mono text-cyan mb-1">
-                <span>{filters.minutesRange[0]}</span>
+                <span>{filters.minutesRange[0].toLocaleString()}</span>
                 <span className="text-muted-foreground">—</span>
-                <span>{filters.minutesRange[1]}</span>
+                <span>{filters.minutesRange[1].toLocaleString()}</span>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={3500}
-                step={50}
-                value={filters.minutesRange[1]}
-                onChange={e => setFilters(prev => ({ ...prev, minutesRange: [prev.minutesRange[0], +e.target.value] }))}
-              />
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">Min</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={3500}
+                    step={50}
+                    value={filters.minutesRange[0]}
+                    onChange={e => {
+                      const val = +e.target.value;
+                      setFilters(prev => ({ ...prev, minutesRange: [Math.min(val, prev.minutesRange[1]), prev.minutesRange[1]] }));
+                    }}
+                    className="flex-1"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">Max</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={3500}
+                    step={50}
+                    value={filters.minutesRange[1]}
+                    onChange={e => {
+                      const val = +e.target.value;
+                      setFilters(prev => ({ ...prev, minutesRange: [prev.minutesRange[0], Math.max(val, prev.minutesRange[0])] }));
+                    }}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Salary Range */}
@@ -218,14 +242,38 @@ export default function FilterPanel() {
                 <span className="text-muted-foreground">—</span>
                 <span>{formatSalary(filters.salaryRange[1])}</span>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={15000000}
-                step={100000}
-                value={filters.salaryRange[1]}
-                onChange={e => setFilters(prev => ({ ...prev, salaryRange: [prev.salaryRange[0], +e.target.value] }))}
-              />
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">Min</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={15000000}
+                    step={100000}
+                    value={filters.salaryRange[0]}
+                    onChange={e => {
+                      const val = +e.target.value;
+                      setFilters(prev => ({ ...prev, salaryRange: [Math.min(val, prev.salaryRange[1]), prev.salaryRange[1]] }));
+                    }}
+                    className="flex-1"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">Max</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={15000000}
+                    step={100000}
+                    value={filters.salaryRange[1]}
+                    onChange={e => {
+                      const val = +e.target.value;
+                      setFilters(prev => ({ ...prev, salaryRange: [prev.salaryRange[0], Math.max(val, prev.salaryRange[0])] }));
+                    }}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
