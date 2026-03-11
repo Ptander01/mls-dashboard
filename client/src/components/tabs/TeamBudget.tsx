@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
 import { getTeam, TEAM_BUDGETS } from '@/lib/mlsData';
 import { Extruded3DBar } from '@/lib/chartUtils';
@@ -18,6 +18,13 @@ export default function TeamBudget() {
   const isDark = theme === 'dark';
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [maximized, setMaximized] = useState<string | null>(null);
+
+  // Auto-select team when exactly one team is filtered globally
+  useEffect(() => {
+    if (filteredTeams.length === 1) {
+      setSelectedTeam(filteredTeams[0].id);
+    }
+  }, [filteredTeams]);
 
   const budgetData = useMemo(() =>
     [...filteredTeams].map(t => {

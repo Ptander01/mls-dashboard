@@ -136,6 +136,14 @@ export default function PitchMatch() {
   const [view, setView] = useState<PitchView>('heatmap');
   const [selectedTeam, setSelectedTeam] = useState<string>(filteredTeams[0]?.id || 'MIA');
   const [selectedPlayer, setSelectedPlayer] = useState<number | null>(null);
+
+  // Auto-sync team when exactly one team is filtered globally
+  useEffect(() => {
+    if (filteredTeams.length === 1) {
+      setSelectedTeam(filteredTeams[0].id);
+      setSelectedPlayer(null);
+    }
+  }, [filteredTeams]);
   const [maximized, setMaximized] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasModalRef = useRef<HTMLCanvasElement>(null);

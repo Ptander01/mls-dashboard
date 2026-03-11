@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
 import { TEAMS, MATCHES, getTeam } from '@/lib/mlsData';
 import { mutedTeamColor, Extruded3DBar, Extruded3DHorizontalBar, Extruded3DBarWithCeiling } from '@/lib/chartUtils';
@@ -30,6 +30,14 @@ export default function Attendance() {
   const [maximized, setMaximized] = useState<string | null>(null);
   const [showFillRate, setShowFillRate] = useState(false);
   const [trendTeamOverride, setTrendTeamOverride] = useState<string | ''>('');
+
+  // Auto-select team when exactly one team is filtered globally
+  useEffect(() => {
+    if (filters.selectedTeams.length === 1) {
+      setSelectedTeam(filters.selectedTeams[0]);
+      setTrendTeamOverride(filters.selectedTeams[0]);
+    }
+  }, [filters.selectedTeams]);
 
   const effectiveTrendTeam = useMemo(() => {
     if (trendTeamOverride) return trendTeamOverride;

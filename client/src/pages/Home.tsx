@@ -7,7 +7,7 @@ import TravelMap from '@/components/tabs/TravelMap';
 import PitchMatch from '@/components/tabs/PitchMatch';
 import { useFilters } from '@/contexts/FilterContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Users, DollarSign, BarChart3, Map, Target, Sun, Moon } from 'lucide-react';
+import { Users, DollarSign, BarChart3, Map, Target, Sun, Moon, Filter } from 'lucide-react';
 
 const HERO_IMG = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/hero-stadium-YUnnMoGMi6PoZPwoH5aXFc.webp';
 
@@ -249,7 +249,19 @@ export default function Home() {
               </button>
             );
           })}
-          <div className="ml-auto flex-shrink-0 pl-4">
+          <div className="ml-auto flex-shrink-0 pl-4 flex items-center gap-3">
+            {isFilterActive && (
+              <div className="flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-lg"
+                style={{
+                  background: isDark ? 'rgba(0, 212, 255, 0.08)' : 'rgba(8, 145, 178, 0.08)',
+                  border: `1px solid ${isDark ? 'rgba(0, 212, 255, 0.2)' : 'rgba(8, 145, 178, 0.2)'}`,
+                }}
+              >
+                <Filter size={12} className="text-cyan" />
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan animate-glow-pulse" />
+                <span className="text-cyan">filtered</span>
+              </div>
+            )}
             <ThemeToggle />
           </div>
         </div>
