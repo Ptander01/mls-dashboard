@@ -1,7 +1,9 @@
 /**
  * TravelMap — Cinematic 3D Travel Visualization
- * Inspired by Craig Taylor (Mapzilla) and Julian Hoffmann Anton
- * Three.js WebGL with orbit controls, bloom glow, 3D marble stadiums, animated particle arcs
+ * Design: Craig Taylor (Mapzilla) / Julian Anton inspired
+ * Rich terrain basemap, muted metallic arcs, team-colored traveling particles,
+ * dense glass marble stadiums with contained glow
+ * Three.js WebGL with orbit controls, bloom, animated particles
  */
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
@@ -26,13 +28,56 @@ function latLngToXZ(lat: number, lng: number): [number, number] {
   return [x, z];
 }
 
-const distanceColor = (miles: number): string => {
-  if (miles < 500) return '#00c897';
-  if (miles < 1000) return '#00d4ff';
-  if (miles < 1500) return '#ffb347';
-  if (miles < 2000) return '#ff8c42';
-  return '#ff6b6b';
+// ─── Visibility-enhanced team colors ───
+// Dark teams get brighter alternates so they pop against dark basemap
+const VISIBILITY_COLORS: Record<string, string> = {
+  'MTL': '#4488cc',   // CF Montréal — black → blue
+  'CLB': '#ffc72c',   // Columbus Crew — black → gold
+  'DC':  '#c8102e',   // D.C. United — black → red
+  'NE':  '#4477bb',   // NE Revolution — dark navy → brighter blue
+  'PHI': '#4488aa',   // Philadelphia — dark navy → teal blue
+  'POR': '#00aa44',   // Portland — very dark green → brighter green
+  'LAG': '#5588cc',   // LA Galaxy — dark navy → brighter blue
+  'VAN': '#5599dd',   // Vancouver — dark navy → brighter blue
 };
+
+function getVisibleColor(teamId: string, originalColor: string): string {
+  return VISIBILITY_COLORS[teamId] || originalColor;
+}
+
+// ─── US/Canada coastline + state borders (simplified) ───
+const US_COASTLINE: [number, number][][] = [
+  // Continental US outline
+  [[-124.7,48.4],[-123.1,48.4],[-123.1,46.2],[-124.1,43.0],[-124.4,40.4],[-122.4,37.8],
+   [-120.5,34.0],[-117.1,32.5],[-114.7,32.7],[-111.0,31.3],[-108.2,31.3],[-106.4,31.8],
+   [-103.0,29.0],[-99.0,26.0],[-97.1,25.9],[-97.1,27.8],[-94.0,29.7],[-89.6,29.0],
+   [-88.9,30.4],[-85.0,29.2],[-84.0,30.0],[-82.0,28.5],[-81.1,25.1],[-80.0,25.8],
+   [-80.4,27.8],[-80.6,31.2],[-78.5,33.9],[-75.5,35.2],[-75.0,38.0],[-73.9,40.5],
+   [-71.8,41.3],[-70.0,41.7],[-69.8,43.8],[-67.0,44.8],[-67.0,47.0],[-69.0,47.4],
+   [-75.0,45.0],[-79.0,43.2],[-82.4,41.7],[-83.5,46.1],[-84.8,46.0],[-88.0,48.0],
+   [-89.5,48.0],[-95.2,49.0],[-123.3,49.0],[-124.7,48.4]],
+  // Great Lakes
+  [[-87.8,42.0],[-86.8,41.8],[-84.8,41.7],[-83.0,42.3],[-82.4,43.0],[-82.7,44.8],
+   [-83.5,46.1],[-84.6,46.5],[-84.8,46.0],[-86.0,44.8],[-87.8,42.0]],
+  // Lake Michigan
+  [[-87.8,42.0],[-87.0,43.0],[-86.5,44.8],[-85.5,45.8],[-86.5,44.0],[-87.8,42.0]],
+  // Southern Canada
+  [[-79.0,43.2],[-76.0,44.0],[-75.0,45.0],[-73.6,45.5],[-71.0,45.0],[-67.0,47.0]],
+  // Florida detail
+  [[-82.0,28.5],[-82.7,27.5],[-82.0,26.0],[-81.1,25.1]],
+];
+
+// State borders (major ones for geographic context)
+const STATE_BORDERS: [number, number][][] = [
+  // US-Canada border
+  [[-124.7,49.0],[-95.2,49.0]],
+  // Mississippi River (approximate)
+  [[-89.5,48.0],[-90.0,46.0],[-91.5,44.0],[-91.0,42.0],[-90.5,40.0],[-89.5,37.0],[-89.0,35.0],[-90.0,33.0],[-91.0,31.0],[-89.6,29.0]],
+  // Appalachian line (approximate)
+  [[-80.0,41.0],[-80.5,39.0],[-81.0,37.0],[-82.0,35.0],[-83.5,33.5],[-84.0,30.0]],
+  // Rockies line
+  [[-109.0,49.0],[-109.0,46.0],[-108.5,43.0],[-107.5,40.0],[-106.5,37.0],[-105.5,34.0],[-106.4,31.8]],
+];
 
 // ─── 3D Scene Builder ───
 interface SceneContext {
@@ -54,8 +99,8 @@ function createScene(container: HTMLDivElement): SceneContext {
   const w = container.clientWidth;
   const h = container.clientHeight;
 
-  // Renderer
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  // Renderer — high quality
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
   renderer.setSize(w, h);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -64,108 +109,247 @@ function createScene(container: HTMLDivElement): SceneContext {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(renderer.domElement);
 
-  // Scene
+  // Scene — deep dark blue-black (not pure black — has depth)
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#07070f');
-  scene.fog = new THREE.FogExp2('#07070f', 0.005);
+  scene.background = new THREE.Color('#060a14');
+  scene.fog = new THREE.FogExp2('#060a14', 0.004);
 
-  // Camera — cinematic tilt
-  const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 500);
-  camera.position.set(5, 50, 45);
+  // Camera — cinematic tilt angle
+  const camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 500);
+  camera.position.set(5, 50, 55);
   camera.lookAt(0, 0, 0);
 
-  // Controls — orbit, tilt, zoom
+  // Controls
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
-  controls.minDistance = 10;
-  controls.maxDistance = 150;
-  controls.maxPolarAngle = Math.PI / 2.2;
-  controls.minPolarAngle = 0.2;
-  controls.target.set(0, 0, 0);
+  controls.dampingFactor = 0.06;
+  controls.minDistance = 12;
+  controls.maxDistance = 120;
+  controls.maxPolarAngle = Math.PI / 2.1;
+  controls.minPolarAngle = 0.15;
+  controls.target.set(0, 0, 2);
   controls.enablePan = true;
-  controls.panSpeed = 0.5;
-  controls.rotateSpeed = 0.5;
+  controls.panSpeed = 0.4;
+  controls.rotateSpeed = 0.4;
 
-  // Ground plane — reflective dark metallic surface (Houdini-style)
-  const groundGeo = new THREE.PlaneGeometry(200, 140, 1, 1);
-  const groundMat = new THREE.MeshPhysicalMaterial({
-    color: '#0a0a1e',
-    roughness: 0.4,
-    metalness: 0.6,
+  // ══════════════════════════════════════════
+  // BASEMAP — Rich terrain with land/water distinction
+  // ══════════════════════════════════════════
+
+  // Water plane — deep dark blue
+  const waterGeo = new THREE.PlaneGeometry(220, 160, 1, 1);
+  const waterMat = new THREE.MeshPhysicalMaterial({
+    color: '#050810',
+    roughness: 0.6,
+    metalness: 0.2,
     clearcoat: 0.3,
-    clearcoatRoughness: 0.2,
-    transparent: false,
   });
-  const ground = new THREE.Mesh(groundGeo, groundMat);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.1;
-  ground.receiveShadow = true;
-  scene.add(ground);
+  const water = new THREE.Mesh(waterGeo, waterMat);
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = -0.15;
+  water.receiveShadow = true;
+  scene.add(water);
 
-  // Grid overlay — subtle refined grid
-  const gridHelper = new THREE.GridHelper(200, 80, '#12123a', '#0a0a25');
-  gridHelper.position.y = 0;
-  (gridHelper.material as THREE.Material).transparent = true;
-  (gridHelper.material as THREE.Material).opacity = 0.4;
-  scene.add(gridHelper);
+  // Land mass — procedural canvas texture with terrain coloring
+  const landCanvas = document.createElement('canvas');
+  landCanvas.width = 2048;
+  landCanvas.height = 1400;
+  const lctx = landCanvas.getContext('2d')!;
 
-  // Concentric range rings for distance reference
-  [20, 35, 48].forEach((r, i) => {
-    const ringGeo = new THREE.RingGeometry(r, r + 0.15, 96);
-    const ringMat = new THREE.MeshBasicMaterial({ color: '#1a1a3a', side: THREE.DoubleSide, transparent: true, opacity: 0.15 - i * 0.03 });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.01;
-    scene.add(ring);
+  // Dark ocean base
+  lctx.fillStyle = '#050810';
+  lctx.fillRect(0, 0, 2048, 1400);
+
+  // Convert lat/lng to canvas coordinates
+  const toCanvasXY = (lng: number, lat: number): [number, number] => {
+    const cx = ((lng - (-130)) / ((-60) - (-130))) * 2048;
+    const cy = ((50 - lat) / (50 - 24)) * 1400;
+    return [cx, cy];
+  };
+
+  // Draw land mass shape
+  lctx.beginPath();
+  const coastline = US_COASTLINE[0];
+  const [sx, sy] = toCanvasXY(coastline[0][0], coastline[0][1]);
+  lctx.moveTo(sx, sy);
+  coastline.forEach(([lng, lat]) => {
+    const [cx, cy] = toCanvasXY(lng, lat);
+    lctx.lineTo(cx, cy);
+  });
+  lctx.closePath();
+
+  // Land fill — subtle dark green-gray (like satellite imagery at night)
+  const landGrad = lctx.createLinearGradient(0, 0, 2048, 1400);
+  landGrad.addColorStop(0, '#0c1018');
+  landGrad.addColorStop(0.3, '#0d1119');
+  landGrad.addColorStop(0.6, '#0b0f16');
+  landGrad.addColorStop(1, '#0a0e15');
+  lctx.fillStyle = landGrad;
+  lctx.fill();
+
+  // Subtle terrain noise on land
+  for (let i = 0; i < 80000; i++) {
+    const x = Math.random() * 2048;
+    const y = Math.random() * 1400;
+    // Check if point is roughly on land (simple bounding)
+    const lng = -130 + (x / 2048) * 70;
+    const lat = 50 - (y / 1400) * 26;
+    if (lng > -125 && lng < -66 && lat > 25 && lat < 49) {
+      const brightness = Math.random() * 12 + 14;
+      const g = brightness + Math.random() * 4;
+      const b = brightness + Math.random() * 8;
+      lctx.fillStyle = `rgba(${brightness}, ${g}, ${b}, ${Math.random() * 0.3 + 0.05})`;
+      lctx.fillRect(x, y, Math.random() * 3 + 0.5, Math.random() * 3 + 0.5);
+    }
+  }
+
+  // City light clusters — subtle warm dots where cities are
+  const cityLights: [number, number, number][] = [
+    [-73.9, 40.7, 1.5], [-87.6, 41.9, 1.3], [-118.2, 34.0, 1.4], [-95.4, 29.8, 1.0],
+    [-122.3, 47.6, 0.9], [-80.2, 25.8, 1.0], [-84.4, 33.8, 1.1], [-97.7, 30.3, 0.8],
+    [-104.9, 39.7, 0.8], [-93.3, 45.0, 0.7], [-90.2, 38.6, 0.7], [-86.8, 36.2, 0.7],
+    [-75.2, 40.0, 0.9], [-83.0, 39.9, 0.6], [-81.4, 28.5, 0.8], [-79.4, 43.7, 0.7],
+    [-123.1, 49.3, 0.6], [-73.6, 45.5, 0.6], [-80.8, 35.2, 0.6], [-94.8, 39.1, 0.6],
+  ];
+  cityLights.forEach(([lng, lat, intensity]) => {
+    const [cx, cy] = toCanvasXY(lng, lat);
+    const grad = lctx.createRadialGradient(cx, cy, 0, cx, cy, 30 * intensity);
+    grad.addColorStop(0, `rgba(255, 220, 150, ${0.08 * intensity})`);
+    grad.addColorStop(0.5, `rgba(200, 180, 120, ${0.03 * intensity})`);
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    lctx.fillStyle = grad;
+    lctx.fillRect(cx - 40, cy - 40, 80, 80);
   });
 
-  // Atmospheric dust particles
-  const dustCount = 300;
+  // Coastline stroke — subtle bright edge
+  lctx.beginPath();
+  lctx.moveTo(sx, sy);
+  coastline.forEach(([lng, lat]) => {
+    const [cx, cy] = toCanvasXY(lng, lat);
+    lctx.lineTo(cx, cy);
+  });
+  lctx.closePath();
+  lctx.strokeStyle = 'rgba(40, 60, 90, 0.6)';
+  lctx.lineWidth = 1.5;
+  lctx.stroke();
+
+  // Great Lakes — cut out as water
+  US_COASTLINE.slice(1, 3).forEach(lake => {
+    lctx.beginPath();
+    const [lx, ly] = toCanvasXY(lake[0][0], lake[0][1]);
+    lctx.moveTo(lx, ly);
+    lake.forEach(([lng, lat]) => {
+      const [cx, cy] = toCanvasXY(lng, lat);
+      lctx.lineTo(cx, cy);
+    });
+    lctx.closePath();
+    lctx.fillStyle = '#050810';
+    lctx.fill();
+    lctx.strokeStyle = 'rgba(30, 50, 80, 0.4)';
+    lctx.lineWidth = 1;
+    lctx.stroke();
+  });
+
+  // State borders — very subtle
+  STATE_BORDERS.forEach(border => {
+    lctx.beginPath();
+    const [bx, by] = toCanvasXY(border[0][0], border[0][1]);
+    lctx.moveTo(bx, by);
+    border.forEach(([lng, lat]) => {
+      const [cx, cy] = toCanvasXY(lng, lat);
+      lctx.lineTo(cx, cy);
+    });
+    lctx.strokeStyle = 'rgba(25, 40, 65, 0.35)';
+    lctx.lineWidth = 0.8;
+    lctx.stroke();
+  });
+
+  const landTexture = new THREE.CanvasTexture(landCanvas);
+  landTexture.minFilter = THREE.LinearFilter;
+  landTexture.magFilter = THREE.LinearFilter;
+
+  // Map the texture to cover the same geographic area
+  const landPlaneGeo = new THREE.PlaneGeometry(220, 160, 1, 1);
+  const landPlaneMat = new THREE.MeshBasicMaterial({
+    map: landTexture,
+    transparent: true,
+    opacity: 0.9,
+  });
+  const landPlane = new THREE.Mesh(landPlaneGeo, landPlaneMat);
+  landPlane.rotation.x = -Math.PI / 2;
+  landPlane.position.y = -0.05;
+  scene.add(landPlane);
+
+  // ── 3D Coastline lines for crisp edges ──
+  US_COASTLINE.forEach(polyline => {
+    const pts = polyline.map(([lng, lat]) => {
+      const [x, z] = latLngToXZ(lat, lng);
+      return new THREE.Vector3(x, 0.02, z);
+    });
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+    const lineMat = new THREE.LineBasicMaterial({
+      color: '#1c3050',
+      transparent: true,
+      opacity: 0.45,
+    });
+    scene.add(new THREE.Line(lineGeo, lineMat));
+  });
+
+  // State borders as 3D lines
+  STATE_BORDERS.forEach(border => {
+    const pts = border.map(([lng, lat]) => {
+      const [x, z] = latLngToXZ(lat, lng);
+      return new THREE.Vector3(x, 0.01, z);
+    });
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+    const lineMat = new THREE.LineBasicMaterial({
+      color: '#141e30',
+      transparent: true,
+      opacity: 0.25,
+    });
+    scene.add(new THREE.Line(lineGeo, lineMat));
+  });
+
+  // ── Atmospheric dust — sparse, slow ──
+  const dustCount = 100;
   const dustGeo = new THREE.BufferGeometry();
   const dustPositions = new Float32Array(dustCount * 3);
   for (let i = 0; i < dustCount; i++) {
-    dustPositions[i * 3] = (Math.random() - 0.5) * 160;
-    dustPositions[i * 3 + 1] = Math.random() * 25 + 0.5;
-    dustPositions[i * 3 + 2] = (Math.random() - 0.5) * 120;
+    dustPositions[i * 3] = (Math.random() - 0.5) * 140;
+    dustPositions[i * 3 + 1] = Math.random() * 15 + 2;
+    dustPositions[i * 3 + 2] = (Math.random() - 0.5) * 100;
   }
   dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
-  const dustMat = new THREE.PointsMaterial({ color: '#3a4060', size: 0.08, transparent: true, opacity: 0.4 });
-  const dust = new THREE.Points(dustGeo, dustMat);
-  scene.add(dust);
+  const dustMat = new THREE.PointsMaterial({ color: '#1a2540', size: 0.04, transparent: true, opacity: 0.2 });
+  scene.add(new THREE.Points(dustGeo, dustMat));
 
-  // Lighting — cinematic dramatic setup
-  const ambientLight = new THREE.AmbientLight('#1a1a3a', 0.4);
-  scene.add(ambientLight);
+  // ══════════════════════════════════════════
+  // LIGHTING — Cinematic three-point
+  // ══════════════════════════════════════════
+  scene.add(new THREE.AmbientLight('#0a0e1a', 0.4));
 
-  // Key light — cool blue from upper left
-  const dirLight = new THREE.DirectionalLight('#4466aa', 1.0);
-  dirLight.position.set(-30, 60, 30);
-  dirLight.castShadow = true;
-  scene.add(dirLight);
+  // Key light — cool blue from upper-left
+  const keyLight = new THREE.DirectionalLight('#2244aa', 0.8);
+  keyLight.position.set(-30, 60, 30);
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.width = 1024;
+  keyLight.shadow.mapSize.height = 1024;
+  scene.add(keyLight);
 
   // Fill light — warm from right
-  const fillLight = new THREE.DirectionalLight('#553322', 0.4);
-  fillLight.position.set(40, 30, -20);
+  const fillLight = new THREE.DirectionalLight('#332211', 0.3);
+  fillLight.position.set(40, 25, -20);
   scene.add(fillLight);
 
-  // Rim light — back light for edge definition
-  const rimLight = new THREE.DirectionalLight('#2244aa', 0.6);
-  rimLight.position.set(0, 10, -60);
+  // Rim light — back edge definition
+  const rimLight = new THREE.DirectionalLight('#1a2244', 0.5);
+  rimLight.position.set(0, 15, -50);
   scene.add(rimLight);
 
-  // Accent point lights — cinematic color pops
-  const pointLight1 = new THREE.PointLight('#00d4ff', 0.8, 200);
-  pointLight1.position.set(-40, 25, -30);
-  scene.add(pointLight1);
-
-  const pointLight2 = new THREE.PointLight('#ffb347', 0.6, 200);
-  pointLight2.position.set(40, 25, 30);
-  scene.add(pointLight2);
-
-  const pointLight3 = new THREE.PointLight('#8844ff', 0.3, 150);
-  pointLight3.position.set(0, 35, 0);
-  scene.add(pointLight3);
+  // Top down light — subtle for ground illumination
+  const topLight = new THREE.DirectionalLight('#111828', 0.3);
+  topLight.position.set(0, 80, 0);
+  scene.add(topLight);
 
   // Groups
   const markerGroup = new THREE.Group();
@@ -174,58 +358,57 @@ function createScene(container: HTMLDivElement): SceneContext {
   const labelGroup = new THREE.Group();
   scene.add(markerGroup, arcGroup, particleGroup, labelGroup);
 
-  // Post-processing — bloom for glow
+  // Post-processing — bloom (restrained elegance)
   const composer = new EffectComposer(renderer);
-  const renderPass = new RenderPass(scene, camera);
-  composer.addPass(renderPass);
-
+  composer.addPass(new RenderPass(scene, camera));
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(w, h),
-    1.2,  // strength — stronger for cinematic glow
-    0.6,  // radius — wider bloom spread
-    0.15  // threshold — lower to catch more glow
+    0.6,   // strength — restrained
+    0.4,   // radius — tight
+    0.3    // threshold — only bright things bloom
   );
   composer.addPass(bloomPass);
-
-  const clock = new THREE.Clock();
 
   return {
     renderer, scene, camera, controls, composer,
     markerGroup, arcGroup, particleGroup, labelGroup,
-    clock, animId: 0, disposed: false,
+    clock: new THREE.Clock(), animId: 0, disposed: false,
   };
 }
 
-// ─── Create cinematic glass marble sphere ───
-// Inspired by: crystal ball refraction + cinematic Houdini scene + volumetric team glow
+// ══════════════════════════════════════════
+// GLASS MARBLE SPHERE — Dense, jewel-like
+// Tight glow, contained light, like a real glass marble
+// ══════════════════════════════════════════
 function createMarbleSphere(
-  color: string, size: number, isActive: boolean, position: [number, number]
+  teamId: string, color: string, size: number, isActive: boolean, isAway: boolean, position: [number, number]
 ): THREE.Group {
   const group = new THREE.Group();
   const [x, z] = position;
-  const yBase = size + 0.15;
-  const col = new THREE.Color(color);
+  const yBase = size + 0.05;
+  const visColor = getVisibleColor(teamId, color);
+  const col = new THREE.Color(visColor);
 
-  // ── Main glass sphere — MeshPhysicalMaterial with transmission for refraction ──
+  // ── Main glass sphere — dense refractive glass ──
   const sphereGeo = new THREE.SphereGeometry(size, 48, 48);
   const sphereMat = new THREE.MeshPhysicalMaterial({
     color: col.clone().multiplyScalar(0.7),
-    roughness: 0.05,
+    roughness: 0.02,
     metalness: 0.0,
-    transmission: 0.7,       // Glass-like transparency
-    thickness: size * 2.5,   // Refraction depth
-    ior: 1.8,                // Index of refraction (glass ~1.5, crystal ~1.8)
+    transmission: 0.5,
+    thickness: size * 4,
+    ior: 2.0,
     clearcoat: 1.0,
-    clearcoatRoughness: 0.02,
-    specularIntensity: 2.0,
+    clearcoatRoughness: 0.01,
+    specularIntensity: 3.0,
     specularColor: new THREE.Color('#ffffff'),
     emissive: col.clone(),
-    emissiveIntensity: isActive ? 0.6 : 0.2,
+    emissiveIntensity: isActive ? 0.6 : isAway ? 0.35 : 0.12,
     envMapIntensity: 1.5,
     transparent: true,
-    opacity: 0.97,
+    opacity: 0.95,
     attenuationColor: col.clone(),
-    attenuationDistance: size * 3,
+    attenuationDistance: size * 2,
     side: THREE.FrontSide,
   });
   const sphere = new THREE.Mesh(sphereGeo, sphereMat);
@@ -233,230 +416,184 @@ function createMarbleSphere(
   sphere.castShadow = true;
   group.add(sphere);
 
-  // ── Inner core glow — bright emissive core for that "light within" effect ──
-  const coreGeo = new THREE.SphereGeometry(size * 0.35, 24, 24);
+  // ── Inner core — bright concentrated center ──
+  const coreGeo = new THREE.SphereGeometry(size * 0.35, 16, 16);
   const coreMat = new THREE.MeshBasicMaterial({
-    color: col.clone().lerp(new THREE.Color('#ffffff'), 0.4),
+    color: col.clone().lerp(new THREE.Color('#ffffff'), 0.6),
     transparent: true,
-    opacity: isActive ? 0.65 : 0.3,
+    opacity: isActive ? 0.7 : isAway ? 0.4 : 0.2,
   });
   const core = new THREE.Mesh(coreGeo, coreMat);
   core.position.set(x, yBase, z);
   group.add(core);
 
-  // ── Specular highlight — offset white sphere for that glass reflection ──
-  const specGeo = new THREE.SphereGeometry(size * 0.18, 16, 16);
+  // ── Specular highlight — glass reflection dot ──
+  const specGeo = new THREE.SphereGeometry(size * 0.12, 10, 10);
   const specMat = new THREE.MeshBasicMaterial({
     color: '#ffffff',
     transparent: true,
     opacity: 0.55,
   });
   const spec = new THREE.Mesh(specGeo, specMat);
-  spec.position.set(x - size * 0.25, yBase + size * 0.35, z - size * 0.2);
+  spec.position.set(x - size * 0.22, yBase + size * 0.28, z - size * 0.18);
   group.add(spec);
 
-  // ── Secondary specular — smaller, lower ──
-  const spec2Geo = new THREE.SphereGeometry(size * 0.08, 8, 8);
-  const spec2Mat = new THREE.MeshBasicMaterial({
-    color: '#ffffff',
-    transparent: true,
-    opacity: 0.35,
-  });
-  const spec2 = new THREE.Mesh(spec2Geo, spec2Mat);
-  spec2.position.set(x + size * 0.15, yBase - size * 0.15, z + size * 0.25);
-  group.add(spec2);
-
-  // ── Fresnel rim glow — slightly larger transparent sphere ──
-  const rimGeo = new THREE.SphereGeometry(size * 1.08, 32, 32);
+  // ── Tight rim — very contained, not bleeding ──
+  const rimGeo = new THREE.SphereGeometry(size * 1.08, 24, 24);
   const rimMat = new THREE.MeshBasicMaterial({
-    color: col.clone().lerp(new THREE.Color('#ffffff'), 0.3),
+    color: col.clone().lerp(new THREE.Color('#ffffff'), 0.15),
     transparent: true,
-    opacity: isActive ? 0.12 : 0.05,
+    opacity: isActive ? 0.06 : 0.02,
     side: THREE.BackSide,
   });
   const rim = new THREE.Mesh(rimGeo, rimMat);
   rim.position.set(x, yBase, z);
   group.add(rim);
 
-  // ── Volumetric glow halo — team-colored atmospheric glow ──
-  const glowGeo = new THREE.SphereGeometry(size * (isActive ? 2.8 : 2.0), 24, 24);
-  const glowMat = new THREE.MeshBasicMaterial({
-    color: col,
-    transparent: true,
-    opacity: isActive ? 0.12 : 0.05,
-    side: THREE.BackSide,
-  });
-  const glow = new THREE.Mesh(glowGeo, glowMat);
-  glow.position.set(x, yBase, z);
-  group.add(glow);
-
-  // ── Ground light pool — emissive disc beneath the sphere ──
-  const poolGeo = new THREE.CircleGeometry(size * (isActive ? 3.0 : 2.0), 32);
+  // ── Ground reflection pool — small, tight ──
+  const poolGeo = new THREE.CircleGeometry(size * (isActive ? 1.4 : 0.9), 32);
   const poolMat = new THREE.MeshBasicMaterial({
     color: col,
     transparent: true,
-    opacity: isActive ? 0.2 : 0.08,
+    opacity: isActive ? 0.12 : 0.04,
     side: THREE.DoubleSide,
   });
   const pool = new THREE.Mesh(poolGeo, poolMat);
   pool.rotation.x = -Math.PI / 2;
-  pool.position.set(x, 0.02, z);
+  pool.position.set(x, 0.01, z);
   group.add(pool);
-
-  // ── Outer ground ring — subtle ring for definition ──
-  const ringGeo = new THREE.RingGeometry(size * 1.3, size * 1.5, 48);
-  const ringMat = new THREE.MeshBasicMaterial({
-    color: col.clone().lerp(new THREE.Color('#ffffff'), 0.2),
-    transparent: true,
-    opacity: isActive ? 0.3 : 0.1,
-    side: THREE.DoubleSide,
-  });
-  const groundRing = new THREE.Mesh(ringGeo, ringMat);
-  groundRing.rotation.x = -Math.PI / 2;
-  groundRing.position.set(x, 0.03, z);
-  group.add(groundRing);
 
   // ── Active stadium extras ──
   if (isActive) {
-    // Vertical light beam — tapered column of light
-    const beamGeo = new THREE.CylinderGeometry(0.015, size * 0.4, 18, 12);
+    // Subtle vertical beam
+    const beamGeo = new THREE.CylinderGeometry(0.008, size * 0.12, 6, 6);
     const beamMat = new THREE.MeshBasicMaterial({
       color: col.clone().lerp(new THREE.Color('#ffffff'), 0.3),
       transparent: true,
-      opacity: 0.08,
+      opacity: 0.03,
     });
     const beam = new THREE.Mesh(beamGeo, beamMat);
-    beam.position.set(x, 9, z);
+    beam.position.set(x, 3.5, z);
     group.add(beam);
 
-    // Pulsing ground ring
-    const pulseGeo = new THREE.RingGeometry(size * 2.2, size * 2.8, 48);
+    // Pulse ring — single, subtle
+    const pulseGeo = new THREE.RingGeometry(size * 1.3, size * 1.5, 48);
     const pulseMat = new THREE.MeshBasicMaterial({
       color: col,
       transparent: true,
-      opacity: 0.18,
+      opacity: 0.08,
       side: THREE.DoubleSide,
     });
     const pulse = new THREE.Mesh(pulseGeo, pulseMat);
     pulse.rotation.x = -Math.PI / 2;
-    pulse.position.set(x, 0.04, z);
+    pulse.position.set(x, 0.02, z);
     pulse.userData.isPulse = true;
     group.add(pulse);
 
-    // Second pulse ring — larger, slower
-    const pulse2Geo = new THREE.RingGeometry(size * 3.5, size * 4.0, 48);
-    const pulse2Mat = new THREE.MeshBasicMaterial({
-      color: col,
-      transparent: true,
-      opacity: 0.06,
-      side: THREE.DoubleSide,
-    });
-    const pulse2 = new THREE.Mesh(pulse2Geo, pulse2Mat);
-    pulse2.rotation.x = -Math.PI / 2;
-    pulse2.position.set(x, 0.04, z);
-    pulse2.userData.isPulse = true;
-    pulse2.userData.pulseSpeed = 1.2;
-    group.add(pulse2);
-
-    // Point light at sphere position for ground illumination
-    const pointLight = new THREE.PointLight(col, isActive ? 1.2 : 0.3, size * 12);
-    pointLight.position.set(x, yBase + size, z);
+    // Point light — contained
+    const pointLight = new THREE.PointLight(col, 0.5, size * 5);
+    pointLight.position.set(x, yBase + size * 0.5, z);
     group.add(pointLight);
   }
 
   return group;
 }
 
-// ─── Create CSS2D-style label ───
-function createLabel(text: string, position: [number, number], color: string, isActive: boolean): THREE.Sprite {
+// ─── Create label ───
+function createLabel(text: string, position: [number, number], teamId: string, color: string, isActive: boolean): THREE.Sprite {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
   canvas.width = 512;
   canvas.height = 128;
-
   ctx.clearRect(0, 0, 512, 128);
-  ctx.font = `${isActive ? 'bold ' : ''}${isActive ? 28 : 20}px "Space Grotesk", Arial, sans-serif`;
+
+  const visColor = getVisibleColor(teamId, color);
+  const fontSize = isActive ? 24 : 16;
+  ctx.font = `${isActive ? 'bold ' : ''}${fontSize}px "Space Grotesk", Arial, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // Text shadow
-  // Dark outline for readability
+  // Dark outline
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 4;
   ctx.shadowColor = '#000000';
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 10;
   ctx.strokeText(text, 256, 64);
 
   // Main text
-  ctx.shadowBlur = isActive ? 16 : 6;
-  ctx.shadowColor = isActive ? color : '#000000';
-  ctx.fillStyle = isActive ? '#ffffff' : '#8a90b0';
+  ctx.shadowBlur = isActive ? 12 : 4;
+  ctx.shadowColor = isActive ? visColor : '#000000';
+  ctx.fillStyle = isActive ? '#d8dce8' : '#3a4060';
   ctx.fillText(text, 256, 64);
-
-  if (isActive) {
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 20;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(text, 256, 64);
-  }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
   const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
   const sprite = new THREE.Sprite(spriteMat);
-  sprite.position.set(position[0], isActive ? 3.8 : 2.2, position[1]);
-  sprite.scale.set(8, 2, 1);
+  sprite.position.set(position[0], isActive ? 2.8 : 1.5, position[1]);
+  sprite.scale.set(6, 1.5, 1);
   return sprite;
 }
 
-// ─── Create curved 3D arc ───
+// ─── Create muted metallic arc ───
 function createArc(
-  from: [number, number], to: [number, number], color: string, distance: number, isAllView: boolean
-): { line: THREE.Line; points: THREE.Vector3[] } {
-  const height = Math.min(distance / 80, 12) * (isAllView ? 0.5 : 1);
+  from: [number, number], to: [number, number], distance: number, isAllView: boolean
+): { tube: THREE.Mesh; points: THREE.Vector3[] } {
+  const height = Math.min(distance / 100, 8) * (isAllView ? 0.3 : 1);
   const midX = (from[0] + to[0]) / 2;
   const midZ = (from[1] + to[1]) / 2;
 
   const curve = new THREE.QuadraticBezierCurve3(
-    new THREE.Vector3(from[0], 0.3, from[1]),
+    new THREE.Vector3(from[0], 0.15, from[1]),
     new THREE.Vector3(midX, height, midZ),
-    new THREE.Vector3(to[0], 0.3, to[1])
+    new THREE.Vector3(to[0], 0.15, to[1])
   );
 
-  const points = curve.getPoints(50);
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  const material = new THREE.LineBasicMaterial({
-    color: new THREE.Color(color),
-    transparent: true,
-    opacity: isAllView ? 0.12 : 0.45,
-    linewidth: 1,
-  });
+  const points = curve.getPoints(60);
 
-  return { line: new THREE.Line(geometry, material), points };
+  // Thin muted metallic tube — like infrastructure
+  const tubeGeo = new THREE.TubeGeometry(curve, 40, isAllView ? 0.015 : 0.03, 6, false);
+  const tubeMat = new THREE.MeshPhysicalMaterial({
+    color: '#3a4258',
+    roughness: 0.35,
+    metalness: 0.85,
+    clearcoat: 0.3,
+    clearcoatRoughness: 0.2,
+    transparent: true,
+    opacity: isAllView ? 0.1 : 0.45,
+    emissive: '#1a2038',
+    emissiveIntensity: 0.05,
+  });
+  const tube = new THREE.Mesh(tubeGeo, tubeMat);
+
+  return { tube, points };
 }
 
-// ─── Animated particle on arc ───
-function createParticle(color: string): THREE.Group {
+// ─── Animated particle — team-colored traveling dot ───
+function createParticle(teamId: string, color: string): THREE.Group {
   const group = new THREE.Group();
-  // Core particle
-  const geo = new THREE.SphereGeometry(0.2, 8, 8);
-  const mat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(color),
-    transparent: true,
-    opacity: 0.95,
-  });
-  const core = new THREE.Mesh(geo, mat);
-  group.add(core);
+  const visColor = getVisibleColor(teamId, color);
+  const col = new THREE.Color(visColor);
 
-  // Glow around particle
-  const glowGeo = new THREE.SphereGeometry(0.5, 8, 8);
-  const glowMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(color),
+  // Core — small bright dot
+  const geo = new THREE.SphereGeometry(0.1, 8, 8);
+  const mat = new THREE.MeshBasicMaterial({
+    color: col.clone().lerp(new THREE.Color('#ffffff'), 0.4),
     transparent: true,
-    opacity: 0.2,
+    opacity: 0.9,
+  });
+  group.add(new THREE.Mesh(geo, mat));
+
+  // Tight glow
+  const glowGeo = new THREE.SphereGeometry(0.2, 8, 8);
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: col,
+    transparent: true,
+    opacity: 0.25,
     side: THREE.BackSide,
   });
   group.add(new THREE.Mesh(glowGeo, glowMat));
+
   return group;
 }
 
@@ -475,14 +612,12 @@ function TooltipOverlay({ info, position }: {
         <div className="flex items-center gap-2 mb-1">
           <div className="w-3 h-3 rounded-full" style={{
             background: `radial-gradient(ellipse at 30% 25%, rgba(255,255,255,0.5), ${info.color} 40%, rgba(0,0,0,0.5))`,
-            boxShadow: `0 0 8px ${info.color}88`,
+            boxShadow: `0 0 6px ${info.color}66`,
           }} />
           <span className="text-xs font-bold text-foreground" style={{ fontFamily: 'Space Grotesk' }}>{info.name}</span>
         </div>
-        <div className="text-[10px] text-muted-foreground font-mono space-y-0.5">
-          <div>{info.stadium}</div>
-          
-          
+        <div className="text-[10px] text-muted-foreground font-mono">
+          {info.stadium}
         </div>
       </div>
     </div>
@@ -531,7 +666,7 @@ export default function TravelMap() {
   const avgDistance = allArcs.length > 0 ? totalMiles / allArcs.length : 0;
   const longestTrip = allArcs.length > 0 ? Math.max(...allArcs.map(a => a.distance)) : 0;
 
-  // Playback
+  // Playback — auto-advance through weeks
   useEffect(() => {
     if (isPlaying) {
       intervalRef.current = setInterval(() => {
@@ -539,44 +674,34 @@ export default function TravelMap() {
           if (prev >= 34) { setIsPlaying(false); return 34; }
           return prev + 1;
         });
-      }, 1200);
+      }, 1500);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isPlaying]);
+
+  // ─── Dispose helper ───
+  const disposeGroup = (group: THREE.Group) => {
+    while (group.children.length) {
+      const c = group.children[0];
+      group.remove(c);
+      c.traverse((obj: THREE.Object3D) => {
+        if ((obj as THREE.Mesh).geometry) (obj as THREE.Mesh).geometry.dispose();
+        if ((obj as THREE.Mesh).material) {
+          const mat = (obj as THREE.Mesh).material;
+          if (Array.isArray(mat)) mat.forEach(m => m.dispose());
+          else (mat as THREE.Material).dispose();
+        }
+      });
+    }
+  };
 
   // Update scene overlays
   const updateOverlays = useCallback((ctx: SceneContext) => {
     if (ctx.disposed) return;
 
-    // Clear groups
-    while (ctx.markerGroup.children.length) {
-      const c = ctx.markerGroup.children[0];
-      ctx.markerGroup.remove(c);
-      c.traverse((obj: THREE.Object3D) => {
-        if ((obj as THREE.Mesh).geometry) (obj as THREE.Mesh).geometry.dispose();
-        if ((obj as THREE.Mesh).material) {
-          const mat = (obj as THREE.Mesh).material;
-          if (Array.isArray(mat)) mat.forEach(m => m.dispose());
-          else (mat as THREE.Material).dispose();
-        }
-      });
-    }
-    while (ctx.arcGroup.children.length) {
-      const c = ctx.arcGroup.children[0];
-      ctx.arcGroup.remove(c);
-      c.traverse((obj: THREE.Object3D) => {
-        if ((obj as THREE.Mesh).geometry) (obj as THREE.Mesh).geometry.dispose();
-        if ((obj as THREE.Mesh).material) {
-          const mat = (obj as THREE.Mesh).material;
-          if (Array.isArray(mat)) mat.forEach(m => m.dispose());
-          else (mat as THREE.Material).dispose();
-        }
-      });
-    }
-    while (ctx.particleGroup.children.length) {
-      const c = ctx.particleGroup.children[0];
-      ctx.particleGroup.remove(c);
-    }
+    disposeGroup(ctx.markerGroup);
+    disposeGroup(ctx.arcGroup);
+    disposeGroup(ctx.particleGroup);
     while (ctx.labelGroup.children.length) {
       const c = ctx.labelGroup.children[0];
       ctx.labelGroup.remove(c);
@@ -588,48 +713,37 @@ export default function TravelMap() {
     }
     particleDataRef.current = [];
 
-    // Stadium markers
+    // ── Stadium markers ──
     filteredTeams.forEach(team => {
       const isActive = weekMatches.some(m => m.homeTeam === team.id);
       const isAway = weekMatches.some(m => m.awayTeam === team.id);
       const pos = latLngToXZ(team.lat, team.lng);
-      const size = isActive ? 0.7 : isAway ? 0.5 : 0.35;
-      const marbleGroup = createMarbleSphere(team.color, size, isActive, pos);
-      // Store team data for raycasting
+      const size = isActive ? 0.5 : isAway ? 0.35 : 0.22;
+      const marbleGroup = createMarbleSphere(team.id, team.color, size, isActive, isAway, pos);
       marbleGroup.userData = { teamId: team.id };
       ctx.markerGroup.add(marbleGroup);
 
-      const label = createLabel(team.short, pos, team.color, isActive);
+      const label = createLabel(team.short, pos, team.id, team.color, isActive);
       ctx.labelGroup.add(label);
     });
 
-    // Travel arcs
+    // ── Travel arcs ──
     currentArcs.forEach(arc => {
       const from = latLngToXZ(arc.away.lat, arc.away.lng);
       const to = latLngToXZ(arc.home.lat, arc.home.lng);
-      const color = distanceColor(arc.distance);
-      const { line, points } = createArc(from, to, color, arc.distance, showAllArcs);
-      ctx.arcGroup.add(line);
+      const { tube, points } = createArc(from, to, arc.distance, showAllArcs);
+      ctx.arcGroup.add(tube);
 
-      // Glow line (wider)
-      const glowGeo = new THREE.BufferGeometry().setFromPoints(points);
-      const glowMat = new THREE.LineBasicMaterial({
-        color: new THREE.Color(color),
-        transparent: true,
-        opacity: showAllArcs ? 0.04 : 0.15,
-      });
-      ctx.arcGroup.add(new THREE.Line(glowGeo, glowMat));
-
-      // Animated particle
+      // Animated particle — away team's color
       if (!showAllArcs) {
-        const particle = createParticle(color);
+        const particle = createParticle(arc.away.id, arc.away.color);
         particle.position.copy(points[0]);
         ctx.particleGroup.add(particle);
         particleDataRef.current.push({
           mesh: particle,
           points,
           t: Math.random(),
-          speed: 0.003 + Math.random() * 0.004,
+          speed: 0.003 + Math.random() * 0.002,
         });
       }
     });
@@ -638,7 +752,6 @@ export default function TravelMap() {
   // Initialize Three.js scene
   const initScene = useCallback((container: HTMLDivElement) => {
     if (ctxRef.current) {
-      // Dispose old scene
       ctxRef.current.disposed = true;
       cancelAnimationFrame(ctxRef.current.animId);
       ctxRef.current.renderer.dispose();
@@ -651,7 +764,6 @@ export default function TravelMap() {
 
     const ctx = createScene(container);
     ctxRef.current = ctx;
-
     updateOverlays(ctx);
 
     // Raycaster for hover
@@ -672,11 +784,8 @@ export default function TravelMap() {
         if (obj?.userData?.teamId) {
           const team = getTeam(obj.userData.teamId);
           if (team) {
-            setTooltip({
-              name: team.name,
-              stadium: team.stadium,
-              color: team.color,
-            });
+            const visColor = getVisibleColor(team.id, team.color);
+            setTooltip({ name: team.name, stadium: team.stadium, color: visColor });
             container.style.cursor = 'pointer';
             return;
           }
@@ -693,8 +802,9 @@ export default function TravelMap() {
       if (ctx.disposed) return;
       ctx.animId = requestAnimationFrame(animate);
       ctx.controls.update();
+      const time = ctx.clock.getElapsedTime();
 
-      // Animate particles
+      // Animate particles along arcs
       particleDataRef.current.forEach(pd => {
         pd.t += pd.speed;
         if (pd.t >= 1) pd.t = 0;
@@ -704,53 +814,42 @@ export default function TravelMap() {
         pd.mesh.position.lerpVectors(pd.points[idx], pd.points[nextIdx], frac);
       });
 
-      // Subtle marble float animation
-      const time = ctx.clock.getElapsedTime();
+      // Subtle marble float
       ctx.markerGroup.children.forEach((group, i) => {
-        // Float the entire group slightly
-        const floatOffset = Math.sin(time * 1.2 + i * 0.7) * 0.08;
+        const floatOffset = Math.sin(time * 0.8 + i * 0.4) * 0.015;
         group.children.forEach(child => {
-          if (child instanceof THREE.Mesh && child.geometry.type === 'SphereGeometry' &&
-              child.position.y > 0.1) {
-            child.position.y += floatOffset * 0.01; // Very subtle float
+          if (child instanceof THREE.Mesh && child.geometry.type === 'SphereGeometry' && child.position.y > 0.1) {
+            child.position.y += floatOffset * 0.01;
           }
         });
       });
 
-      // Animate pulse rings on active stadiums
+      // Pulse rings
       ctx.markerGroup.children.forEach(group => {
         group.children.forEach(child => {
           if (child instanceof THREE.Mesh && child.userData?.isPulse) {
-            const scale = 1 + Math.sin(time * 2) * 0.3;
+            const scale = 1 + Math.sin(time * 1.2) * 0.15;
             child.scale.set(scale, scale, 1);
-            (child.material as THREE.MeshBasicMaterial).opacity = 0.15 * (1 - Math.sin(time * 2) * 0.5);
+            (child.material as THREE.MeshBasicMaterial).opacity = 0.06 * (1 - Math.sin(time * 1.2) * 0.3);
           }
         });
       });
 
-      // Animate dust particles
+      // Dust drift
       const dustObj = ctx.scene.children.find(c => c instanceof THREE.Points) as THREE.Points | undefined;
       if (dustObj) {
         const pos = dustObj.geometry.attributes.position;
         for (let i = 0; i < pos.count; i++) {
-          const y = pos.getY(i);
-          pos.setY(i, y + Math.sin(time * 0.3 + i * 0.1) * 0.003);
+          pos.setY(i, pos.getY(i) + Math.sin(time * 0.15 + i * 0.1) * 0.001);
         }
         pos.needsUpdate = true;
       }
-
-      // Labels always face camera
-      ctx.labelGroup.children.forEach(sprite => {
-        if (sprite instanceof THREE.Sprite) {
-          sprite.lookAt(ctx.camera.position);
-        }
-      });
 
       ctx.composer.render();
     };
     animate();
 
-    // Resize handler
+    // Resize
     const onResize = () => {
       const w = container.clientWidth;
       const h = container.clientHeight;
@@ -793,8 +892,8 @@ export default function TravelMap() {
   const resetCamera = useCallback(() => {
     if (ctxRef.current) {
       const ctx = ctxRef.current;
-      ctx.camera.position.set(5, 50, 45);
-      ctx.controls.target.set(0, 0, 0);
+      ctx.camera.position.set(5, 50, 55);
+      ctx.controls.target.set(0, 0, 2);
       ctx.controls.update();
     }
   }, []);
@@ -857,31 +956,33 @@ export default function TravelMap() {
           </div>
         </div>
 
-        <div className="relative rounded-xl overflow-hidden" style={{ height: '520px' }}>
+        <div className="relative rounded-xl overflow-hidden" style={{ height: '560px' }}>
           <div ref={containerRef} className="w-full h-full" style={{ cursor: 'grab' }} />
           <TooltipOverlay info={tooltip} position={tooltipPos} />
 
           {/* HUD overlay */}
-          <div className="absolute bottom-3 left-3 text-[9px] text-muted-foreground/60 font-mono space-y-0.5 pointer-events-none">
+          <div className="absolute bottom-3 left-3 text-[9px] text-muted-foreground/30 font-mono space-y-0.5 pointer-events-none">
             <div>DRAG to orbit · SCROLL to zoom · RIGHT-CLICK to pan</div>
             <div>TILT by dragging vertically</div>
           </div>
         </div>
 
-        {/* Distance Legend */}
-        <div className="flex justify-center gap-4 mt-3">
-          {[
-            { label: '<500 mi', color: '#00c897' },
-            { label: '500-1000', color: '#00d4ff' },
-            { label: '1000-1500', color: '#ffb347' },
-            { label: '1500-2000', color: '#ff8c42' },
-            { label: '2000+', color: '#ff6b6b' },
-          ].map(l => (
-            <div key={l.label} className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <span className="w-3 h-1 rounded-full" style={{ backgroundColor: l.color }} />
-              {l.label}
-            </div>
-          ))}
+        {/* Minimal legend */}
+        <div className="flex justify-center gap-6 mt-3 text-[10px] text-muted-foreground/50">
+          <div className="flex items-center gap-1.5">
+            <span className="w-5 h-[1.5px] rounded-full bg-[#3a4258]" />
+            <span>Travel Route</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-cyan/60 shadow-[0_0_3px_rgba(0,212,255,0.3)]" />
+            <span>Away Team in Transit</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full" style={{
+              background: 'radial-gradient(ellipse at 30% 25%, rgba(255,255,255,0.4), #4488aa 50%, rgba(0,0,0,0.5))',
+            }} />
+            <span>Stadium</span>
+          </div>
         </div>
       </NeuCard>
 
@@ -917,7 +1018,7 @@ export default function TravelMap() {
             />
             <div className="flex justify-between text-[10px] text-muted-foreground font-mono mt-1">
               <span>Week 1</span>
-              <span>Week {currentWeek}</span>
+              <span className="text-cyan">Week {currentWeek}</span>
               <span>Week 34</span>
             </div>
           </div>
@@ -929,14 +1030,16 @@ export default function TravelMap() {
             const home = getTeam(m.homeTeam);
             const away = getTeam(m.awayTeam);
             const dist = home && away ? calculateDistance(away.lat, away.lng, home.lat, home.lng) : 0;
+            const awayColor = away ? getVisibleColor(away.id, away.color) : '#888';
+            const homeColor = home ? getVisibleColor(home.id, home.color) : '#888';
             return (
               <div key={m.id} className="neu-concave rounded-lg p-2 text-center">
                 <div className="flex items-center justify-center gap-1 text-[10px]">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: away?.color }} />
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: awayColor }} />
                   <span className="text-muted-foreground">{away?.short}</span>
-                  <span className="text-cyan mx-0.5">@</span>
+                  <span className="text-cyan/60 mx-0.5">@</span>
                   <span>{home?.short}</span>
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: home?.color }} />
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: homeColor }} />
                 </div>
                 <div className="text-[9px] text-muted-foreground font-mono mt-0.5">
                   {dist.toLocaleString()} mi · {m.homeGoals}-{m.awayGoals}
