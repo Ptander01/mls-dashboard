@@ -1,20 +1,35 @@
 import { useMemo, useState } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
-import { TEAMS, getTeam } from '@/lib/mlsData';
+import { TEAMS, MATCHES, getTeam } from '@/lib/mlsData';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area, Line, Cell
+  AreaChart, Area, Line, Cell, ReferenceLine
 } from 'recharts';
-import { Users, TrendingUp, TrendingDown, MapPin } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home } from 'lucide-react';
+
+// ─── Visibility-enhanced team colors for dark backgrounds ───
+const VIS_COLORS: Record<string, string> = {
+  'MTL': '#4488cc', 'CLB': '#ffc72c', 'DC': '#c8102e',
+  'NE': '#4477bb', 'PHI': '#4488aa', 'POR': '#00aa44',
+  'LAG': '#5588cc', 'VAN': '#5599dd',
+};
+function teamColor(id: string): string {
+  if (VIS_COLORS[id]) return VIS_COLORS[id];
+  const t = getTeam(id);
+  return t?.color || '#666';
+}
 
 export default function Attendance() {
   const { filteredTeams, filteredMatches } = useFilters();
-  const [selectedHome, setSelectedHome] = useState<string>('MIA');
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [maximized, setMaximized] = useState<string | null>(null);
 
+  // ═══════════════════════════════════════════
+  // SUMMARY STATS
+  // ═══════════════════════════════════════════
   const avgAttendance = useMemo(() => {
     const withAtt = filteredMatches.filter(m => m.attendance > 0);
     if (withAtt.length === 0) return 0;
@@ -28,14 +43,20 @@ export default function Attendance() {
     return [...filteredMatches].sort((a, b) => b.attendance - a.attendance)[0];
   }, [filteredMatches]);
 
+  // ═══════════════════════════════════════════
+  // HOME AVERAGE ATTENDANCE
+  // ═══════════════════════════════════════════
   const homeAvgData = useMemo(() => {
     return filteredTeams.map(t => {
       const homeMatches = filteredMatches.filter(m => m.homeTeam === t.id && m.attendance > 0);
       const avg = homeMatches.length > 0 ? homeMatches.reduce((s, m) => s + m.attendance, 0) / homeMatches.length : 0;
-      return { name: t.short, id: t.id, avg: Math.round(avg), color: t.color };
+      return { name: t.short, id: t.id, avg: Math.round(avg), color: teamColor(t.id) };
     }).sort((a, b) => b.avg - a.avg);
   }, [filteredTeams, filteredMatches]);
 
+  // ═══════════════════════════════════════════
+  // WEEKLY TREND
+  // ═══════════════════════════════════════════
   const weeklyData = useMemo(() => {
     const byWeek: Record<number, number[]> = {};
     filteredMatches.filter(m => m.attendance > 0).forEach(m => {
@@ -48,30 +69,115 @@ export default function Attendance() {
     })).sort((a, b) => a.week - b.week);
   }, [filteredMatches]);
 
-  const awayEffect = useMemo(() => {
-    const homeMatches = filteredMatches.filter(m => m.homeTeam === selectedHome && m.attendance > 0);
+  // ═══════════════════════════════════════════
+  // GRAVITATIONAL PULL — League-wide net impact
+  // For each team: sum of (attendance - home team's avg) across ALL their away games
+  // ═══════════════════════════════════════════
+  const gravitationalPull = useMemo(() => {
+    // First compute each team's home average using ALL matches (not filtered)
+    const homeAvgs: Record<string, number> = {};
+    TEAMS.forEach(t => {
+      const hm = MATCHES.filter(m => m.homeTeam === t.id && m.attendance > 0);
+      homeAvgs[t.id] = hm.length > 0 ? hm.reduce((s, m) => s + m.attendance, 0) / hm.length : 0;
+    });
+
+    // For each team as away visitor, compute cumulative delta
+    return TEAMS.map(t => {
+      const awayGames = MATCHES.filter(m => m.awayTeam === t.id && m.attendance > 0);
+      let totalDelta = 0;
+      let matchCount = 0;
+      awayGames.forEach(m => {
+        const homeAvg = homeAvgs[m.homeTeam] || 0;
+        if (homeAvg > 0) {
+          totalDelta += m.attendance - homeAvg;
+          matchCount++;
+        }
+      });
+      return {
+        name: t.short,
+        id: t.id,
+        totalDelta: Math.round(totalDelta),
+        avgDelta: matchCount > 0 ? Math.round(totalDelta / matchCount) : 0,
+        matches: matchCount,
+        color: teamColor(t.id),
+      };
+    }).sort((a, b) => b.totalDelta - a.totalDelta);
+  }, []);
+
+  // ═══════════════════════════════════════════
+  // TEAM DRILL-DOWN: Away Impact (when selected team visits other stadiums)
+  // ═══════════════════════════════════════════
+  const awayImpactData = useMemo(() => {
+    if (!selectedTeam) return [];
+    // Home averages for all teams
+    const homeAvgs: Record<string, number> = {};
+    TEAMS.forEach(t => {
+      const hm = MATCHES.filter(m => m.homeTeam === t.id && m.attendance > 0);
+      homeAvgs[t.id] = hm.length > 0 ? hm.reduce((s, m) => s + m.attendance, 0) / hm.length : 0;
+    });
+
+    // Group away games by host stadium
+    const byHost: Record<string, number[]> = {};
+    MATCHES.filter(m => m.awayTeam === selectedTeam && m.attendance > 0).forEach(m => {
+      if (!byHost[m.homeTeam]) byHost[m.homeTeam] = [];
+      byHost[m.homeTeam].push(m.attendance);
+    });
+
+    return Object.entries(byHost).map(([hostId, atts]) => {
+      const avgAtt = atts.reduce((s, a) => s + a, 0) / atts.length;
+      const hostAvg = homeAvgs[hostId] || 0;
+      const delta = Math.round(avgAtt - hostAvg);
+      return {
+        hostTeam: getTeam(hostId)?.short || hostId,
+        hostId,
+        delta,
+        avgAtt: Math.round(avgAtt),
+        hostAvg: Math.round(hostAvg),
+        matches: atts.length,
+        color: teamColor(hostId),
+      };
+    }).sort((a, b) => b.delta - a.delta);
+  }, [selectedTeam]);
+
+  // ═══════════════════════════════════════════
+  // TEAM DRILL-DOWN: Home Response (how home attendance changes by visitor)
+  // ═══════════════════════════════════════════
+  const homeResponseData = useMemo(() => {
+    if (!selectedTeam) return [];
+    const homeMatches = MATCHES.filter(m => m.homeTeam === selectedTeam && m.attendance > 0);
     if (homeMatches.length === 0) return [];
     const avgHome = homeMatches.reduce((s, m) => s + m.attendance, 0) / homeMatches.length;
+
     const byAway: Record<string, number[]> = {};
     homeMatches.forEach(m => {
       if (!byAway[m.awayTeam]) byAway[m.awayTeam] = [];
       byAway[m.awayTeam].push(m.attendance);
     });
+
     return Object.entries(byAway).map(([awayId, atts]) => {
       const awayAvg = atts.reduce((s, a) => s + a, 0) / atts.length;
       return {
-        awayTeam: getTeam(awayId)?.short || awayId, awayId,
-        delta: Math.round(awayAvg - avgHome), avgAtt: Math.round(awayAvg),
-        matches: atts.length, color: getTeam(awayId)?.color || '#666',
+        awayTeam: getTeam(awayId)?.short || awayId,
+        awayId,
+        delta: Math.round(awayAvg - avgHome),
+        avgAtt: Math.round(awayAvg),
+        homeAvg: Math.round(avgHome),
+        matches: atts.length,
+        color: teamColor(awayId),
       };
     }).sort((a, b) => b.delta - a.delta);
-  }, [filteredMatches, selectedHome]);
+  }, [selectedTeam]);
 
-  const homeTeam = getTeam(selectedHome);
-  const homeAvg = useMemo(() => {
-    const hm = filteredMatches.filter(m => m.homeTeam === selectedHome && m.attendance > 0);
+  const selectedTeamObj = selectedTeam ? getTeam(selectedTeam) : null;
+  const selectedHomeAvg = useMemo(() => {
+    if (!selectedTeam) return 0;
+    const hm = MATCHES.filter(m => m.homeTeam === selectedTeam && m.attendance > 0);
     return hm.length > 0 ? Math.round(hm.reduce((s, m) => s + m.attendance, 0) / hm.length) : 0;
-  }, [filteredMatches, selectedHome]);
+  }, [selectedTeam]);
+
+  // ═══════════════════════════════════════════
+  // CHART COMPONENTS
+  // ═══════════════════════════════════════════
 
   const HomeBarContent = ({ height = 320 }: { height?: number }) => (
     <div style={{ height }}>
@@ -85,14 +191,14 @@ export default function Attendance() {
             const d = payload[0].payload;
             return (
               <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
-                <div className="text-cyan font-semibold">{d.name}</div>
+                <div className="font-semibold" style={{ color: d.color }}>{d.name}</div>
                 <div>Avg: <span className="text-amber">{d.avg.toLocaleString()}</span></div>
               </div>
             );
           }} />
-          <Bar dataKey="avg" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(d: any) => setSelectedHome(d.id)}>
+          <Bar dataKey="avg" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(d: any) => setSelectedTeam(d.id)}>
             {homeAvgData.map((d, i) => (
-              <Cell key={i} fill={d.id === selectedHome ? '#00d4ff' : d.color} fillOpacity={d.id === selectedHome ? 1 : 0.6} />
+              <Cell key={i} fill={d.color} fillOpacity={selectedTeam === d.id ? 1 : 0.7} stroke={selectedTeam === d.id ? '#ffffff' : 'none'} strokeWidth={selectedTeam === d.id ? 2 : 0} />
             ))}
           </Bar>
         </BarChart>
@@ -121,34 +227,166 @@ export default function Attendance() {
     </div>
   );
 
-  const AwayEffectContent = ({ height = 300 }: { height?: number }) => (
+  // ─── Gravitational Pull Chart ───
+  const GravitationalPullContent = ({ height = 700 }: { height?: number }) => (
     <div style={{ height }}>
       <ResponsiveContainer>
-        <BarChart data={awayEffect} margin={{ top: 5, right: 10, bottom: 60, left: 0 }} layout="vertical">
+        <BarChart data={gravitationalPull} layout="vertical" margin={{ top: 5, right: 30, bottom: 5, left: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <XAxis type="number" stroke="#8892b0" fontSize={10} tickLine={false} />
-          <YAxis dataKey="awayTeam" type="category" stroke="#8892b0" fontSize={9} tickLine={false} width={80} />
+          <XAxis type="number" stroke="#8892b0" fontSize={10} tickLine={false}
+            tickFormatter={(v: number) => v >= 0 ? `+${(v/1000).toFixed(0)}k` : `${(v/1000).toFixed(0)}k`} />
+          <YAxis dataKey="name" type="category" stroke="#8892b0" fontSize={9} tickLine={false} width={110}
+            tick={({ x, y, payload }: any) => {
+              const item = gravitationalPull.find(d => d.name === payload.value);
+              return (
+                <g transform={`translate(${x},${y})`}>
+                  <circle cx={-100} cy={0} r={4} fill={item?.color || '#666'} />
+                  <text x={-92} y={0} dy={4} textAnchor="start" fill="#8892b0" fontSize={9}
+                    style={{ cursor: 'pointer' }}>{payload.value}</text>
+                </g>
+              );
+            }}
+          />
+          <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
           <Tooltip content={({ payload }) => {
             if (!payload?.length) return null;
             const d = payload[0].payload;
             return (
-              <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
-                <div className="font-semibold">{d.awayTeam} visiting {homeTeam?.short}</div>
-                <div>Delta: <span className={d.delta >= 0 ? 'text-emerald' : 'text-coral'}>{d.delta >= 0 ? '+' : ''}{d.delta.toLocaleString()}</span></div>
-                <div>Avg Attendance: <span className="text-cyan">{d.avgAtt.toLocaleString()}</span></div>
-                <div>Matches: <span className="text-muted-foreground">{d.matches}</span></div>
+              <div className="neu-raised p-3 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                <div className="font-semibold mb-1" style={{ color: d.color }}>{d.name}</div>
+                <div>Net Impact: <span className={d.totalDelta >= 0 ? 'text-emerald' : 'text-coral'}>
+                  {d.totalDelta >= 0 ? '+' : ''}{d.totalDelta.toLocaleString()}</span></div>
+                <div>Avg Delta/Game: <span className={d.avgDelta >= 0 ? 'text-emerald' : 'text-coral'}>
+                  {d.avgDelta >= 0 ? '+' : ''}{d.avgDelta.toLocaleString()}</span></div>
+                <div>Away Games: <span className="text-muted-foreground">{d.matches}</span></div>
               </div>
             );
           }} />
-          <Bar dataKey="delta" radius={[0, 4, 4, 0]}>
-            {awayEffect.map((d, i) => (
-              <Cell key={i} fill={d.delta >= 0 ? '#00c897' : '#ff6b6b'} fillOpacity={0.7} />
+          <Bar dataKey="totalDelta" radius={[0, 4, 4, 0]} cursor="pointer"
+            onClick={(d: any) => setSelectedTeam(d.id)}>
+            {gravitationalPull.map((d, i) => (
+              <Cell key={i} fill={d.color} fillOpacity={selectedTeam === d.id ? 1 : 0.75}
+                stroke={selectedTeam === d.id ? '#ffffff' : 'none'} strokeWidth={selectedTeam === d.id ? 2 : 0} />
             ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
   );
+
+  // ─── Away Impact Drill-Down ───
+  const AwayImpactContent = ({ height = 400 }: { height?: number }) => {
+    if (!selectedTeam || awayImpactData.length === 0) {
+      return (
+        <div className="flex items-center justify-center text-muted-foreground text-sm" style={{ height }}>
+          Click a team in the Gravitational Pull chart to see their away impact
+        </div>
+      );
+    }
+    return (
+      <div style={{ height }}>
+        <ResponsiveContainer>
+          <BarChart data={awayImpactData} layout="vertical" margin={{ top: 5, right: 30, bottom: 5, left: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <XAxis type="number" stroke="#8892b0" fontSize={10} tickLine={false}
+              tickFormatter={(v: number) => v >= 0 ? `+${v.toLocaleString()}` : v.toLocaleString()} />
+            <YAxis dataKey="hostTeam" type="category" stroke="#8892b0" fontSize={9} tickLine={false} width={110}
+              tick={({ x, y, payload }: any) => {
+                const item = awayImpactData.find(d => d.hostTeam === payload.value);
+                return (
+                  <g transform={`translate(${x},${y})`}>
+                    <circle cx={-100} cy={0} r={4} fill={item?.color || '#666'} />
+                    <text x={-92} y={0} dy={4} textAnchor="start" fill="#8892b0" fontSize={9}>{payload.value}</text>
+                  </g>
+                );
+              }}
+            />
+            <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+            <Tooltip content={({ payload }) => {
+              if (!payload?.length) return null;
+              const d = payload[0].payload;
+              return (
+                <div className="neu-raised p-3 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                  <div className="font-semibold mb-1">
+                    <span style={{ color: teamColor(selectedTeam!) }}>{selectedTeamObj?.short}</span>
+                    <span className="text-muted-foreground"> visiting </span>
+                    <span style={{ color: d.color }}>{d.hostTeam}</span>
+                  </div>
+                  <div>Delta: <span className={d.delta >= 0 ? 'text-emerald' : 'text-coral'}>
+                    {d.delta >= 0 ? '+' : ''}{d.delta.toLocaleString()}</span></div>
+                  <div>Actual Attendance: <span className="text-cyan">{d.avgAtt.toLocaleString()}</span></div>
+                  <div>Host Avg: <span className="text-muted-foreground">{d.hostAvg.toLocaleString()}</span></div>
+                  <div>Matches: <span className="text-muted-foreground">{d.matches}</span></div>
+                </div>
+              );
+            }} />
+            <Bar dataKey="delta" radius={[0, 4, 4, 0]}>
+              {awayImpactData.map((d, i) => (
+                <Cell key={i} fill={d.color} fillOpacity={0.8} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  // ─── Home Response Drill-Down ───
+  const HomeResponseContent = ({ height = 400 }: { height?: number }) => {
+    if (!selectedTeam || homeResponseData.length === 0) {
+      return (
+        <div className="flex items-center justify-center text-muted-foreground text-sm" style={{ height }}>
+          Click a team in the Gravitational Pull chart to see their home response
+        </div>
+      );
+    }
+    return (
+      <div style={{ height }}>
+        <ResponsiveContainer>
+          <BarChart data={homeResponseData} layout="vertical" margin={{ top: 5, right: 30, bottom: 5, left: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <XAxis type="number" stroke="#8892b0" fontSize={10} tickLine={false}
+              tickFormatter={(v: number) => v >= 0 ? `+${v.toLocaleString()}` : v.toLocaleString()} />
+            <YAxis dataKey="awayTeam" type="category" stroke="#8892b0" fontSize={9} tickLine={false} width={110}
+              tick={({ x, y, payload }: any) => {
+                const item = homeResponseData.find(d => d.awayTeam === payload.value);
+                return (
+                  <g transform={`translate(${x},${y})`}>
+                    <circle cx={-100} cy={0} r={4} fill={item?.color || '#666'} />
+                    <text x={-92} y={0} dy={4} textAnchor="start" fill="#8892b0" fontSize={9}>{payload.value}</text>
+                  </g>
+                );
+              }}
+            />
+            <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+            <Tooltip content={({ payload }) => {
+              if (!payload?.length) return null;
+              const d = payload[0].payload;
+              return (
+                <div className="neu-raised p-3 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                  <div className="font-semibold mb-1">
+                    <span style={{ color: d.color }}>{d.awayTeam}</span>
+                    <span className="text-muted-foreground"> visiting </span>
+                    <span style={{ color: teamColor(selectedTeam!) }}>{selectedTeamObj?.short}</span>
+                  </div>
+                  <div>Delta: <span className={d.delta >= 0 ? 'text-emerald' : 'text-coral'}>
+                    {d.delta >= 0 ? '+' : ''}{d.delta.toLocaleString()}</span></div>
+                  <div>Actual Attendance: <span className="text-cyan">{d.avgAtt.toLocaleString()}</span></div>
+                  <div>{selectedTeamObj?.short} Home Avg: <span className="text-muted-foreground">{d.homeAvg.toLocaleString()}</span></div>
+                  <div>Matches: <span className="text-muted-foreground">{d.matches}</span></div>
+                </div>
+              );
+            }} />
+            <Bar dataKey="delta" radius={[0, 4, 4, 0]}>
+              {homeResponseData.map((d, i) => (
+                <Cell key={i} fill={d.color} fillOpacity={0.8} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4 mt-4">
@@ -207,32 +445,86 @@ export default function Attendance() {
         <WeeklyContent />
       </NeuCard>
 
-      {/* Travel Away Effect */}
+      {/* ═══════════════════════════════════════════ */}
+      {/* GRAVITATIONAL PULL — League-wide */}
+      {/* ═══════════════════════════════════════════ */}
       <NeuCard delay={0.35} glow="cyan" className="p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <div>
-            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-              Travel Away Effect — {homeTeam?.name || 'Select Team'}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Attendance delta when each away team visits. Baseline avg: <span className="text-cyan font-mono">{homeAvg.toLocaleString()}</span>
+            <div className="flex items-center gap-2">
+              <Globe size={16} className="text-cyan" />
+              <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
+                Gravitational Pull — League-Wide Away Team Impact
+              </h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 ml-6">
+              Cumulative attendance delta across all away games. Positive = team draws more fans than the host's average when visiting.
             </p>
           </div>
-          <MaximizeButton onClick={() => setMaximized('away')} />
+          <MaximizeButton onClick={() => setMaximized('gravity')} />
         </div>
-        <div className="flex flex-wrap gap-1 mb-3">
-          {filteredTeams.map(t => (
-            <button key={t.id} onClick={() => setSelectedHome(t.id)}
-              className={`text-[10px] px-2 py-0.5 rounded transition-all ${selectedHome === t.id ? 'neu-pressed text-cyan' : 'text-muted-foreground hover:text-foreground'}`}>
-              {t.short}
+        {selectedTeam && (
+          <div className="flex items-center gap-2 mb-2 ml-6">
+            <span className="text-[10px] text-muted-foreground">Selected:</span>
+            <span className="text-xs font-semibold" style={{ color: teamColor(selectedTeam), fontFamily: 'Space Grotesk' }}>
+              {selectedTeamObj?.name}
+            </span>
+            <button onClick={() => setSelectedTeam(null)}
+              className="text-[10px] text-muted-foreground hover:text-foreground ml-1 underline">
+              Clear
             </button>
-          ))}
-        </div>
-        <AwayEffectContent />
+          </div>
+        )}
+        <GravitationalPullContent />
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Positive delta = away team draws more fans than average. Negative = fewer fans than average home attendance.
+          Click any team bar to drill down into their specific away impact and home response data.
         </p>
       </NeuCard>
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* DRILL-DOWN: Away Impact */}
+      {/* ═══════════════════════════════════════════ */}
+      {selectedTeam && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <NeuCard delay={0.1} glow="emerald" className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Target size={14} style={{ color: teamColor(selectedTeam) }} />
+                  <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
+                    <span style={{ color: teamColor(selectedTeam) }}>{selectedTeamObj?.short}</span>
+                    <span className="text-muted-foreground"> — Away Impact</span>
+                  </h3>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 ml-6">
+                  Attendance delta at each stadium when {selectedTeamObj?.short} visits
+                </p>
+              </div>
+              <MaximizeButton onClick={() => setMaximized('awayImpact')} />
+            </div>
+            <AwayImpactContent />
+          </NeuCard>
+
+          <NeuCard delay={0.15} glow="amber" className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Home size={14} style={{ color: teamColor(selectedTeam) }} />
+                  <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
+                    <span style={{ color: teamColor(selectedTeam) }}>{selectedTeamObj?.short}</span>
+                    <span className="text-muted-foreground"> — Home Response</span>
+                  </h3>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 ml-6">
+                  How {selectedTeamObj?.short}'s home attendance responds to each visitor. Avg: <span className="text-cyan font-mono">{selectedHomeAvg.toLocaleString()}</span>
+                </p>
+              </div>
+              <MaximizeButton onClick={() => setMaximized('homeResponse')} />
+            </div>
+            <HomeResponseContent />
+          </NeuCard>
+        </div>
+      )}
 
       {/* Maximize Modals */}
       <ChartModal isOpen={maximized === 'home'} onClose={() => setMaximized(null)} title="Average Home Attendance by Team">
@@ -241,8 +533,16 @@ export default function Attendance() {
       <ChartModal isOpen={maximized === 'weekly'} onClose={() => setMaximized(null)} title="Attendance Trend by Matchweek">
         <WeeklyContent height={600} />
       </ChartModal>
-      <ChartModal isOpen={maximized === 'away'} onClose={() => setMaximized(null)} title={`Travel Away Effect — ${homeTeam?.name || 'Select Team'}`}>
-        <AwayEffectContent height={600} />
+      <ChartModal isOpen={maximized === 'gravity'} onClose={() => setMaximized(null)} title="Gravitational Pull — League-Wide Away Team Impact">
+        <GravitationalPullContent height={800} />
+      </ChartModal>
+      <ChartModal isOpen={maximized === 'awayImpact'} onClose={() => setMaximized(null)}
+        title={`${selectedTeamObj?.short || 'Team'} — Away Impact at Each Stadium`}>
+        <AwayImpactContent height={600} />
+      </ChartModal>
+      <ChartModal isOpen={maximized === 'homeResponse'} onClose={() => setMaximized(null)}
+        title={`${selectedTeamObj?.short || 'Team'} — Home Response to Each Visitor`}>
+        <HomeResponseContent height={600} />
       </ChartModal>
     </div>
   );
