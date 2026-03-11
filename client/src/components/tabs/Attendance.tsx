@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
 import { TEAMS, MATCHES, getTeam } from '@/lib/mlsData';
 import NeuCard from '@/components/NeuCard';
@@ -8,7 +8,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, Line, Cell, ReferenceLine
 } from 'recharts';
-import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home, BarChart3, Percent } from 'lucide-react';
 
 // ─── Stadium Capacities (MLS-specific seating for soccer config) ───
 const STADIUM_CAPACITY: Record<string, number> = {
@@ -36,6 +36,8 @@ export default function Attendance() {
   const { filteredTeams, filteredMatches } = useFilters();
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [maximized, setMaximized] = useState<string | null>(null);
+  const [showFillRate, setShowFillRate] = useState(false);
+  const [trendTeam, setTrendTeam] = useState<string | ''>('');
 
   // ═══════════════════════════════════════════
   // SUMMARY STATS
@@ -54,22 +56,28 @@ export default function Attendance() {
   }, [filteredMatches]);
 
   // ═══════════════════════════════════════════
-  // HOME AVERAGE ATTENDANCE
+  // HOME AVERAGE ATTENDANCE (with fill rate data)
   // ═══════════════════════════════════════════
   const homeAvgData = useMemo(() => {
     return filteredTeams.map(t => {
       const homeMatches = filteredMatches.filter(m => m.homeTeam === t.id && m.attendance > 0);
       const avg = homeMatches.length > 0 ? homeMatches.reduce((s, m) => s + m.attendance, 0) / homeMatches.length : 0;
-      return { name: t.short, id: t.id, avg: Math.round(avg), capacity: STADIUM_CAPACITY[t.id] || 0, color: teamColor(t.id) };
-    }).sort((a, b) => b.avg - a.avg);
-  }, [filteredTeams, filteredMatches]);
+      const cap = STADIUM_CAPACITY[t.id] || 0;
+      const fillPct = cap > 0 ? Math.round((avg / cap) * 100) : 0;
+      return { name: t.short, id: t.id, avg: Math.round(avg), capacity: cap, fillPct, color: teamColor(t.id) };
+    }).sort((a, b) => showFillRate ? b.fillPct - a.fillPct : b.avg - a.avg);
+  }, [filteredTeams, filteredMatches, showFillRate]);
 
   // ═══════════════════════════════════════════
-  // WEEKLY TREND
+  // WEEKLY TREND (supports team filter)
   // ═══════════════════════════════════════════
   const weeklyData = useMemo(() => {
+    const matchesForTrend = trendTeam
+      ? filteredMatches.filter(m => m.homeTeam === trendTeam && m.attendance > 0)
+      : filteredMatches.filter(m => m.attendance > 0);
+
     const byWeek: Record<number, number[]> = {};
-    filteredMatches.filter(m => m.attendance > 0).forEach(m => {
+    matchesForTrend.forEach(m => {
       if (!byWeek[m.week]) byWeek[m.week] = [];
       byWeek[m.week].push(m.attendance);
     });
@@ -77,29 +85,30 @@ export default function Attendance() {
       week: +week, avg: Math.round(atts.reduce((s, a) => s + a, 0) / atts.length),
       max: Math.max(...atts), min: Math.min(...atts),
     })).sort((a, b) => a.week - b.week);
-  }, [filteredMatches]);
+  }, [filteredMatches, trendTeam]);
 
-  // ═══════════════════════════════════════════
-  // LEAGUE-AVERAGE CAPACITY (weighted by filtered teams)
-  // ═══════════════════════════════════════════
-  const avgCapacity = useMemo(() => {
+  // Dynamic capacity line for weekly trend
+  const trendCapacity = useMemo(() => {
+    if (trendTeam) {
+      return STADIUM_CAPACITY[trendTeam] || 0;
+    }
     const caps = filteredTeams.map(t => STADIUM_CAPACITY[t.id] || 0).filter(c => c > 0);
     return caps.length > 0 ? Math.round(caps.reduce((s, c) => s + c, 0) / caps.length) : 0;
-  }, [filteredTeams]);
+  }, [filteredTeams, trendTeam]);
+
+  const trendTeamObj = trendTeam ? getTeam(trendTeam) : null;
+  const trendColor = trendTeam ? teamColor(trendTeam) : '#00d4ff';
 
   // ═══════════════════════════════════════════
   // GRAVITATIONAL PULL — League-wide net impact
-  // For each team: sum of (attendance - home team's avg) across ALL their away games
   // ═══════════════════════════════════════════
   const gravitationalPull = useMemo(() => {
-    // First compute each team's home average using ALL matches (not filtered)
     const homeAvgs: Record<string, number> = {};
     TEAMS.forEach(t => {
       const hm = MATCHES.filter(m => m.homeTeam === t.id && m.attendance > 0);
       homeAvgs[t.id] = hm.length > 0 ? hm.reduce((s, m) => s + m.attendance, 0) / hm.length : 0;
     });
 
-    // For each team as away visitor, compute cumulative delta
     return TEAMS.map(t => {
       const awayGames = MATCHES.filter(m => m.awayTeam === t.id && m.attendance > 0);
       let totalDelta = 0;
@@ -112,8 +121,7 @@ export default function Attendance() {
         }
       });
       return {
-        name: t.short,
-        id: t.id,
+        name: t.short, id: t.id,
         totalDelta: Math.round(totalDelta),
         avgDelta: matchCount > 0 ? Math.round(totalDelta / matchCount) : 0,
         matches: matchCount,
@@ -123,18 +131,16 @@ export default function Attendance() {
   }, []);
 
   // ═══════════════════════════════════════════
-  // TEAM DRILL-DOWN: Away Impact (when selected team visits other stadiums)
+  // TEAM DRILL-DOWN: Away Impact
   // ═══════════════════════════════════════════
   const awayImpactData = useMemo(() => {
     if (!selectedTeam) return [];
-    // Home averages for all teams
     const homeAvgs: Record<string, number> = {};
     TEAMS.forEach(t => {
       const hm = MATCHES.filter(m => m.homeTeam === t.id && m.attendance > 0);
       homeAvgs[t.id] = hm.length > 0 ? hm.reduce((s, m) => s + m.attendance, 0) / hm.length : 0;
     });
 
-    // Group away games by host stadium
     const byHost: Record<string, number[]> = {};
     MATCHES.filter(m => m.awayTeam === selectedTeam && m.attendance > 0).forEach(m => {
       if (!byHost[m.homeTeam]) byHost[m.homeTeam] = [];
@@ -144,21 +150,17 @@ export default function Attendance() {
     return Object.entries(byHost).map(([hostId, atts]) => {
       const avgAtt = atts.reduce((s, a) => s + a, 0) / atts.length;
       const hostAvg = homeAvgs[hostId] || 0;
-      const delta = Math.round(avgAtt - hostAvg);
       return {
-        hostTeam: getTeam(hostId)?.short || hostId,
-        hostId,
-        delta,
-        avgAtt: Math.round(avgAtt),
-        hostAvg: Math.round(hostAvg),
-        matches: atts.length,
-        color: teamColor(hostId),
+        hostTeam: getTeam(hostId)?.short || hostId, hostId,
+        delta: Math.round(avgAtt - hostAvg),
+        avgAtt: Math.round(avgAtt), hostAvg: Math.round(hostAvg),
+        matches: atts.length, color: teamColor(hostId),
       };
     }).sort((a, b) => b.delta - a.delta);
   }, [selectedTeam]);
 
   // ═══════════════════════════════════════════
-  // TEAM DRILL-DOWN: Home Response (how home attendance changes by visitor)
+  // TEAM DRILL-DOWN: Home Response
   // ═══════════════════════════════════════════
   const homeResponseData = useMemo(() => {
     if (!selectedTeam) return [];
@@ -175,13 +177,10 @@ export default function Attendance() {
     return Object.entries(byAway).map(([awayId, atts]) => {
       const awayAvg = atts.reduce((s, a) => s + a, 0) / atts.length;
       return {
-        awayTeam: getTeam(awayId)?.short || awayId,
-        awayId,
+        awayTeam: getTeam(awayId)?.short || awayId, awayId,
         delta: Math.round(awayAvg - avgHome),
-        avgAtt: Math.round(awayAvg),
-        homeAvg: Math.round(avgHome),
-        matches: atts.length,
-        color: teamColor(awayId),
+        avgAtt: Math.round(awayAvg), homeAvg: Math.round(avgHome),
+        matches: atts.length, color: teamColor(awayId),
       };
     }).sort((a, b) => b.delta - a.delta);
   }, [selectedTeam]);
@@ -197,67 +196,82 @@ export default function Attendance() {
   // CHART COMPONENTS
   // ═══════════════════════════════════════════
 
-  const HomeBarContent = ({ height = 320 }: { height?: number }) => (
-    <div style={{ height }}>
-      <ResponsiveContainer>
-        <BarChart data={homeAvgData} margin={{ top: 5, right: 10, bottom: 60, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <XAxis dataKey="name" stroke="#8892b0" fontSize={9} tickLine={false} angle={-45} textAnchor="end" interval={0} />
-          <YAxis stroke="#8892b0" fontSize={10} tickLine={false} />
-          <Tooltip content={({ payload }) => {
-            if (!payload?.length) return null;
-            const d = payload[0].payload;
-            const pct = d.capacity > 0 ? Math.round((d.avg / d.capacity) * 100) : 0;
-            return (
-              <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
-                <div className="font-semibold" style={{ color: d.color }}>{d.name}</div>
-                <div>Avg: <span className="text-amber">{d.avg.toLocaleString()}</span></div>
-                {d.capacity > 0 && (
-                  <>
-                    <div>Capacity: <span className="text-muted-foreground">{d.capacity.toLocaleString()}</span></div>
-                    <div>Fill Rate: <span className={pct >= 90 ? 'text-emerald' : pct >= 70 ? 'text-amber' : 'text-coral'}>{pct}%</span></div>
-                  </>
-                )}
-              </div>
-            );
-          }} />
-          <Bar dataKey="avg" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(d: any) => setSelectedTeam(d.id)}
-            shape={(props: any) => {
-              const { x, y, width, height: h, payload } = props;
-              const cap = payload?.capacity || 0;
-              const avg = payload?.avg || 0;
-              const fill = props.fill || '#666';
-              const fillOp = props.fillOpacity ?? 0.7;
-              const stroke = props.stroke || 'none';
-              const sw = props.strokeWidth || 0;
-              // Calculate capacity Y position relative to bar
-              const yAxis = (y + h); // bottom of chart area
-              const barScale = avg > 0 ? h / avg : 0;
-              const capY = cap > 0 ? yAxis - (cap * barScale) : 0;
+  const HomeBarContent = ({ height = 320 }: { height?: number }) => {
+    // In fill-rate mode: dataKey is fillPct (0-100+), Y domain is 0-120
+    // In absolute mode: dataKey is avg, Y domain auto
+    const dataKey = showFillRate ? 'fillPct' : 'avg';
+    return (
+      <div style={{ height }}>
+        <ResponsiveContainer>
+          <BarChart data={homeAvgData} margin={{ top: 5, right: 10, bottom: 60, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <XAxis dataKey="name" stroke="#8892b0" fontSize={9} tickLine={false} angle={-45} textAnchor="end" interval={0} />
+            <YAxis stroke="#8892b0" fontSize={10} tickLine={false}
+              domain={showFillRate ? [0, 120] : [0, 'auto']}
+              tickFormatter={showFillRate ? (v: number) => `${v}%` : undefined}
+            />
+            <Tooltip content={({ payload }) => {
+              if (!payload?.length) return null;
+              const d = payload[0].payload;
+              const pct = d.capacity > 0 ? Math.round((d.avg / d.capacity) * 100) : 0;
               return (
-                <g>
-                  {/* The actual bar */}
-                  <rect x={x} y={y} width={width} height={h} rx={4} ry={4}
-                    fill={fill} fillOpacity={fillOp} stroke={stroke} strokeWidth={sw} />
-                  {/* Capacity ceiling marker */}
-                  {cap > 0 && (
+                <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                  <div className="font-semibold" style={{ color: d.color }}>{d.name}</div>
+                  <div>Avg: <span className="text-amber">{d.avg.toLocaleString()}</span></div>
+                  {d.capacity > 0 && (
                     <>
-                      <line x1={x - 2} y1={capY} x2={x + width + 2} y2={capY}
-                        stroke="#ff6b9d" strokeWidth={1.5} strokeDasharray="3 2" strokeOpacity={0.7} />
-                      <circle cx={x + width / 2} cy={capY} r={2} fill="#ff6b9d" fillOpacity={0.8} />
+                      <div>Capacity: <span className="text-muted-foreground">{d.capacity.toLocaleString()}</span></div>
+                      <div>Fill Rate: <span className={pct >= 90 ? 'text-emerald' : pct >= 70 ? 'text-amber' : 'text-coral'}>{pct}%</span></div>
                     </>
                   )}
-                </g>
+                </div>
               );
-            }}>
-            {homeAvgData.map((d, i) => (
-              <Cell key={i} fill={d.color} fillOpacity={selectedTeam === d.id ? 1 : 0.7} stroke={selectedTeam === d.id ? '#ffffff' : 'none'} strokeWidth={selectedTeam === d.id ? 2 : 0} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
+            }} />
+            {showFillRate && (
+              <ReferenceLine y={100} stroke="#ff6b9d" strokeDasharray="6 3" strokeWidth={1.5} strokeOpacity={0.6}
+                label={{ value: '100% Capacity', position: 'right', fill: '#ff6b9d', fontSize: 9, fontFamily: 'JetBrains Mono' }} />
+            )}
+            <Bar dataKey={dataKey} radius={[4, 4, 0, 0]} cursor="pointer"
+              onClick={(d: any) => setSelectedTeam(d.id)}
+              animationDuration={600} animationEasing="ease-in-out"
+              shape={showFillRate ? undefined : ((props: any) => {
+                const { x, y, width, height: h, payload } = props;
+                const cap = payload?.capacity || 0;
+                const avg = payload?.avg || 0;
+                const fill = props.fill || '#666';
+                const fillOp = props.fillOpacity ?? 0.7;
+                const stroke = props.stroke || 'none';
+                const sw = props.strokeWidth || 0;
+                const yAxis = (y + h);
+                const barScale = avg > 0 ? h / avg : 0;
+                const capY = cap > 0 ? yAxis - (cap * barScale) : 0;
+                return (
+                  <g>
+                    <rect x={x} y={y} width={width} height={h} rx={4} ry={4}
+                      fill={fill} fillOpacity={fillOp} stroke={stroke} strokeWidth={sw} />
+                    {cap > 0 && (
+                      <>
+                        <line x1={x - 2} y1={capY} x2={x + width + 2} y2={capY}
+                          stroke="#ff6b9d" strokeWidth={1.5} strokeDasharray="3 2" strokeOpacity={0.7} />
+                        <circle cx={x + width / 2} cy={capY} r={2} fill="#ff6b9d" fillOpacity={0.8} />
+                      </>
+                    )}
+                  </g>
+                );
+              })}
+            >
+              {homeAvgData.map((d, i) => (
+                <Cell key={i} fill={d.color}
+                  fillOpacity={selectedTeam === d.id ? 1 : 0.7}
+                  stroke={selectedTeam === d.id ? '#ffffff' : 'none'}
+                  strokeWidth={selectedTeam === d.id ? 2 : 0} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
 
   const WeeklyContent = ({ height = 220 }: { height?: number }) => (
     <div style={{ height }}>
@@ -265,20 +279,29 @@ export default function Attendance() {
         <AreaChart data={weeklyData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
           <defs>
             <linearGradient id="attGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#00d4ff" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#00d4ff" stopOpacity={0} />
+              <stop offset="5%" stopColor={trendColor} stopOpacity={0.3} />
+              <stop offset="95%" stopColor={trendColor} stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
           <XAxis dataKey="week" stroke="#8892b0" fontSize={10} tickLine={false} />
           <YAxis stroke="#8892b0" fontSize={10} tickLine={false} />
           <Tooltip contentStyle={{ background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 11, fontFamily: 'JetBrains Mono' }} />
-          {avgCapacity > 0 && (
-            <ReferenceLine y={avgCapacity} stroke="#ff6b9d" strokeDasharray="6 3" strokeWidth={1.5} strokeOpacity={0.6}
-              label={{ value: `Avg Capacity ${(avgCapacity / 1000).toFixed(1)}k`, position: 'right', fill: '#ff6b9d', fontSize: 9, fontFamily: 'JetBrains Mono' }} />
+          {trendCapacity > 0 && (
+            <ReferenceLine y={trendCapacity} stroke="#ff6b9d" strokeDasharray="6 3" strokeWidth={1.5} strokeOpacity={0.6}
+              label={{
+                value: trendTeam
+                  ? `${trendTeamObj?.short} Capacity ${(trendCapacity / 1000).toFixed(1)}k`
+                  : `Avg Capacity ${(trendCapacity / 1000).toFixed(1)}k`,
+                position: 'right', fill: '#ff6b9d', fontSize: 9, fontFamily: 'JetBrains Mono'
+              }} />
           )}
-          <Area type="monotone" dataKey="avg" stroke="#00d4ff" fill="url(#attGrad)" strokeWidth={2} name="Avg Attendance" />
-          <Line type="monotone" dataKey="max" stroke="#ffb347" strokeWidth={1} strokeDasharray="4 4" dot={false} name="Max" />
+          <Area type="monotone" dataKey="avg" stroke={trendColor} fill="url(#attGrad)" strokeWidth={2}
+            name={trendTeam ? `${trendTeamObj?.short} Home Attendance` : 'Avg Attendance'}
+            animationDuration={500} />
+          {!trendTeam && (
+            <Line type="monotone" dataKey="max" stroke="#ffb347" strokeWidth={1} strokeDasharray="4 4" dot={false} name="Max" />
+          )}
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -449,21 +472,21 @@ export default function Attendance() {
     <div className="space-y-4 mt-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <NeuCard delay={0.05} glow="cyan" className="p-4">
+        <NeuCard delay={0.05} className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Users size={14} className="text-cyan" />
             <span className="text-xs text-muted-foreground uppercase tracking-wider">Total Attendance</span>
           </div>
           <AnimatedCounter value={totalAttendance} className="text-2xl text-cyan" />
         </NeuCard>
-        <NeuCard delay={0.12} glow="amber" className="p-4">
+        <NeuCard delay={0.12} className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp size={14} className="text-amber" />
             <span className="text-xs text-muted-foreground uppercase tracking-wider">Avg per Match</span>
           </div>
           <AnimatedCounter value={avgAttendance} className="text-2xl text-amber" />
         </NeuCard>
-        <NeuCard delay={0.2} glow="emerald" className="p-4">
+        <NeuCard delay={0.2} className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <MapPin size={14} className="text-emerald" />
             <span className="text-xs text-muted-foreground uppercase tracking-wider">Highest</span>
@@ -484,28 +507,69 @@ export default function Attendance() {
         </NeuCard>
       </div>
 
-      {/* Home Attendance */}
+      {/* Home Attendance with Fill Rate Toggle */}
       <NeuCard delay={0.15} className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Average Home Attendance by Team</h3>
-          <MaximizeButton onClick={() => setMaximized('home')} />
+          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
+            {showFillRate ? 'Stadium Fill Rate by Team' : 'Average Home Attendance by Team'}
+          </h3>
+          <div className="flex items-center gap-2">
+            {/* Fill Rate Toggle */}
+            <button
+              onClick={() => setShowFillRate(!showFillRate)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
+              style={{
+                background: showFillRate ? 'rgba(0, 212, 255, 0.12)' : 'rgba(255, 255, 255, 0.04)',
+                color: showFillRate ? '#00d4ff' : '#8892b0',
+                border: `1px solid ${showFillRate ? 'rgba(0, 212, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
+              }}
+            >
+              {showFillRate ? <BarChart3 size={11} /> : <Percent size={11} />}
+              {showFillRate ? 'Absolute' : 'Fill Rate'}
+            </button>
+            <MaximizeButton onClick={() => setMaximized('home')} />
+          </div>
         </div>
         <HomeBarContent />
       </NeuCard>
 
-      {/* Weekly Trend */}
+      {/* Weekly Trend with Team Filter */}
       <NeuCard delay={0.25} className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Attendance Trend by Matchweek</h3>
-          <MaximizeButton onClick={() => setMaximized('weekly')} />
+          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
+            Attendance Trend by Matchweek
+            {trendTeamObj && (
+              <span className="ml-2 text-xs font-normal" style={{ color: trendColor }}>
+                — {trendTeamObj.short} Home Games
+              </span>
+            )}
+          </h3>
+          <div className="flex items-center gap-2">
+            {/* Team Filter Dropdown */}
+            <select
+              value={trendTeam}
+              onChange={(e) => setTrendTeam(e.target.value)}
+              className="text-[10px] font-semibold uppercase tracking-wider rounded-md px-2 py-1 transition-all duration-200"
+              style={{
+                background: trendTeam ? 'rgba(0, 212, 255, 0.08)' : '#1e1e2e',
+                color: trendTeam ? trendColor : '#8892b0',
+                border: `1px solid ${trendTeam ? 'rgba(0, 212, 255, 0.25)' : 'rgba(255, 255, 255, 0.08)'}`,
+                outline: 'none',
+              }}
+            >
+              <option value="">All Teams</option>
+              {TEAMS.slice().sort((a, b) => a.short.localeCompare(b.short)).map(t => (
+                <option key={t.id} value={t.id}>{t.short}</option>
+              ))}
+            </select>
+            <MaximizeButton onClick={() => setMaximized('weekly')} />
+          </div>
         </div>
         <WeeklyContent />
       </NeuCard>
 
-      {/* ═══════════════════════════════════════════ */}
-      {/* GRAVITATIONAL PULL — League-wide */}
-      {/* ═══════════════════════════════════════════ */}
-      <NeuCard delay={0.35} glow="cyan" className="p-4">
+      {/* Gravitational Pull */}
+      <NeuCard delay={0.35} className="p-4">
         <div className="flex items-center justify-between mb-2">
           <div>
             <div className="flex items-center gap-2">
@@ -538,12 +602,10 @@ export default function Attendance() {
         </p>
       </NeuCard>
 
-      {/* ═══════════════════════════════════════════ */}
-      {/* DRILL-DOWN: Away Impact */}
-      {/* ═══════════════════════════════════════════ */}
+      {/* Drill-Down Panels */}
       {selectedTeam && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <NeuCard delay={0.1} glow="emerald" className="p-4">
+          <NeuCard delay={0.1} className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="flex items-center gap-2">
@@ -562,7 +624,7 @@ export default function Attendance() {
             <AwayImpactContent />
           </NeuCard>
 
-          <NeuCard delay={0.15} glow="amber" className="p-4">
+          <NeuCard delay={0.15} className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="flex items-center gap-2">
@@ -584,10 +646,12 @@ export default function Attendance() {
       )}
 
       {/* Maximize Modals */}
-      <ChartModal isOpen={maximized === 'home'} onClose={() => setMaximized(null)} title="Average Home Attendance by Team">
+      <ChartModal isOpen={maximized === 'home'} onClose={() => setMaximized(null)}
+        title={showFillRate ? 'Stadium Fill Rate by Team' : 'Average Home Attendance by Team'}>
         <HomeBarContent height={600} />
       </ChartModal>
-      <ChartModal isOpen={maximized === 'weekly'} onClose={() => setMaximized(null)} title="Attendance Trend by Matchweek">
+      <ChartModal isOpen={maximized === 'weekly'} onClose={() => setMaximized(null)}
+        title={`Attendance Trend by Matchweek${trendTeamObj ? ` — ${trendTeamObj.short}` : ''}`}>
         <WeeklyContent height={600} />
       </ChartModal>
       <ChartModal isOpen={maximized === 'gravity'} onClose={() => setMaximized(null)} title="Gravitational Pull — League-Wide Away Team Impact">

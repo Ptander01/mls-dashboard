@@ -174,17 +174,11 @@
     inset -2px -2px 5px rgba(60, 60, 80, 0.06);
 }
 
-/* ============ GLOW EFFECTS ============ */
-.glow-cyan {
-  box-shadow: 0 0 15px rgba(0, 212, 255, 0.15), 0 0 30px rgba(0, 212, 255, 0.05);
-}
-
-.glow-amber {
-  box-shadow: 0 0 15px rgba(255, 179, 71, 0.15), 0 0 30px rgba(255, 179, 71, 0.05);
-}
-
+/* ============ GLOW EFFECTS (disabled — neumorphic shadow only) ============ */
+.glow-cyan,
+.glow-amber,
 .glow-emerald {
-  box-shadow: 0 0 15px rgba(0, 200, 151, 0.15), 0 0 30px rgba(0, 200, 151, 0.05);
+  /* Glow removed for cleaner neumorphic aesthetic */
 }
 
 .text-glow-cyan {
