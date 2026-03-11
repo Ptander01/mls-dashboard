@@ -724,37 +724,195 @@ input[type="range"]::-webkit-slider-thumb {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 }
 
-/* ============ THEME TOGGLE ============ */
-.theme-toggle {
-  width: 48px;
-  height: 26px;
-  border-radius: 13px;
+/* ============ 3D NEUMORPHIC THEME TOGGLE ============ */
+.theme-toggle-3d {
   position: relative;
+  width: 72px;
+  height: 36px;
+  border-radius: 18px;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    inset 3px 3px 6px var(--neu-shadow-dark),
-    inset -3px -3px 6px var(--neu-shadow-light);
-  background: var(--neu-bg-pressed);
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
-.theme-toggle .toggle-knob {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
+
+/* The recess / cavity behind the button */
+.theme-toggle-3d .toggle-cavity {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background: var(--toggle-cavity-bg);
+  box-shadow:
+    inset 2px 2px 6px var(--toggle-cavity-shadow-dark),
+    inset -2px -2px 6px var(--toggle-cavity-shadow-light);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+/* Light glow emanating from behind the button — visible in light mode */
+.theme-toggle-3d .toggle-glow {
+  position: absolute;
+  inset: -12px;
+  border-radius: 30px;
+  pointer-events: none;
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+}
+
+/* The raised pill button itself */
+.theme-toggle-3d .toggle-pill {
   position: absolute;
   top: 3px;
   left: 3px;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    3px 3px 6px var(--neu-shadow-dark),
-    -3px -3px 6px var(--neu-shadow-light);
-  background: var(--neu-bg-raised);
+  right: 3px;
+  bottom: 3px;
+  border-radius: 15px;
+  transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+}
+
+/* Icon container with transition */
+.theme-toggle-3d .toggle-icon {
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: absolute;
 }
-.theme-toggle.active .toggle-knob {
-  left: 25px;
+
+/* ---- LIGHT MODE STATE (raised, glowing) ---- */
+.theme-toggle-3d.is-light .toggle-glow {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.3) 40%,
+    transparent 70%
+  );
+  opacity: 1;
+  filter: blur(8px);
+}
+
+.theme-toggle-3d.is-light .toggle-pill {
+  background: linear-gradient(145deg, #f0f0f8, #dddde8);
+  box-shadow:
+    4px 4px 10px rgba(166, 170, 190, 0.5),
+    -4px -4px 10px rgba(255, 255, 255, 0.9),
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transform: translateY(-1px);
+}
+
+.theme-toggle-3d.is-light .toggle-icon.icon-sun {
+  opacity: 1;
+  transform: translateX(0) rotate(0deg) scale(1);
+  right: 8px;
+}
+.theme-toggle-3d.is-light .toggle-icon.icon-moon {
+  opacity: 0;
+  transform: translateX(-8px) rotate(-90deg) scale(0.5);
+  left: 8px;
+}
+
+/* Sun icon styling */
+.theme-toggle-3d .icon-sun svg {
+  filter: drop-shadow(0 0 3px rgba(217, 119, 6, 0.6));
+}
+
+/* ---- DARK MODE STATE (sunk into recess) ---- */
+.theme-toggle-3d.is-dark .toggle-glow {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 180, 220, 0.15) 0%,
+    transparent 60%
+  );
+  opacity: 0.6;
+  filter: blur(12px);
+}
+
+.theme-toggle-3d.is-dark .toggle-pill {
+  background: linear-gradient(145deg, #2a2a3e, #1e1e30);
+  box-shadow:
+    inset 2px 2px 5px rgba(0, 0, 0, 0.5),
+    inset -1px -1px 3px rgba(60, 60, 80, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+  transform: translateY(1px);
+}
+
+.theme-toggle-3d.is-dark .toggle-icon.icon-moon {
+  opacity: 1;
+  transform: translateX(0) rotate(0deg) scale(1);
+  left: 8px;
+}
+.theme-toggle-3d.is-dark .toggle-icon.icon-sun {
+  opacity: 0;
+  transform: translateX(8px) rotate(90deg) scale(0.5);
+  right: 8px;
+}
+
+/* Moon icon styling */
+.theme-toggle-3d .icon-moon svg {
+  filter: drop-shadow(0 0 4px rgba(0, 200, 255, 0.5));
+}
+
+/* Hover states */
+.theme-toggle-3d.is-light:hover .toggle-pill {
+  box-shadow:
+    5px 5px 12px rgba(166, 170, 190, 0.55),
+    -5px -5px 12px rgba(255, 255, 255, 0.95),
+    0 3px 6px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transform: translateY(-2px);
+}
+.theme-toggle-3d.is-light:hover .toggle-glow {
+  opacity: 1;
+  filter: blur(10px);
+  inset: -16px;
+}
+
+.theme-toggle-3d.is-dark:hover .toggle-pill {
+  box-shadow:
+    inset 3px 3px 6px rgba(0, 0, 0, 0.55),
+    inset -1px -1px 4px rgba(60, 60, 80, 0.12),
+    0 0 8px rgba(0, 200, 255, 0.1);
+}
+.theme-toggle-3d.is-dark:hover .toggle-glow {
+  opacity: 0.8;
+}
+
+/* Active press animation */
+.theme-toggle-3d:active .toggle-pill {
+  transition-duration: 0.15s;
+}
+.theme-toggle-3d.is-light:active .toggle-pill {
+  transform: translateY(1px);
+  box-shadow:
+    inset 2px 2px 5px rgba(166, 170, 190, 0.5),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.6);
+}
+.theme-toggle-3d.is-dark:active .toggle-pill {
+  transform: translateY(2px);
+  box-shadow:
+    inset 4px 4px 8px rgba(0, 0, 0, 0.6),
+    inset -2px -2px 4px rgba(60, 60, 80, 0.08);
+}
+
+/* Cavity color tokens */
+:root {
+  --toggle-cavity-bg: #1a1a2a;
+  --toggle-cavity-shadow-dark: rgba(0, 0, 0, 0.5);
+  --toggle-cavity-shadow-light: rgba(60, 60, 80, 0.08);
+}
+.light {
+  --toggle-cavity-bg: #d8d8e2;
+  --toggle-cavity-shadow-dark: rgba(166, 170, 190, 0.4);
+  --toggle-cavity-shadow-light: rgba(255, 255, 255, 0.6);
 }
 
 /* ============ SMOOTH THEME TRANSITION ============ */

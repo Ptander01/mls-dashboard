@@ -107,13 +107,22 @@ function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="theme-toggle"
-      style={{ opacity: isDark ? 1 : 1 }}
+      className={`theme-toggle-3d ${isDark ? 'is-dark' : 'is-light'}`}
       title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
       aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
     >
-      <div className={`toggle-knob ${!isDark ? '' : ''}`} style={{ left: isDark ? '3px' : '25px' }}>
-        {isDark ? <Moon size={11} style={{ color: 'var(--cyan)' }} /> : <Sun size={11} style={{ color: '#d97706' }} />}
+      {/* Glow emanation behind the button */}
+      <div className="toggle-glow" />
+      {/* Recessed cavity */}
+      <div className="toggle-cavity" />
+      {/* Raised pill that sinks on toggle */}
+      <div className="toggle-pill">
+        <div className="toggle-icon icon-moon">
+          <Moon size={14} style={{ color: '#00d4ff' }} />
+        </div>
+        <div className="toggle-icon icon-sun">
+          <Sun size={14} style={{ color: '#d97706' }} />
+        </div>
       </div>
     </button>
   );
