@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
 import { getTeam } from '@/lib/mlsData';
+import { mutedTeamColor, Extruded3DDot } from '@/lib/chartUtils';
+import { useTheme } from '@/contexts/ThemeContext';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
@@ -14,6 +16,8 @@ type SortKey = 'goals' | 'assists' | 'minutes' | 'shotAccuracy' | 'tackles' | 's
 
 export default function PlayerStats() {
   const { filteredPlayers } = useFilters();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [sortKey, setSortKey] = useState<SortKey>('goals');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [selectedPlayer, setSelectedPlayer] = useState<number | null>(null);
@@ -99,7 +103,8 @@ export default function PlayerStats() {
               );
             }}
           />
-          <Scatter data={scatterData} fill="var(--cyan)" fillOpacity={0.6} r={4} />
+          <Scatter data={scatterData} fill={isDark ? '#3A6A7A' : '#4A7A8A'} fillOpacity={0.8} r={5}
+            shape={(props: any) => <Extruded3DDot {...props} />} />
         </ScatterChart>
       </ResponsiveContainer>
     </div>
@@ -166,7 +171,7 @@ export default function PlayerStats() {
                 onClick={() => setSelectedPlayer(p.id)}
               >
                 <span className="font-mono text-muted-foreground w-4">{i + 1}</span>
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getTeam(p.team)?.color }} />
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: mutedTeamColor(p.team, isDark) }} />
                 <span className="flex-1 truncate">{p.name}</span>
                 <span className="font-mono text-cyan font-semibold">{p.goals}</span>
                 <div className="w-16 h-1.5 rounded-full bg-accent overflow-hidden">
@@ -229,7 +234,7 @@ export default function PlayerStats() {
 
       {/* Full Player Table */}
       <NeuCard delay={0.35} className="overflow-hidden">
-        <div className="p-3 border-b border-white/5 flex items-center justify-between">
+        <div className="p-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--table-border)' }}>
           <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Player Database</h3>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground font-mono">{sorted.length} players</span>
@@ -263,7 +268,7 @@ export default function PlayerStats() {
               {sorted.slice(0, 100).map(p => (
                 <tr key={p.id} className="cursor-pointer" onClick={() => setSelectedPlayer(p.id)}>
                   <td className="font-sans text-xs font-medium">{p.name}</td>
-                  <td><span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: getTeam(p.team)?.color }} />{getTeam(p.team)?.short}</span></td>
+                  <td><span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: mutedTeamColor(p.team, isDark) }} />{getTeam(p.team)?.short}</span></td>
                   <td><span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.position === 'FW' ? 'bg-red-500/15 text-red-400' : p.position === 'MF' ? 'bg-blue-500/15 text-blue-400' : p.position === 'DF' ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'}`}>{p.position}</span></td>
                   <td>{p.age}</td>
                   <td>{p.games}</td>
@@ -296,7 +301,7 @@ export default function PlayerStats() {
           {[...filteredPlayers].sort((a, b) => b.goals - a.goals).slice(0, 30).map((p, i) => (
             <div key={p.id} className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg hover:bg-accent transition-colors">
               <span className="font-mono text-muted-foreground w-6 text-right">{i + 1}</span>
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: getTeam(p.team)?.color }} />
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: mutedTeamColor(p.team, isDark) }} />
               <span className="flex-1 font-medium">{p.name}</span>
               <span className="text-xs text-muted-foreground">{getTeam(p.team)?.short}</span>
               <span className="font-mono text-cyan font-bold text-lg">{p.goals}</span>
@@ -351,7 +356,7 @@ export default function PlayerStats() {
               {sorted.map(p => (
                 <tr key={p.id} className="cursor-pointer" onClick={() => { setSelectedPlayer(p.id); setMaximized(null); }}>
                   <td className="font-sans text-xs font-medium">{p.name}</td>
-                  <td><span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: getTeam(p.team)?.color }} />{getTeam(p.team)?.short}</span></td>
+                  <td><span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: mutedTeamColor(p.team, isDark) }} />{getTeam(p.team)?.short}</span></td>
                   <td><span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.position === 'FW' ? 'bg-red-500/15 text-red-400' : p.position === 'MF' ? 'bg-blue-500/15 text-blue-400' : p.position === 'DF' ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'}`}>{p.position}</span></td>
                   <td>{p.age}</td>
                   <td>{p.games}</td>

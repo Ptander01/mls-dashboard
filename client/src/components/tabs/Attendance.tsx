@@ -1,6 +1,7 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
 import { TEAMS, MATCHES, getTeam } from '@/lib/mlsData';
+import { mutedTeamColor, Extruded3DBar, Extruded3DHorizontalBar, Extruded3DBarWithCeiling } from '@/lib/chartUtils';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
@@ -21,18 +22,6 @@ const STADIUM_CAPACITY: Record<string, number> = {
   SJ: 18000, SKC: 18467, STL: 22500, TOR: 30000, VAN: 22120,
 };
 
-// ─── Visibility-enhanced team colors for dark backgrounds ───
-const VIS_COLORS: Record<string, string> = {
-  'MTL': '#4488cc', 'CLB': '#ffc72c', 'DC': '#c8102e',
-  'NE': '#4477bb', 'PHI': '#4488aa', 'POR': '#00aa44',
-  'LAG': '#5588cc', 'VAN': '#5599dd',
-};
-function teamColor(id: string): string {
-  if (VIS_COLORS[id]) return VIS_COLORS[id];
-  const t = getTeam(id);
-  return t?.color || '#666';
-}
-
 export default function Attendance() {
   const { filters, filteredTeams, filteredMatches } = useFilters();
   const { theme } = useTheme();
@@ -42,17 +31,13 @@ export default function Attendance() {
   const [showFillRate, setShowFillRate] = useState(false);
   const [trendTeamOverride, setTrendTeamOverride] = useState<string | ''>('');
 
-  // Derive effective trend team: sidebar single-team selection takes priority,
-  // but the local dropdown can override it
   const effectiveTrendTeam = useMemo(() => {
     if (trendTeamOverride) return trendTeamOverride;
     if (filters.selectedTeams.length === 1) return filters.selectedTeams[0];
     return '';
   }, [trendTeamOverride, filters.selectedTeams]);
 
-  // ═══════════════════════════════════════════
-  // SUMMARY STATS
-  // ═══════════════════════════════════════════
+  // ═══ SUMMARY STATS ═══
   const avgAttendance = useMemo(() => {
     const withAtt = filteredMatches.filter(m => m.attendance > 0);
     if (withAtt.length === 0) return 0;
@@ -66,27 +51,22 @@ export default function Attendance() {
     return [...filteredMatches].sort((a, b) => b.attendance - a.attendance)[0];
   }, [filteredMatches]);
 
-  // ═══════════════════════════════════════════
-  // HOME AVERAGE ATTENDANCE (with fill rate data)
-  // ═══════════════════════════════════════════
+  // ═══ HOME AVERAGE ATTENDANCE ═══
   const homeAvgData = useMemo(() => {
     return filteredTeams.map(t => {
       const homeMatches = filteredMatches.filter(m => m.homeTeam === t.id && m.attendance > 0);
       const avg = homeMatches.length > 0 ? homeMatches.reduce((s, m) => s + m.attendance, 0) / homeMatches.length : 0;
       const cap = STADIUM_CAPACITY[t.id] || 0;
       const fillPct = cap > 0 ? Math.round((avg / cap) * 100) : 0;
-      return { name: t.short, id: t.id, avg: Math.round(avg), capacity: cap, fillPct, color: teamColor(t.id) };
+      return { name: t.short, id: t.id, avg: Math.round(avg), capacity: cap, fillPct, color: mutedTeamColor(t.id, isDark) };
     }).sort((a, b) => showFillRate ? b.fillPct - a.fillPct : b.avg - a.avg);
-  }, [filteredTeams, filteredMatches, showFillRate]);
+  }, [filteredTeams, filteredMatches, showFillRate, isDark]);
 
-  // ═══════════════════════════════════════════
-  // WEEKLY TREND (synced with sidebar + local override)
-  // ═══════════════════════════════════════════
+  // ═══ WEEKLY TREND ═══
   const weeklyData = useMemo(() => {
     const matchesForTrend = effectiveTrendTeam
       ? filteredMatches.filter(m => m.homeTeam === effectiveTrendTeam && m.attendance > 0)
       : filteredMatches.filter(m => m.attendance > 0);
-
     const byWeek: Record<number, number[]> = {};
     matchesForTrend.forEach(m => {
       if (!byWeek[m.week]) byWeek[m.week] = [];
@@ -98,52 +78,40 @@ export default function Attendance() {
     })).sort((a, b) => a.week - b.week);
   }, [filteredMatches, effectiveTrendTeam]);
 
-  // Dynamic capacity line for weekly trend
   const trendCapacity = useMemo(() => {
-    if (effectiveTrendTeam) {
-      return STADIUM_CAPACITY[effectiveTrendTeam] || 0;
-    }
+    if (effectiveTrendTeam) return STADIUM_CAPACITY[effectiveTrendTeam] || 0;
     const caps = filteredTeams.map(t => STADIUM_CAPACITY[t.id] || 0).filter(c => c > 0);
     return caps.length > 0 ? Math.round(caps.reduce((s, c) => s + c, 0) / caps.length) : 0;
   }, [filteredTeams, effectiveTrendTeam]);
 
   const trendTeamObj = effectiveTrendTeam ? getTeam(effectiveTrendTeam) : null;
-  const trendColor = effectiveTrendTeam ? teamColor(effectiveTrendTeam) : 'var(--cyan)';
+  const trendColor = effectiveTrendTeam ? mutedTeamColor(effectiveTrendTeam, isDark) : 'var(--cyan)';
 
-  // ═══════════════════════════════════════════
-  // GRAVITATIONAL PULL — League-wide net impact
-  // ═══════════════════════════════════════════
+  // ═══ GRAVITATIONAL PULL ═══
   const gravitationalPull = useMemo(() => {
     const homeAvgs: Record<string, number> = {};
     TEAMS.forEach(t => {
       const hm = MATCHES.filter(m => m.homeTeam === t.id && m.attendance > 0);
       homeAvgs[t.id] = hm.length > 0 ? hm.reduce((s, m) => s + m.attendance, 0) / hm.length : 0;
     });
-
     return TEAMS.map(t => {
       const awayGames = MATCHES.filter(m => m.awayTeam === t.id && m.attendance > 0);
-      let totalDelta = 0;
-      let matchCount = 0;
+      let totalDelta = 0, matchCount = 0;
       awayGames.forEach(m => {
         const homeAvg = homeAvgs[m.homeTeam] || 0;
-        if (homeAvg > 0) {
-          totalDelta += m.attendance - homeAvg;
-          matchCount++;
-        }
+        if (homeAvg > 0) { totalDelta += m.attendance - homeAvg; matchCount++; }
       });
       return {
         name: t.short, id: t.id,
         totalDelta: Math.round(totalDelta),
         avgDelta: matchCount > 0 ? Math.round(totalDelta / matchCount) : 0,
         matches: matchCount,
-        color: teamColor(t.id),
+        color: mutedTeamColor(t.id, isDark),
       };
     }).sort((a, b) => b.totalDelta - a.totalDelta);
-  }, []);
+  }, [isDark]);
 
-  // ═══════════════════════════════════════════
-  // TEAM DRILL-DOWN: Away Impact
-  // ═══════════════════════════════════════════
+  // ═══ DRILL-DOWN: Away Impact ═══
   const awayImpactData = useMemo(() => {
     if (!selectedTeam) return [];
     const homeAvgs: Record<string, number> = {};
@@ -151,13 +119,11 @@ export default function Attendance() {
       const hm = MATCHES.filter(m => m.homeTeam === t.id && m.attendance > 0);
       homeAvgs[t.id] = hm.length > 0 ? hm.reduce((s, m) => s + m.attendance, 0) / hm.length : 0;
     });
-
     const byHost: Record<string, number[]> = {};
     MATCHES.filter(m => m.awayTeam === selectedTeam && m.attendance > 0).forEach(m => {
       if (!byHost[m.homeTeam]) byHost[m.homeTeam] = [];
       byHost[m.homeTeam].push(m.attendance);
     });
-
     return Object.entries(byHost).map(([hostId, atts]) => {
       const avgAtt = atts.reduce((s, a) => s + a, 0) / atts.length;
       const hostAvg = homeAvgs[hostId] || 0;
@@ -165,36 +131,32 @@ export default function Attendance() {
         hostTeam: getTeam(hostId)?.short || hostId, hostId,
         delta: Math.round(avgAtt - hostAvg),
         avgAtt: Math.round(avgAtt), hostAvg: Math.round(hostAvg),
-        matches: atts.length, color: teamColor(hostId),
+        matches: atts.length, color: mutedTeamColor(hostId, isDark),
       };
     }).sort((a, b) => b.delta - a.delta);
-  }, [selectedTeam]);
+  }, [selectedTeam, isDark]);
 
-  // ═══════════════════════════════════════════
-  // TEAM DRILL-DOWN: Home Response
-  // ═══════════════════════════════════════════
+  // ═══ DRILL-DOWN: Home Response ═══
   const homeResponseData = useMemo(() => {
     if (!selectedTeam) return [];
     const homeMatches = MATCHES.filter(m => m.homeTeam === selectedTeam && m.attendance > 0);
     if (homeMatches.length === 0) return [];
     const avgHome = homeMatches.reduce((s, m) => s + m.attendance, 0) / homeMatches.length;
-
     const byAway: Record<string, number[]> = {};
     homeMatches.forEach(m => {
       if (!byAway[m.awayTeam]) byAway[m.awayTeam] = [];
       byAway[m.awayTeam].push(m.attendance);
     });
-
     return Object.entries(byAway).map(([awayId, atts]) => {
       const awayAvg = atts.reduce((s, a) => s + a, 0) / atts.length;
       return {
         awayTeam: getTeam(awayId)?.short || awayId, awayId,
         delta: Math.round(awayAvg - avgHome),
         avgAtt: Math.round(awayAvg), homeAvg: Math.round(avgHome),
-        matches: atts.length, color: teamColor(awayId),
+        matches: atts.length, color: mutedTeamColor(awayId, isDark),
       };
     }).sort((a, b) => b.delta - a.delta);
-  }, [selectedTeam]);
+  }, [selectedTeam, isDark]);
 
   const selectedTeamObj = selectedTeam ? getTeam(selectedTeam) : null;
   const selectedHomeAvg = useMemo(() => {
@@ -208,8 +170,6 @@ export default function Attendance() {
   // ═══════════════════════════════════════════
 
   const HomeBarContent = ({ height = 320 }: { height?: number }) => {
-    // In fill-rate mode: dataKey is fillPct (0-100+), Y domain is 0-120
-    // In absolute mode: dataKey is avg, Y domain auto
     const dataKey = showFillRate ? 'fillPct' : 'avg';
     return (
       <div style={{ height }}>
@@ -245,36 +205,11 @@ export default function Attendance() {
             <Bar dataKey={dataKey} radius={[4, 4, 0, 0]} cursor="pointer"
               onClick={(d: any) => { setSelectedTeam(d.id); setTrendTeamOverride(d.id); }}
               animationDuration={600} animationEasing="ease-in-out"
-              shape={showFillRate ? undefined : ((props: any) => {
-                const { x, y, width, height: h, payload } = props;
-                const cap = payload?.capacity || 0;
-                const avg = payload?.avg || 0;
-                const fill = props.fill || '#666';
-                const fillOp = props.fillOpacity ?? 0.7;
-                const stroke = props.stroke || 'none';
-                const sw = props.strokeWidth || 0;
-                const yAxis = (y + h);
-                const barScale = avg > 0 ? h / avg : 0;
-                const capY = cap > 0 ? yAxis - (cap * barScale) : 0;
-                return (
-                  <g>
-                    <rect x={x} y={y} width={width} height={h} rx={4} ry={4}
-                      fill={fill} fillOpacity={fillOp} stroke={stroke} strokeWidth={sw} />
-                    {cap > 0 && (
-                      <>
-                        <line x1={x - 2} y1={capY} x2={x + width + 2} y2={capY}
-                          stroke="#ff6b9d" strokeWidth={1.5} strokeDasharray="3 2" strokeOpacity={0.7} />
-                        <circle cx={x + width / 2} cy={capY} r={2} fill="#ff6b9d" fillOpacity={0.8} />
-                      </>
-                    )}
-                  </g>
-                );
-              })}
+              shape={showFillRate ? (props: any) => <Extruded3DBar {...props} /> : (props: any) => <Extruded3DBarWithCeiling {...props} />}
             >
               {homeAvgData.map((d, i) => (
                 <Cell key={i} fill={d.color}
-                  fillOpacity={selectedTeam === d.id ? 1 : 0.7}
-                  stroke={selectedTeam === d.id ? '#ffffff' : 'none'}
+                  stroke={selectedTeam === d.id ? (isDark ? '#ffffff' : '#333333') : 'none'}
                   strokeWidth={selectedTeam === d.id ? 2 : 0} />
               ))}
             </Bar>
@@ -284,41 +219,46 @@ export default function Attendance() {
     );
   };
 
-  const WeeklyContent = ({ height = 220 }: { height?: number }) => (
-    <div style={{ height }}>
-      <ResponsiveContainer>
-        <AreaChart data={weeklyData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-          <defs>
-            <linearGradient id="attGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={trendColor} stopOpacity={0.3} />
-              <stop offset="95%" stopColor={trendColor} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
-          <XAxis dataKey="week" stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
-          <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
-          <Tooltip contentStyle={{ background: 'var(--neu-bg-raised)', border: '1px solid var(--table-border)', borderRadius: 8, fontSize: 11, fontFamily: 'JetBrains Mono' }} />
-          {trendCapacity > 0 && (
-            <ReferenceLine y={trendCapacity} stroke="#ff6b9d" strokeDasharray="6 3" strokeWidth={1.5} strokeOpacity={0.6}
-              label={{
-                value: effectiveTrendTeam
-                  ? `${trendTeamObj?.short} Capacity ${(trendCapacity / 1000).toFixed(1)}k`
-                  : `Avg Capacity ${(trendCapacity / 1000).toFixed(1)}k`,
-                position: 'right', fill: '#ff6b9d', fontSize: 9, fontFamily: 'JetBrains Mono'
-              }} />
-          )}
-          <Area type="monotone" dataKey="avg" stroke={trendColor} fill="url(#attGrad)" strokeWidth={2}
-            name={effectiveTrendTeam ? `${trendTeamObj?.short} Home Attendance` : 'Avg Attendance'}
-            animationDuration={500} />
-          {!effectiveTrendTeam && (
-            <Line type="monotone" dataKey="max" stroke="#ffb347" strokeWidth={1} strokeDasharray="4 4" dot={false} name="Max" />
-          )}
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  );
+  const WeeklyContent = ({ height = 220 }: { height?: number }) => {
+    const areaColor = effectiveTrendTeam ? trendColor : (isDark ? '#3A6A7A' : '#4A7A8A');
+    return (
+      <div style={{ height }}>
+        <ResponsiveContainer>
+          <AreaChart data={weeklyData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+            <defs>
+              <linearGradient id="attGrad3d" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={areaColor} stopOpacity={isDark ? 0.4 : 0.3} />
+                <stop offset="50%" stopColor={areaColor} stopOpacity={isDark ? 0.15 : 0.1} />
+                <stop offset="100%" stopColor={areaColor} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
+            <XAxis dataKey="week" stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
+            <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
+            <Tooltip contentStyle={{ background: 'var(--neu-bg-raised)', border: '1px solid var(--table-border)', borderRadius: 8, fontSize: 11, fontFamily: 'JetBrains Mono' }} />
+            {trendCapacity > 0 && (
+              <ReferenceLine y={trendCapacity} stroke="#ff6b9d" strokeDasharray="6 3" strokeWidth={1.5} strokeOpacity={0.6}
+                label={{
+                  value: effectiveTrendTeam
+                    ? `${trendTeamObj?.short} Capacity ${(trendCapacity / 1000).toFixed(1)}k`
+                    : `Avg Capacity ${(trendCapacity / 1000).toFixed(1)}k`,
+                  position: 'right', fill: '#ff6b9d', fontSize: 9, fontFamily: 'JetBrains Mono'
+                }} />
+            )}
+            <Area type="monotone" dataKey="avg" stroke={areaColor} fill="url(#attGrad3d)" strokeWidth={2.5}
+              name={effectiveTrendTeam ? `${trendTeamObj?.short} Home Attendance` : 'Avg Attendance'}
+              animationDuration={500}
+              style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' }}
+            />
+            {!effectiveTrendTeam && (
+              <Line type="monotone" dataKey="max" stroke={isDark ? '#8B7B2A' : '#9A8A3A'} strokeWidth={1} strokeDasharray="4 4" dot={false} name="Max" />
+            )}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
 
-  // ─── Gravitational Pull Chart ───
   const GravitationalPullContent = ({ height = 700 }: { height?: number }) => (
     <div style={{ height }}>
       <ResponsiveContainer>
@@ -354,10 +294,13 @@ export default function Attendance() {
             );
           }} />
           <Bar dataKey="totalDelta" radius={[0, 4, 4, 0]} cursor="pointer"
-            onClick={(d: any) => { setSelectedTeam(d.id); setTrendTeamOverride(d.id); }}>
+            onClick={(d: any) => { setSelectedTeam(d.id); setTrendTeamOverride(d.id); }}
+            shape={(props: any) => <Extruded3DHorizontalBar {...props} />}
+          >
             {gravitationalPull.map((d, i) => (
-              <Cell key={i} fill={d.color} fillOpacity={selectedTeam === d.id ? 1 : 0.75}
-                stroke={selectedTeam === d.id ? '#ffffff' : 'none'} strokeWidth={selectedTeam === d.id ? 2 : 0} />
+              <Cell key={i} fill={d.color}
+                stroke={selectedTeam === d.id ? (isDark ? '#ffffff' : '#333333') : 'none'}
+                strokeWidth={selectedTeam === d.id ? 2 : 0} />
             ))}
           </Bar>
         </BarChart>
@@ -365,7 +308,6 @@ export default function Attendance() {
     </div>
   );
 
-  // ─── Away Impact Drill-Down ───
   const AwayImpactContent = ({ height = 400 }: { height?: number }) => {
     if (!selectedTeam || awayImpactData.length === 0) {
       return (
@@ -399,7 +341,7 @@ export default function Attendance() {
               return (
                 <div className="neu-raised p-3 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
                   <div className="font-semibold mb-1">
-                    <span style={{ color: teamColor(selectedTeam!) }}>{selectedTeamObj?.short}</span>
+                    <span style={{ color: mutedTeamColor(selectedTeam!, isDark) }}>{selectedTeamObj?.short}</span>
                     <span className="text-muted-foreground"> visiting </span>
                     <span style={{ color: d.color }}>{d.hostTeam}</span>
                   </div>
@@ -411,9 +353,11 @@ export default function Attendance() {
                 </div>
               );
             }} />
-            <Bar dataKey="delta" radius={[0, 4, 4, 0]}>
+            <Bar dataKey="delta" radius={[0, 4, 4, 0]}
+              shape={(props: any) => <Extruded3DHorizontalBar {...props} />}
+            >
               {awayImpactData.map((d, i) => (
-                <Cell key={i} fill={d.color} fillOpacity={0.8} />
+                <Cell key={i} fill={d.color} />
               ))}
             </Bar>
           </BarChart>
@@ -422,7 +366,6 @@ export default function Attendance() {
     );
   };
 
-  // ─── Home Response Drill-Down ───
   const HomeResponseContent = ({ height = 400 }: { height?: number }) => {
     if (!selectedTeam || homeResponseData.length === 0) {
       return (
@@ -458,7 +401,7 @@ export default function Attendance() {
                   <div className="font-semibold mb-1">
                     <span style={{ color: d.color }}>{d.awayTeam}</span>
                     <span className="text-muted-foreground"> visiting </span>
-                    <span style={{ color: teamColor(selectedTeam!) }}>{selectedTeamObj?.short}</span>
+                    <span style={{ color: mutedTeamColor(selectedTeam!, isDark) }}>{selectedTeamObj?.short}</span>
                   </div>
                   <div>Delta: <span className={d.delta >= 0 ? 'text-emerald' : 'text-coral'}>
                     {d.delta >= 0 ? '+' : ''}{d.delta.toLocaleString()}</span></div>
@@ -468,9 +411,11 @@ export default function Attendance() {
                 </div>
               );
             }} />
-            <Bar dataKey="delta" radius={[0, 4, 4, 0]}>
+            <Bar dataKey="delta" radius={[0, 4, 4, 0]}
+              shape={(props: any) => <Extruded3DHorizontalBar {...props} />}
+            >
               {homeResponseData.map((d, i) => (
-                <Cell key={i} fill={d.color} fillOpacity={0.8} />
+                <Cell key={i} fill={d.color} />
               ))}
             </Bar>
           </BarChart>
@@ -525,7 +470,6 @@ export default function Attendance() {
             {showFillRate ? 'Stadium Fill Rate by Team' : 'Average Home Attendance by Team'}
           </h3>
           <div className="flex items-center gap-2">
-            {/* Fill Rate Toggle */}
             <button
               onClick={() => setShowFillRate(!showFillRate)}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
@@ -556,7 +500,6 @@ export default function Attendance() {
             )}
           </h3>
           <div className="flex items-center gap-2">
-            {/* Team Filter Dropdown */}
             <select
               value={trendTeamOverride || (filters.selectedTeams.length === 1 ? filters.selectedTeams[0] : '')}
               onChange={(e) => setTrendTeamOverride(e.target.value)}
@@ -598,7 +541,7 @@ export default function Attendance() {
         {selectedTeam && (
           <div className="flex items-center gap-2 mb-2 ml-6">
             <span className="text-[10px] text-muted-foreground">Selected:</span>
-            <span className="text-xs font-semibold" style={{ color: teamColor(selectedTeam), fontFamily: 'Space Grotesk' }}>
+            <span className="text-xs font-semibold" style={{ color: mutedTeamColor(selectedTeam, isDark), fontFamily: 'Space Grotesk' }}>
               {selectedTeamObj?.name}
             </span>
             <button onClick={() => { setSelectedTeam(null); setTrendTeamOverride(''); }}
@@ -620,9 +563,9 @@ export default function Attendance() {
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <Target size={14} style={{ color: teamColor(selectedTeam) }} />
+                  <Target size={14} style={{ color: mutedTeamColor(selectedTeam, isDark) }} />
                   <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-                    <span style={{ color: teamColor(selectedTeam) }}>{selectedTeamObj?.short}</span>
+                    <span style={{ color: mutedTeamColor(selectedTeam, isDark) }}>{selectedTeamObj?.short}</span>
                     <span className="text-muted-foreground"> — Away Impact</span>
                   </h3>
                 </div>
@@ -639,9 +582,9 @@ export default function Attendance() {
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <Home size={14} style={{ color: teamColor(selectedTeam) }} />
+                  <Home size={14} style={{ color: mutedTeamColor(selectedTeam, isDark) }} />
                   <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-                    <span style={{ color: teamColor(selectedTeam) }}>{selectedTeamObj?.short}</span>
+                    <span style={{ color: mutedTeamColor(selectedTeam, isDark) }}>{selectedTeamObj?.short}</span>
                     <span className="text-muted-foreground"> — Home Response</span>
                   </h3>
                 </div>

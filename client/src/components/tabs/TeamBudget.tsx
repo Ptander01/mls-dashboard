@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
 import { getTeam, TEAM_BUDGETS } from '@/lib/mlsData';
+import { Extruded3DBar } from '@/lib/chartUtils';
+import { useTheme } from '@/contexts/ThemeContext';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
@@ -12,6 +14,8 @@ import { DollarSign, TrendingUp, Users, Trophy } from 'lucide-react';
 
 export default function TeamBudget() {
   const { filteredTeams, filteredPlayers } = useFilters();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [maximized, setMaximized] = useState<string | null>(null);
 
@@ -45,7 +49,7 @@ export default function TeamBudget() {
     return Object.entries(byPos).map(([pos, total]) => ({
       name: pos === 'FW' ? 'Forwards' : pos === 'MF' ? 'Midfielders' : pos === 'DF' ? 'Defenders' : 'Goalkeepers',
       value: +(total / 1000000).toFixed(2),
-      color: pos === 'FW' ? '#ff6b6b' : pos === 'MF' ? 'var(--cyan)' : pos === 'DF' ? '#00c897' : '#ffb347',
+      color: pos === 'FW' ? (isDark ? '#7A2020' : '#8A3030') : pos === 'MF' ? (isDark ? '#1A4A6A' : '#2A5A7A') : pos === 'DF' ? (isDark ? '#1A3A1A' : '#2A4A2A') : (isDark ? '#8B6914' : '#9A7828'),
     }));
   }, [selPlayers]);
 
@@ -73,9 +77,12 @@ export default function TeamBudget() {
               );
             }}
           />
-          <Bar dataKey="dp" stackId="a" fill="var(--cyan)" name="DP Spend" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="tam" stackId="a" fill="#ffb347" name="TAM Spend" />
-          <Bar dataKey="regular" stackId="a" fill="#00c897" name="Regular" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="dp" stackId="a" fill={isDark ? '#1A4A6A' : '#2A5A7A'} name="DP Spend" radius={[0, 0, 0, 0]}
+            shape={(props: any) => <Extruded3DBar {...props} />} />
+          <Bar dataKey="tam" stackId="a" fill={isDark ? '#8B6914' : '#9A7828'} name="TAM Spend"
+            shape={(props: any) => <Extruded3DBar {...props} />} />
+          <Bar dataKey="regular" stackId="a" fill={isDark ? '#1A3A1A' : '#2A4A2A'} name="Regular" radius={[3, 3, 0, 0]}
+            shape={(props: any) => <Extruded3DBar {...props} />} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -123,7 +130,7 @@ export default function TeamBudget() {
         </div>
         <BudgetBarContent />
         <div className="flex justify-center gap-6 mt-2">
-          {[{ label: 'Designated Players', color: 'var(--cyan)' }, { label: 'TAM', color: '#ffb347' }, { label: 'Regular', color: '#00c897' }].map(l => (
+          {[{ label: 'Designated Players', color: isDark ? '#1A4A6A' : '#2A5A7A' }, { label: 'TAM', color: isDark ? '#8B6914' : '#9A7828' }, { label: 'Regular', color: isDark ? '#1A3A1A' : '#2A4A2A' }].map(l => (
             <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: l.color }} />
               {l.label}
