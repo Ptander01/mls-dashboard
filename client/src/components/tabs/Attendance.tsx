@@ -10,12 +10,12 @@ import {
 } from 'recharts';
 import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home, BarChart3, Percent } from 'lucide-react';
 
-// ─── Stadium Capacities (MLS-specific seating for soccer config) ───
+// ─── Stadium Capacities (expandable max for multi-use venues) ───
 const STADIUM_CAPACITY: Record<string, number> = {
-  ATL: 42500, ATX: 20738, MTL: 19619, CLT: 30000, CHI: 20000,
+  ATL: 71000, ATX: 20738, MTL: 19619, CLT: 75000, CHI: 61500,
   COL: 18061, CLB: 20371, DC: 20000, CIN: 26000, DAL: 20500,
   HOU: 22039, MIA: 21550, LAG: 27000, LAFC: 22000, MIN: 19400,
-  NSH: 30000, NE: 20000, NYRB: 25000, NYC: 17950, ORL: 25500,
+  NSH: 30000, NE: 65878, NYRB: 25000, NYC: 28000, ORL: 25500,
   PHI: 18500, POR: 25218, RSL: 20213, SD: 35000, SEA: 37722,
   SJ: 18000, SKC: 18467, STL: 22500, TOR: 30000, VAN: 22120,
 };
@@ -33,11 +33,19 @@ function teamColor(id: string): string {
 }
 
 export default function Attendance() {
-  const { filteredTeams, filteredMatches } = useFilters();
+  const { filters, filteredTeams, filteredMatches } = useFilters();
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [maximized, setMaximized] = useState<string | null>(null);
   const [showFillRate, setShowFillRate] = useState(false);
-  const [trendTeam, setTrendTeam] = useState<string | ''>('');
+  const [trendTeamOverride, setTrendTeamOverride] = useState<string | ''>('');
+
+  // Derive effective trend team: sidebar single-team selection takes priority,
+  // but the local dropdown can override it
+  const effectiveTrendTeam = useMemo(() => {
+    if (trendTeamOverride) return trendTeamOverride;
+    if (filters.selectedTeams.length === 1) return filters.selectedTeams[0];
+    return '';
+  }, [trendTeamOverride, filters.selectedTeams]);
 
   // ═══════════════════════════════════════════
   // SUMMARY STATS
@@ -69,11 +77,11 @@ export default function Attendance() {
   }, [filteredTeams, filteredMatches, showFillRate]);
 
   // ═══════════════════════════════════════════
-  // WEEKLY TREND (supports team filter)
+  // WEEKLY TREND (synced with sidebar + local override)
   // ═══════════════════════════════════════════
   const weeklyData = useMemo(() => {
-    const matchesForTrend = trendTeam
-      ? filteredMatches.filter(m => m.homeTeam === trendTeam && m.attendance > 0)
+    const matchesForTrend = effectiveTrendTeam
+      ? filteredMatches.filter(m => m.homeTeam === effectiveTrendTeam && m.attendance > 0)
       : filteredMatches.filter(m => m.attendance > 0);
 
     const byWeek: Record<number, number[]> = {};
@@ -85,19 +93,19 @@ export default function Attendance() {
       week: +week, avg: Math.round(atts.reduce((s, a) => s + a, 0) / atts.length),
       max: Math.max(...atts), min: Math.min(...atts),
     })).sort((a, b) => a.week - b.week);
-  }, [filteredMatches, trendTeam]);
+  }, [filteredMatches, effectiveTrendTeam]);
 
   // Dynamic capacity line for weekly trend
   const trendCapacity = useMemo(() => {
-    if (trendTeam) {
-      return STADIUM_CAPACITY[trendTeam] || 0;
+    if (effectiveTrendTeam) {
+      return STADIUM_CAPACITY[effectiveTrendTeam] || 0;
     }
     const caps = filteredTeams.map(t => STADIUM_CAPACITY[t.id] || 0).filter(c => c > 0);
     return caps.length > 0 ? Math.round(caps.reduce((s, c) => s + c, 0) / caps.length) : 0;
-  }, [filteredTeams, trendTeam]);
+  }, [filteredTeams, effectiveTrendTeam]);
 
-  const trendTeamObj = trendTeam ? getTeam(trendTeam) : null;
-  const trendColor = trendTeam ? teamColor(trendTeam) : '#00d4ff';
+  const trendTeamObj = effectiveTrendTeam ? getTeam(effectiveTrendTeam) : null;
+  const trendColor = effectiveTrendTeam ? teamColor(effectiveTrendTeam) : '#00d4ff';
 
   // ═══════════════════════════════════════════
   // GRAVITATIONAL PULL — League-wide net impact
@@ -232,7 +240,7 @@ export default function Attendance() {
                 label={{ value: '100% Capacity', position: 'right', fill: '#ff6b9d', fontSize: 9, fontFamily: 'JetBrains Mono' }} />
             )}
             <Bar dataKey={dataKey} radius={[4, 4, 0, 0]} cursor="pointer"
-              onClick={(d: any) => setSelectedTeam(d.id)}
+              onClick={(d: any) => { setSelectedTeam(d.id); setTrendTeamOverride(d.id); }}
               animationDuration={600} animationEasing="ease-in-out"
               shape={showFillRate ? undefined : ((props: any) => {
                 const { x, y, width, height: h, payload } = props;
@@ -290,16 +298,16 @@ export default function Attendance() {
           {trendCapacity > 0 && (
             <ReferenceLine y={trendCapacity} stroke="#ff6b9d" strokeDasharray="6 3" strokeWidth={1.5} strokeOpacity={0.6}
               label={{
-                value: trendTeam
+                value: effectiveTrendTeam
                   ? `${trendTeamObj?.short} Capacity ${(trendCapacity / 1000).toFixed(1)}k`
                   : `Avg Capacity ${(trendCapacity / 1000).toFixed(1)}k`,
                 position: 'right', fill: '#ff6b9d', fontSize: 9, fontFamily: 'JetBrains Mono'
               }} />
           )}
           <Area type="monotone" dataKey="avg" stroke={trendColor} fill="url(#attGrad)" strokeWidth={2}
-            name={trendTeam ? `${trendTeamObj?.short} Home Attendance` : 'Avg Attendance'}
+            name={effectiveTrendTeam ? `${trendTeamObj?.short} Home Attendance` : 'Avg Attendance'}
             animationDuration={500} />
-          {!trendTeam && (
+          {!effectiveTrendTeam && (
             <Line type="monotone" dataKey="max" stroke="#ffb347" strokeWidth={1} strokeDasharray="4 4" dot={false} name="Max" />
           )}
         </AreaChart>
@@ -343,7 +351,7 @@ export default function Attendance() {
             );
           }} />
           <Bar dataKey="totalDelta" radius={[0, 4, 4, 0]} cursor="pointer"
-            onClick={(d: any) => setSelectedTeam(d.id)}>
+            onClick={(d: any) => { setSelectedTeam(d.id); setTrendTeamOverride(d.id); }}>
             {gravitationalPull.map((d, i) => (
               <Cell key={i} fill={d.color} fillOpacity={selectedTeam === d.id ? 1 : 0.75}
                 stroke={selectedTeam === d.id ? '#ffffff' : 'none'} strokeWidth={selectedTeam === d.id ? 2 : 0} />
@@ -547,13 +555,13 @@ export default function Attendance() {
           <div className="flex items-center gap-2">
             {/* Team Filter Dropdown */}
             <select
-              value={trendTeam}
-              onChange={(e) => setTrendTeam(e.target.value)}
+              value={trendTeamOverride || (filters.selectedTeams.length === 1 ? filters.selectedTeams[0] : '')}
+              onChange={(e) => setTrendTeamOverride(e.target.value)}
               className="text-[10px] font-semibold uppercase tracking-wider rounded-md px-2 py-1 transition-all duration-200"
               style={{
-                background: trendTeam ? 'rgba(0, 212, 255, 0.08)' : '#1e1e2e',
-                color: trendTeam ? trendColor : '#8892b0',
-                border: `1px solid ${trendTeam ? 'rgba(0, 212, 255, 0.25)' : 'rgba(255, 255, 255, 0.08)'}`,
+                background: effectiveTrendTeam ? 'rgba(0, 212, 255, 0.08)' : '#1e1e2e',
+                color: effectiveTrendTeam ? trendColor : '#8892b0',
+                border: `1px solid ${effectiveTrendTeam ? 'rgba(0, 212, 255, 0.25)' : 'rgba(255, 255, 255, 0.08)'}`,
                 outline: 'none',
               }}
             >
@@ -590,7 +598,7 @@ export default function Attendance() {
             <span className="text-xs font-semibold" style={{ color: teamColor(selectedTeam), fontFamily: 'Space Grotesk' }}>
               {selectedTeamObj?.name}
             </span>
-            <button onClick={() => setSelectedTeam(null)}
+            <button onClick={() => { setSelectedTeam(null); setTrendTeamOverride(''); }}
               className="text-[10px] text-muted-foreground hover:text-foreground ml-1 underline">
               Clear
             </button>
