@@ -6,7 +6,8 @@ import Attendance from '@/components/tabs/Attendance';
 import TravelMap from '@/components/tabs/TravelMap';
 import PitchMatch from '@/components/tabs/PitchMatch';
 import { useFilters } from '@/contexts/FilterContext';
-import { Users, DollarSign, BarChart3, Map, Target } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Users, DollarSign, BarChart3, Map, Target, Sun, Moon } from 'lucide-react';
 
 const HERO_IMG = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/hero-stadium-YUnnMoGMi6PoZPwoH5aXFc.webp';
 
@@ -41,15 +42,16 @@ function ZAssemblyTitle() {
         transform: phase >= 1 ? 'scaleY(1)' : 'scaleY(0)',
         transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
         transformOrigin: 'bottom',
-        boxShadow: '0 0 12px rgba(0,212,255,0.5)',
+        boxShadow: '0 0 12px var(--cyan)',
       }} />
       <div className="flex">
         {letters.map((l, i) => (
           <span
             key={`mls-${i}`}
-            className="text-4xl font-bold text-white inline-block"
+            className="text-4xl font-bold inline-block"
             style={{
               fontFamily: 'Space Grotesk',
+              color: 'var(--title-color)',
               opacity: phase >= 1 ? 1 : 0,
               transform: phase >= 1
                 ? 'perspective(800px) translateZ(0) scale(1)'
@@ -69,7 +71,7 @@ function ZAssemblyTitle() {
             className="text-4xl font-bold text-cyan inline-block"
             style={{
               fontFamily: 'Space Grotesk',
-              textShadow: phase >= 2 ? '0 0 15px rgba(0,212,255,0.5), 0 0 30px rgba(0,212,255,0.2)' : 'none',
+              textShadow: phase >= 2 ? 'var(--text-glow-cyan)' : 'none',
               opacity: phase >= 2 ? 1 : 0,
               transform: phase >= 2
                 ? 'perspective(800px) translateZ(0) translateY(0) scale(1)'
@@ -83,8 +85,10 @@ function ZAssemblyTitle() {
         ))}
       </div>
       <span
-        className="text-xs font-mono text-muted-foreground bg-white/5 px-2.5 py-1 rounded-full ml-3 border border-white/5"
+        className="text-xs font-mono text-muted-foreground px-2.5 py-1 rounded-full ml-3"
         style={{
+          background: 'var(--badge-bg)',
+          border: '1px solid var(--badge-border)',
           opacity: phase >= 3 ? 1 : 0,
           transform: phase >= 3 ? 'perspective(800px) translateZ(0)' : 'perspective(800px) translateZ(500px)',
           filter: phase >= 3 ? 'blur(0)' : 'blur(12px)',
@@ -97,11 +101,31 @@ function ZAssemblyTitle() {
   );
 }
 
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
+  return (
+    <button
+      onClick={toggleTheme}
+      className="theme-toggle"
+      style={{ opacity: isDark ? 1 : 1 }}
+      title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+      aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+    >
+      <div className={`toggle-knob ${!isDark ? '' : ''}`} style={{ left: isDark ? '3px' : '25px' }}>
+        {isDark ? <Moon size={11} style={{ color: 'var(--cyan)' }} /> : <Sun size={11} style={{ color: '#d97706' }} />}
+      </div>
+    </button>
+  );
+}
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState('players');
   const [loaded, setLoaded] = useState(false);
   const [tabTransition, setTabTransition] = useState(false);
   const { isFilterActive, filteredPlayers, filteredTeams } = useFilters();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), 100);
@@ -118,21 +142,21 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen noise-bg relative" style={{ background: '#121220' }}>
+    <div className="min-h-screen noise-bg relative" style={{ background: 'var(--page-bg)' }}>
       {/* Hero Header with cinematic entry */}
       <header className="relative overflow-hidden" style={{ height: '200px' }}>
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage: `url(${HERO_IMG})`,
-            filter: 'brightness(0.3) saturate(1.3) contrast(1.1)',
+            filter: `brightness(${isDark ? 0.3 : 0.6}) saturate(1.3) contrast(1.1)`,
             transform: loaded ? 'scale(1)' : 'scale(1.1)',
             transition: 'transform 2s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         />
         {/* Gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#12122080] to-[#121220]" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#121220cc] via-transparent to-[#12122066]" />
+        <div className="absolute inset-0" style={{ background: `linear-gradient(to bottom, var(--hero-overlay-from), var(--hero-overlay-mid), var(--hero-overlay-to))` }} />
+        <div className="absolute inset-0" style={{ background: `linear-gradient(to right, var(--hero-side-from), transparent, var(--hero-side-to))` }} />
         {/* Scan line effect */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ opacity: 0.03 }}>
           <div style={{
@@ -141,7 +165,7 @@ export default function Home() {
             left: 0,
             right: 0,
             height: '200%',
-            background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.1) 2px, rgba(0,212,255,0.1) 4px)',
+            background: `repeating-linear-gradient(0deg, transparent, transparent 2px, var(--scan-line-color) 2px, var(--scan-line-color) 4px)`,
             animation: 'scan-line 8s linear infinite',
           }} />
         </div>
@@ -154,11 +178,11 @@ export default function Home() {
             transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.2s',
           }}>
             <p className="text-xs text-muted-foreground ml-6 font-mono tracking-wider">
-              <span className="text-white/40">///</span>{' '}
+              <span style={{ color: 'var(--subtitle-color)' }}>///</span>{' '}
               {filteredTeams.length} teams{' '}
-              <span className="text-white/20">·</span>{' '}
+              <span style={{ color: 'var(--dot-separator)' }}>·</span>{' '}
               {filteredPlayers.length} players{' '}
-              <span className="text-white/20">·</span>{' '}
+              <span style={{ color: 'var(--dot-separator)' }}>·</span>{' '}
               510 matches
               {isFilterActive && (
                 <span className="text-cyan ml-2 inline-flex items-center gap-1">
@@ -173,16 +197,17 @@ export default function Home() {
 
       {/* Tab Navigation */}
       <nav
-        className="sticky top-0 z-30 px-4 py-2.5 border-b border-white/[0.03]"
+        className="sticky top-0 z-30 px-4 py-2.5"
         style={{
-          background: 'rgba(18,18,32,0.92)',
+          background: 'var(--nav-bg)',
+          borderBottom: '1px solid var(--table-border)',
           backdropFilter: 'blur(16px) saturate(1.5)',
           opacity: loaded ? 1 : 0,
           transform: loaded ? 'translateY(0)' : 'translateY(-20px)',
           transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.8s',
         }}
       >
-        <div className="max-w-[1600px] mx-auto flex gap-1 overflow-x-auto">
+        <div className="max-w-[1600px] mx-auto flex gap-1 overflow-x-auto items-center">
           {tabs.map((tab, i) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -207,7 +232,7 @@ export default function Home() {
                   <div
                     className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-cyan"
                     style={{
-                      boxShadow: '0 0 8px rgba(0,212,255,0.5)',
+                      boxShadow: '0 0 8px var(--cyan)',
                       animation: 'slide-up-fade 0.3s ease-out',
                     }}
                   />
@@ -215,6 +240,9 @@ export default function Home() {
               </button>
             );
           })}
+          <div className="ml-auto flex-shrink-0 pl-4">
+            <ThemeToggle />
+          </div>
         </div>
       </nav>
 

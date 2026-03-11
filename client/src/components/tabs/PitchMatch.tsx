@@ -117,16 +117,16 @@ function generatePassingNetwork(teamId: string) {
 function PitchLines() {
   return (
     <svg viewBox="0 0 1050 680" className="absolute inset-0 w-full h-full" style={{ zIndex: 1 }}>
-      <rect x="30" y="30" width="990" height="620" fill="none" stroke="rgba(0,212,255,0.2)" strokeWidth="2" />
-      <line x1="525" y1="30" x2="525" y2="650" stroke="rgba(0,212,255,0.15)" strokeWidth="1.5" />
-      <circle cx="525" cy="340" r="91.5" fill="none" stroke="rgba(0,212,255,0.15)" strokeWidth="1.5" />
-      <circle cx="525" cy="340" r="3" fill="rgba(0,212,255,0.3)" />
-      <rect x="30" y="138" width="165" height="404" fill="none" stroke="rgba(0,212,255,0.15)" strokeWidth="1.5" />
-      <rect x="30" y="220" width="55" height="240" fill="none" stroke="rgba(0,212,255,0.15)" strokeWidth="1.5" />
-      <rect x="855" y="138" width="165" height="404" fill="none" stroke="rgba(0,212,255,0.15)" strokeWidth="1.5" />
-      <rect x="965" y="220" width="55" height="240" fill="none" stroke="rgba(0,212,255,0.15)" strokeWidth="1.5" />
-      <circle cx="140" cy="340" r="3" fill="rgba(0,212,255,0.3)" />
-      <circle cx="910" cy="340" r="3" fill="rgba(0,212,255,0.3)" />
+      <rect x="30" y="30" width="990" height="620" fill="none" stroke="var(--pitch-line)" strokeWidth="2" />
+      <line x1="525" y1="30" x2="525" y2="650" stroke="var(--pitch-line-soft)" strokeWidth="1.5" />
+      <circle cx="525" cy="340" r="91.5" fill="none" stroke="var(--pitch-line-soft)" strokeWidth="1.5" />
+      <circle cx="525" cy="340" r="3" fill="var(--pitch-dot)" />
+      <rect x="30" y="138" width="165" height="404" fill="none" stroke="var(--pitch-line-soft)" strokeWidth="1.5" />
+      <rect x="30" y="220" width="55" height="240" fill="none" stroke="var(--pitch-line-soft)" strokeWidth="1.5" />
+      <rect x="855" y="138" width="165" height="404" fill="none" stroke="var(--pitch-line-soft)" strokeWidth="1.5" />
+      <rect x="965" y="220" width="55" height="240" fill="none" stroke="var(--pitch-line-soft)" strokeWidth="1.5" />
+      <circle cx="140" cy="340" r="3" fill="var(--pitch-dot)" />
+      <circle cx="910" cy="340" r="3" fill="var(--pitch-dot)" />
     </svg>
   );
 }
@@ -252,18 +252,18 @@ export default function PitchMatch() {
             const width = Math.max(0.3, link.weight / 15);
             return (
               <line key={i} x1={source.x} y1={source.y} x2={target.x} y2={target.y}
-                stroke="#00d4ff" strokeWidth={width} strokeOpacity={opacity} />
+                stroke="var(--cyan)" strokeWidth={width} strokeOpacity={opacity} />
             );
           })}
           {passNetwork.nodes.map((node, i) => {
             const size = Math.max(1.5, node.passes / 20);
             return (
               <g key={i}>
-                <circle cx={node.x} cy={node.y} r={size + 0.5} fill="rgba(0,212,255,0.15)" />
+                <circle cx={node.x} cy={node.y} r={size + 0.5} fill="var(--pitch-line-soft)" />
                 <circle cx={node.x} cy={node.y} r={size}
-                  fill={getTeam(selectedTeam)?.color || '#00d4ff'} stroke="#fff" strokeWidth={0.3} />
+                  fill={getTeam(selectedTeam)?.color || 'var(--cyan)'} stroke="#fff" strokeWidth={0.3} />
                 <text x={node.x} y={node.y - size - 1.5} textAnchor="middle"
-                  fill="#e8e8f0" fontSize={2.5} fontFamily="Space Grotesk">
+                  fill="var(--foreground)" fontSize={2.5} fontFamily="Space Grotesk">
                   {node.name.split(' ').pop() || ''}
                 </text>
               </g>
@@ -364,12 +364,12 @@ export default function PitchMatch() {
           {view === 'shotmap' && (
             <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-3">
               {[
-                { label: 'Total Shots', value: shotStats.total, color: '#8892b0' },
+                { label: 'Total Shots', value: shotStats.total, color: 'var(--table-header-color)' },
                 { label: 'Goals', value: shotStats.goals, color: '#00c897' },
                 { label: 'Saved', value: shotStats.saved, color: '#ffb347' },
                 { label: 'Blocked', value: shotStats.blocked, color: '#666' },
                 { label: 'Off Target', value: shotStats.offTarget, color: '#ff6b6b' },
-                { label: 'Avg xG', value: shotStats.avgXG, color: '#00d4ff' },
+                { label: 'Avg xG', value: shotStats.avgXG, color: 'var(--cyan)' },
               ].map(s => (
                 <div key={s.label} className="neu-concave rounded-lg p-2 text-center">
                   <div className="text-[10px] text-muted-foreground uppercase">{s.label}</div>

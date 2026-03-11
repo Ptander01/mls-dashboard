@@ -45,7 +45,7 @@ export default function TeamBudget() {
     return Object.entries(byPos).map(([pos, total]) => ({
       name: pos === 'FW' ? 'Forwards' : pos === 'MF' ? 'Midfielders' : pos === 'DF' ? 'Defenders' : 'Goalkeepers',
       value: +(total / 1000000).toFixed(2),
-      color: pos === 'FW' ? '#ff6b6b' : pos === 'MF' ? '#00d4ff' : pos === 'DF' ? '#00c897' : '#ffb347',
+      color: pos === 'FW' ? '#ff6b6b' : pos === 'MF' ? 'var(--cyan)' : pos === 'DF' ? '#00c897' : '#ffb347',
     }));
   }, [selPlayers]);
 
@@ -55,9 +55,9 @@ export default function TeamBudget() {
     <div style={{ height }}>
       <ResponsiveContainer>
         <BarChart data={budgetData} margin={{ top: 5, right: 10, bottom: 60, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <XAxis dataKey="name" stroke="#8892b0" fontSize={9} tickLine={false} angle={-45} textAnchor="end" interval={0} />
-          <YAxis stroke="#8892b0" fontSize={10} tickLine={false} label={{ value: '$ Millions', angle: -90, position: 'insideLeft', fill: '#8892b0', fontSize: 10 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
+          <XAxis dataKey="name" stroke="var(--table-header-color)" fontSize={9} tickLine={false} angle={-45} textAnchor="end" interval={0} />
+          <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false} label={{ value: '$ Millions', angle: -90, position: 'insideLeft', fill: 'var(--table-header-color)', fontSize: 10 }} />
           <Tooltip
             content={({ payload }) => {
               if (!payload?.length) return null;
@@ -73,7 +73,7 @@ export default function TeamBudget() {
               );
             }}
           />
-          <Bar dataKey="dp" stackId="a" fill="#00d4ff" name="DP Spend" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="dp" stackId="a" fill="var(--cyan)" name="DP Spend" radius={[0, 0, 0, 0]} />
           <Bar dataKey="tam" stackId="a" fill="#ffb347" name="TAM Spend" />
           <Bar dataKey="regular" stackId="a" fill="#00c897" name="Regular" radius={[3, 3, 0, 0]} />
         </BarChart>
@@ -123,7 +123,7 @@ export default function TeamBudget() {
         </div>
         <BudgetBarContent />
         <div className="flex justify-center gap-6 mt-2">
-          {[{ label: 'Designated Players', color: '#00d4ff' }, { label: 'TAM', color: '#ffb347' }, { label: 'Regular', color: '#00c897' }].map(l => (
+          {[{ label: 'Designated Players', color: 'var(--cyan)' }, { label: 'TAM', color: '#ffb347' }, { label: 'Regular', color: '#00c897' }].map(l => (
             <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: l.color }} />
               {l.label}
@@ -155,7 +155,7 @@ export default function TeamBudget() {
                     label={({ name, value }) => `${name}: $${value}M`} labelLine={false}>
                     {salaryBreakdown.map((d, i) => (<Cell key={i} fill={d.color} />))}
                   </Pie>
-                  <Tooltip contentStyle={{ background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 11 }} />
+                  <Tooltip contentStyle={{ background: 'var(--neu-bg-raised)', border: '1px solid var(--table-border)', borderRadius: 8, fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -212,7 +212,7 @@ export default function TeamBudget() {
                   label={({ name, value }) => `${name}: $${value}M`}>
                   {salaryBreakdown.map((d, i) => (<Cell key={i} fill={d.color} />))}
                 </Pie>
-                <Tooltip contentStyle={{ background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 13 }} />
+                <Tooltip contentStyle={{ background: 'var(--neu-bg-raised)', border: '1px solid var(--table-border)', borderRadius: 8, fontSize: 13 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>

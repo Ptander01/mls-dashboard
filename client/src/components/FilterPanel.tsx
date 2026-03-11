@@ -67,9 +67,9 @@ export default function FilterPanel() {
         className={`fixed left-0 top-0 h-full z-40 transition-transform duration-300 ease-out ${collapsed ? '-translate-x-full' : 'translate-x-0'}`}
         style={{ width: '280px' }}
       >
-        <div className="h-full neu-flat overflow-y-auto border-r border-white/5 flex flex-col">
+        <div className="h-full neu-flat overflow-y-auto border-r flex flex-col">
           {/* Header */}
-          <div className="p-4 border-b border-white/5 flex items-center justify-between">
+          <div className="p-4 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Filter size={16} className="text-cyan" />
               <span className="text-sm font-semibold tracking-wide" style={{ fontFamily: 'Space Grotesk' }}>
@@ -144,8 +144,8 @@ export default function FilterPanel() {
                     onClick={() => toggleTeam(team.id)}
                     className={`w-full text-left text-xs py-1 px-2 rounded flex items-center gap-2 transition-colors ${
                       filters.selectedTeams.includes(team.id)
-                        ? 'text-cyan bg-white/5'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-white/3'
+                        ? 'text-cyan bg-accent'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                     }`}
                   >
                     <span
@@ -231,7 +231,7 @@ export default function FilterPanel() {
 
           {/* Active filter count */}
           {isFilterActive && (
-            <div className="p-3 border-t border-white/5 text-center">
+            <div className="p-3 border-t text-center">
               <span className="text-xs text-muted-foreground">
                 Filters active — showing filtered results
               </span>

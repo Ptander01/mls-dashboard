@@ -83,9 +83,9 @@ export default function PlayerStats() {
     <div style={{ height }}>
       <ResponsiveContainer>
         <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <XAxis dataKey="shots" name="Shots" type="number" stroke="#8892b0" fontSize={10} tickLine={false} label={{ value: 'Shots', position: 'bottom', fill: '#8892b0', fontSize: 10 }} />
-          <YAxis dataKey="goals" name="Goals" stroke="#8892b0" fontSize={10} tickLine={false} label={{ value: 'Goals', angle: -90, position: 'insideLeft', fill: '#8892b0', fontSize: 10 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
+          <XAxis dataKey="shots" name="Shots" type="number" stroke="var(--table-header-color)" fontSize={10} tickLine={false} label={{ value: 'Shots', position: 'bottom', fill: 'var(--table-header-color)', fontSize: 10 }} />
+          <YAxis dataKey="goals" name="Goals" stroke="var(--table-header-color)" fontSize={10} tickLine={false} label={{ value: 'Goals', angle: -90, position: 'insideLeft', fill: 'var(--table-header-color)', fontSize: 10 }} />
           <Tooltip
             content={({ payload }) => {
               if (!payload?.length) return null;
@@ -99,7 +99,7 @@ export default function PlayerStats() {
               );
             }}
           />
-          <Scatter data={scatterData} fill="#00d4ff" fillOpacity={0.6} r={4} />
+          <Scatter data={scatterData} fill="var(--cyan)" fillOpacity={0.6} r={4} />
         </ScatterChart>
       </ResponsiveContainer>
     </div>
@@ -162,14 +162,14 @@ export default function PlayerStats() {
             {topScorers.map((p, i) => (
               <div
                 key={p.id}
-                className="flex items-center gap-2 text-xs py-1 px-2 rounded hover:bg-white/3 transition-colors cursor-pointer"
+                className="flex items-center gap-2 text-xs py-1 px-2 rounded hover:bg-accent transition-colors cursor-pointer"
                 onClick={() => setSelectedPlayer(p.id)}
               >
                 <span className="font-mono text-muted-foreground w-4">{i + 1}</span>
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getTeam(p.team)?.color }} />
                 <span className="flex-1 truncate">{p.name}</span>
                 <span className="font-mono text-cyan font-semibold">{p.goals}</span>
-                <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <div className="w-16 h-1.5 rounded-full bg-accent overflow-hidden">
                   <div className="h-full rounded-full bg-gradient-to-r from-cyan to-cyan/40" style={{ width: `${(p.goals / (topScorers[0]?.goals || 1)) * 100}%` }} />
                 </div>
               </div>
@@ -195,22 +195,22 @@ export default function PlayerStats() {
             <div style={{ height: 220 }}>
               <ResponsiveContainer>
                 <RadarChart data={radarData}>
-                  <PolarGrid stroke="rgba(255,255,255,0.08)" />
-                  <PolarAngleAxis dataKey="stat" tick={{ fill: '#8892b0', fontSize: 10 }} />
+                  <PolarGrid stroke="var(--table-border)" />
+                  <PolarAngleAxis dataKey="stat" tick={{ fill: 'var(--table-header-color)', fontSize: 10 }} />
                   <PolarRadiusAxis tick={false} axisLine={false} domain={[0, 100]} />
-                  <Radar dataKey="value" stroke="#00d4ff" fill="#00d4ff" fillOpacity={0.15} strokeWidth={2} />
+                  <Radar dataKey="value" stroke="var(--cyan)" fill="var(--cyan)" fillOpacity={0.15} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {([
-                { label: 'Goals', value: selPlayer.goals, color: '#00d4ff' },
+                { label: 'Goals', value: selPlayer.goals, color: 'var(--cyan)' },
                 { label: 'Assists', value: selPlayer.assists, color: '#ffb347' },
                 { label: 'Shots', value: selPlayer.shots, color: '#00c897' },
                 { label: 'Shot Acc', value: selPlayer.shotAccuracy, color: '#a78bfa', suffix: '%' },
                 { label: 'Tackles', value: selPlayer.tackles, color: '#ff6b6b' },
                 { label: 'Fouls', value: selPlayer.fouls, color: '#ff8c42' },
-                { label: 'Minutes', value: selPlayer.minutes, color: '#8892b0' },
+                { label: 'Minutes', value: selPlayer.minutes, color: 'var(--table-header-color)' },
                 { label: 'Yellow', value: selPlayer.yellowCards, color: '#ffb347' },
                 { label: 'Salary', value: selPlayer.salary, color: '#00c897' },
               ] as { label: string; value: number; color: string; suffix?: string }[]).map(s => (
@@ -294,13 +294,13 @@ export default function PlayerStats() {
       <ChartModal isOpen={maximized === 'scorers'} onClose={() => setMaximized(null)} title="Top Scorers">
         <div className="space-y-2">
           {[...filteredPlayers].sort((a, b) => b.goals - a.goals).slice(0, 30).map((p, i) => (
-            <div key={p.id} className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg hover:bg-white/3 transition-colors">
+            <div key={p.id} className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg hover:bg-accent transition-colors">
               <span className="font-mono text-muted-foreground w-6 text-right">{i + 1}</span>
               <span className="w-3 h-3 rounded-full" style={{ backgroundColor: getTeam(p.team)?.color }} />
               <span className="flex-1 font-medium">{p.name}</span>
               <span className="text-xs text-muted-foreground">{getTeam(p.team)?.short}</span>
               <span className="font-mono text-cyan font-bold text-lg">{p.goals}</span>
-              <div className="w-32 h-2 rounded-full bg-white/5 overflow-hidden">
+              <div className="w-32 h-2 rounded-full bg-accent overflow-hidden">
                 <div className="h-full rounded-full bg-gradient-to-r from-cyan to-cyan/40" style={{ width: `${(p.goals / (filteredPlayers[0]?.goals || 1)) * 100}%` }} />
               </div>
             </div>
@@ -313,10 +313,10 @@ export default function PlayerStats() {
           <div className="flex items-center justify-center" style={{ height: 500 }}>
             <ResponsiveContainer>
               <RadarChart data={radarData}>
-                <PolarGrid stroke="rgba(255,255,255,0.08)" />
-                <PolarAngleAxis dataKey="stat" tick={{ fill: '#8892b0', fontSize: 14 }} />
+                <PolarGrid stroke="var(--table-border)" />
+                <PolarAngleAxis dataKey="stat" tick={{ fill: 'var(--table-header-color)', fontSize: 14 }} />
                 <PolarRadiusAxis tick={false} axisLine={false} domain={[0, 100]} />
-                <Radar dataKey="value" stroke="#00d4ff" fill="#00d4ff" fillOpacity={0.15} strokeWidth={3} />
+                <Radar dataKey="value" stroke="var(--cyan)" fill="var(--cyan)" fillOpacity={0.15} strokeWidth={3} />
               </RadarChart>
             </ResponsiveContainer>
           </div>

@@ -9,6 +9,7 @@ import {
   AreaChart, Area, Line, Cell, ReferenceLine
 } from 'recharts';
 import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home, BarChart3, Percent } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // ─── Stadium Capacities (expandable max for multi-use venues) ───
 const STADIUM_CAPACITY: Record<string, number> = {
@@ -34,6 +35,8 @@ function teamColor(id: string): string {
 
 export default function Attendance() {
   const { filters, filteredTeams, filteredMatches } = useFilters();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [maximized, setMaximized] = useState<string | null>(null);
   const [showFillRate, setShowFillRate] = useState(false);
@@ -105,7 +108,7 @@ export default function Attendance() {
   }, [filteredTeams, effectiveTrendTeam]);
 
   const trendTeamObj = effectiveTrendTeam ? getTeam(effectiveTrendTeam) : null;
-  const trendColor = effectiveTrendTeam ? teamColor(effectiveTrendTeam) : '#00d4ff';
+  const trendColor = effectiveTrendTeam ? teamColor(effectiveTrendTeam) : 'var(--cyan)';
 
   // ═══════════════════════════════════════════
   // GRAVITATIONAL PULL — League-wide net impact
@@ -212,9 +215,9 @@ export default function Attendance() {
       <div style={{ height }}>
         <ResponsiveContainer>
           <BarChart data={homeAvgData} margin={{ top: 5, right: 10, bottom: 60, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis dataKey="name" stroke="#8892b0" fontSize={9} tickLine={false} angle={-45} textAnchor="end" interval={0} />
-            <YAxis stroke="#8892b0" fontSize={10} tickLine={false}
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
+            <XAxis dataKey="name" stroke="var(--table-header-color)" fontSize={9} tickLine={false} angle={-45} textAnchor="end" interval={0} />
+            <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false}
               domain={showFillRate ? [0, 120] : [0, 'auto']}
               tickFormatter={showFillRate ? (v: number) => `${v}%` : undefined}
             />
@@ -291,10 +294,10 @@ export default function Attendance() {
               <stop offset="95%" stopColor={trendColor} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <XAxis dataKey="week" stroke="#8892b0" fontSize={10} tickLine={false} />
-          <YAxis stroke="#8892b0" fontSize={10} tickLine={false} />
-          <Tooltip contentStyle={{ background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 11, fontFamily: 'JetBrains Mono' }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
+          <XAxis dataKey="week" stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
+          <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
+          <Tooltip contentStyle={{ background: 'var(--neu-bg-raised)', border: '1px solid var(--table-border)', borderRadius: 8, fontSize: 11, fontFamily: 'JetBrains Mono' }} />
           {trendCapacity > 0 && (
             <ReferenceLine y={trendCapacity} stroke="#ff6b9d" strokeDasharray="6 3" strokeWidth={1.5} strokeOpacity={0.6}
               label={{
@@ -320,22 +323,22 @@ export default function Attendance() {
     <div style={{ height }}>
       <ResponsiveContainer>
         <BarChart data={gravitationalPull} layout="vertical" margin={{ top: 5, right: 30, bottom: 5, left: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <XAxis type="number" stroke="#8892b0" fontSize={10} tickLine={false}
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
+          <XAxis type="number" stroke="var(--table-header-color)" fontSize={10} tickLine={false}
             tickFormatter={(v: number) => v >= 0 ? `+${(v/1000).toFixed(0)}k` : `${(v/1000).toFixed(0)}k`} />
-          <YAxis dataKey="name" type="category" stroke="#8892b0" fontSize={9} tickLine={false} width={110}
+          <YAxis dataKey="name" type="category" stroke="var(--table-header-color)" fontSize={9} tickLine={false} width={110}
             tick={({ x, y, payload }: any) => {
               const item = gravitationalPull.find(d => d.name === payload.value);
               return (
                 <g transform={`translate(${x},${y})`}>
                   <circle cx={-100} cy={0} r={4} fill={item?.color || '#666'} />
-                  <text x={-92} y={0} dy={4} textAnchor="start" fill="#8892b0" fontSize={9}
+                  <text x={-92} y={0} dy={4} textAnchor="start" fill="var(--table-header-color)" fontSize={9}
                     style={{ cursor: 'pointer' }}>{payload.value}</text>
                 </g>
               );
             }}
           />
-          <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+          <ReferenceLine x={0} stroke="var(--border)" strokeWidth={1} />
           <Tooltip content={({ payload }) => {
             if (!payload?.length) return null;
             const d = payload[0].payload;
@@ -375,21 +378,21 @@ export default function Attendance() {
       <div style={{ height }}>
         <ResponsiveContainer>
           <BarChart data={awayImpactData} layout="vertical" margin={{ top: 5, right: 30, bottom: 5, left: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis type="number" stroke="#8892b0" fontSize={10} tickLine={false}
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
+            <XAxis type="number" stroke="var(--table-header-color)" fontSize={10} tickLine={false}
               tickFormatter={(v: number) => v >= 0 ? `+${v.toLocaleString()}` : v.toLocaleString()} />
-            <YAxis dataKey="hostTeam" type="category" stroke="#8892b0" fontSize={9} tickLine={false} width={110}
+            <YAxis dataKey="hostTeam" type="category" stroke="var(--table-header-color)" fontSize={9} tickLine={false} width={110}
               tick={({ x, y, payload }: any) => {
                 const item = awayImpactData.find(d => d.hostTeam === payload.value);
                 return (
                   <g transform={`translate(${x},${y})`}>
                     <circle cx={-100} cy={0} r={4} fill={item?.color || '#666'} />
-                    <text x={-92} y={0} dy={4} textAnchor="start" fill="#8892b0" fontSize={9}>{payload.value}</text>
+                    <text x={-92} y={0} dy={4} textAnchor="start" fill="var(--table-header-color)" fontSize={9}>{payload.value}</text>
                   </g>
                 );
               }}
             />
-            <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+            <ReferenceLine x={0} stroke="var(--border)" strokeWidth={1} />
             <Tooltip content={({ payload }) => {
               if (!payload?.length) return null;
               const d = payload[0].payload;
@@ -432,21 +435,21 @@ export default function Attendance() {
       <div style={{ height }}>
         <ResponsiveContainer>
           <BarChart data={homeResponseData} layout="vertical" margin={{ top: 5, right: 30, bottom: 5, left: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis type="number" stroke="#8892b0" fontSize={10} tickLine={false}
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
+            <XAxis type="number" stroke="var(--table-header-color)" fontSize={10} tickLine={false}
               tickFormatter={(v: number) => v >= 0 ? `+${v.toLocaleString()}` : v.toLocaleString()} />
-            <YAxis dataKey="awayTeam" type="category" stroke="#8892b0" fontSize={9} tickLine={false} width={110}
+            <YAxis dataKey="awayTeam" type="category" stroke="var(--table-header-color)" fontSize={9} tickLine={false} width={110}
               tick={({ x, y, payload }: any) => {
                 const item = homeResponseData.find(d => d.awayTeam === payload.value);
                 return (
                   <g transform={`translate(${x},${y})`}>
                     <circle cx={-100} cy={0} r={4} fill={item?.color || '#666'} />
-                    <text x={-92} y={0} dy={4} textAnchor="start" fill="#8892b0" fontSize={9}>{payload.value}</text>
+                    <text x={-92} y={0} dy={4} textAnchor="start" fill="var(--table-header-color)" fontSize={9}>{payload.value}</text>
                   </g>
                 );
               }}
             />
-            <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+            <ReferenceLine x={0} stroke="var(--border)" strokeWidth={1} />
             <Tooltip content={({ payload }) => {
               if (!payload?.length) return null;
               const d = payload[0].payload;
@@ -527,9 +530,9 @@ export default function Attendance() {
               onClick={() => setShowFillRate(!showFillRate)}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
               style={{
-                background: showFillRate ? 'rgba(0, 212, 255, 0.12)' : 'rgba(255, 255, 255, 0.04)',
-                color: showFillRate ? '#00d4ff' : '#8892b0',
-                border: `1px solid ${showFillRate ? 'rgba(0, 212, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
+                background: showFillRate ? (isDark ? 'rgba(0, 212, 255, 0.12)' : 'rgba(8, 145, 178, 0.1)') : (isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)'),
+                color: showFillRate ? 'var(--cyan)' : 'var(--table-header-color)',
+                border: `1px solid ${showFillRate ? (isDark ? 'rgba(0, 212, 255, 0.3)' : 'rgba(8, 145, 178, 0.3)') : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')}`,
               }}
             >
               {showFillRate ? <BarChart3 size={11} /> : <Percent size={11} />}
@@ -559,9 +562,9 @@ export default function Attendance() {
               onChange={(e) => setTrendTeamOverride(e.target.value)}
               className="text-[10px] font-semibold uppercase tracking-wider rounded-md px-2 py-1 transition-all duration-200"
               style={{
-                background: effectiveTrendTeam ? 'rgba(0, 212, 255, 0.08)' : '#1e1e2e',
-                color: effectiveTrendTeam ? trendColor : '#8892b0',
-                border: `1px solid ${effectiveTrendTeam ? 'rgba(0, 212, 255, 0.25)' : 'rgba(255, 255, 255, 0.08)'}`,
+                background: effectiveTrendTeam ? (isDark ? 'rgba(0, 212, 255, 0.08)' : 'rgba(8, 145, 178, 0.08)') : 'var(--neu-bg-flat)',
+                color: effectiveTrendTeam ? trendColor : 'var(--table-header-color)',
+                border: `1px solid ${effectiveTrendTeam ? (isDark ? 'rgba(0, 212, 255, 0.25)' : 'rgba(8, 145, 178, 0.25)') : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')}`,
                 outline: 'none',
               }}
             >
