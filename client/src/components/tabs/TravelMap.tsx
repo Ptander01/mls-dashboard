@@ -716,7 +716,7 @@ function TooltipOverlay({ info, position }: {
       className="absolute pointer-events-none z-50"
       style={{ left: position.x + 12, top: position.y - 60 }}
     >
-      <div className="neu-raised rounded-lg p-3 min-w-[200px]" style={{ borderLeft: `3px solid ${info.color}` }}>
+      <div className="glass-sm p-3 min-w-[200px]" style={{ borderLeft: `3px solid ${info.color}` }}>
         <div className="flex items-center gap-2 mb-1">
           <div className="w-3 h-3 rounded-full" style={{
             background: `radial-gradient(ellipse at 30% 25%, rgba(255,255,255,0.5), ${info.color} 40%, rgba(0,0,0,0.5))`,

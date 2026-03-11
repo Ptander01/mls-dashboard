@@ -74,12 +74,12 @@ export default function TeamBudget() {
               if (!payload?.length) return null;
               const d = payload[0].payload;
               return (
-                <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                <div className="glass-sm p-2 text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
                   <div className="text-amber font-semibold">{d.name}</div>
                   <div>Total: <span className="text-amber">${d.total}M</span></div>
                   <div>DP: <span className="text-cyan">${d.dp}M</span></div>
                   <div>TAM: <span className="text-emerald">${d.tam}M</span></div>
-                  <div>Regular: <span className="text-muted-foreground">${d.regular}M</span></div>
+                  <div style={{ color: 'var(--glass-text-muted)' }}>Regular: ${d.regular}M</div>
                 </div>
               );
             }}
@@ -169,7 +169,7 @@ export default function TeamBudget() {
                     label={({ name, value }) => `${name}: $${value}M`} labelLine={false}>
                     {salaryBreakdown.map((d, i) => (<Cell key={i} fill={d.color} />))}
                   </Pie>
-                  <Tooltip contentStyle={{ background: 'var(--neu-bg-raised)', border: '1px solid var(--table-border)', borderRadius: 8, fontSize: 11 }} />
+                  <Tooltip contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'blur(20px) saturate(1.4)', WebkitBackdropFilter: 'blur(20px) saturate(1.4)', border: '1px solid var(--glass-border)', borderRadius: 12, fontSize: 11, color: 'var(--glass-text)', boxShadow: 'var(--glass-shadow)' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -226,7 +226,7 @@ export default function TeamBudget() {
                   label={({ name, value }) => `${name}: $${value}M`}>
                   {salaryBreakdown.map((d, i) => (<Cell key={i} fill={d.color} />))}
                 </Pie>
-                <Tooltip contentStyle={{ background: 'var(--neu-bg-raised)', border: '1px solid var(--table-border)', borderRadius: 8, fontSize: 13 }} />
+                <Tooltip contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'blur(20px) saturate(1.4)', WebkitBackdropFilter: 'blur(20px) saturate(1.4)', border: '1px solid var(--glass-border)', borderRadius: 12, fontSize: 13, color: 'var(--glass-text)', boxShadow: 'var(--glass-shadow)' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>

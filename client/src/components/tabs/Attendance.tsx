@@ -194,12 +194,12 @@ export default function Attendance() {
               const d = payload[0].payload;
               const pct = d.capacity > 0 ? Math.round((d.avg / d.capacity) * 100) : 0;
               return (
-                <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                <div className="glass-sm p-2 text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
                   <div className="font-semibold" style={{ color: d.color }}>{d.name}</div>
                   <div>Avg: <span className="text-amber">{d.avg.toLocaleString()}</span></div>
                   {d.capacity > 0 && (
                     <>
-                      <div>Capacity: <span className="text-muted-foreground">{d.capacity.toLocaleString()}</span></div>
+                      <div style={{ color: 'var(--glass-text-muted)' }}>Capacity: {d.capacity.toLocaleString()}</div>
                       <div>Fill Rate: <span className={pct >= 90 ? 'text-emerald' : pct >= 70 ? 'text-amber' : 'text-coral'}>{pct}%</span></div>
                     </>
                   )}
@@ -243,7 +243,7 @@ export default function Attendance() {
             <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
             <XAxis dataKey="week" stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
             <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
-            <Tooltip contentStyle={{ background: 'var(--neu-bg-raised)', border: '1px solid var(--table-border)', borderRadius: 8, fontSize: 11, fontFamily: 'JetBrains Mono' }} />
+            <Tooltip contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'blur(20px) saturate(1.4)', WebkitBackdropFilter: 'blur(20px) saturate(1.4)', border: '1px solid var(--glass-border)', borderRadius: 12, fontSize: 11, fontFamily: 'JetBrains Mono', color: 'var(--glass-text)', boxShadow: 'var(--glass-shadow)' }} />
             {trendCapacity > 0 && (
               <ReferenceLine y={trendCapacity} stroke="#ff6b9d" strokeDasharray="6 3" strokeWidth={1.5} strokeOpacity={0.6}
                 label={{
@@ -291,13 +291,13 @@ export default function Attendance() {
             if (!payload?.length) return null;
             const d = payload[0].payload;
             return (
-              <div className="neu-raised p-3 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+              <div className="glass-sm p-3 text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
                 <div className="font-semibold mb-1" style={{ color: d.color }}>{d.name}</div>
                 <div>Net Impact: <span className={d.totalDelta >= 0 ? 'text-emerald' : 'text-coral'}>
                   {d.totalDelta >= 0 ? '+' : ''}{d.totalDelta.toLocaleString()}</span></div>
                 <div>Avg Delta/Game: <span className={d.avgDelta >= 0 ? 'text-emerald' : 'text-coral'}>
                   {d.avgDelta >= 0 ? '+' : ''}{d.avgDelta.toLocaleString()}</span></div>
-                <div>Away Games: <span className="text-muted-foreground">{d.matches}</span></div>
+                <div style={{ color: 'var(--glass-text-muted)' }}>Away Games: {d.matches}</div>
               </div>
             );
           }} />
@@ -347,17 +347,17 @@ export default function Attendance() {
               if (!payload?.length) return null;
               const d = payload[0].payload;
               return (
-                <div className="neu-raised p-3 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                <div className="glass-sm p-3 text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
                   <div className="font-semibold mb-1">
                     <span style={{ color: mutedTeamColor(selectedTeam!, isDark) }}>{selectedTeamObj?.short}</span>
-                    <span className="text-muted-foreground"> visiting </span>
+                    <span style={{ color: 'var(--glass-text-muted)' }}> visiting </span>
                     <span style={{ color: d.color }}>{d.hostTeam}</span>
                   </div>
                   <div>Delta: <span className={d.delta >= 0 ? 'text-emerald' : 'text-coral'}>
                     {d.delta >= 0 ? '+' : ''}{d.delta.toLocaleString()}</span></div>
                   <div>Actual Attendance: <span className="text-cyan">{d.avgAtt.toLocaleString()}</span></div>
-                  <div>Host Avg: <span className="text-muted-foreground">{d.hostAvg.toLocaleString()}</span></div>
-                  <div>Matches: <span className="text-muted-foreground">{d.matches}</span></div>
+                  <div style={{ color: 'var(--glass-text-muted)' }}>Host Avg: {d.hostAvg.toLocaleString()}</div>
+                  <div style={{ color: 'var(--glass-text-muted)' }}>Matches: {d.matches}</div>
                 </div>
               );
             }} />
@@ -405,17 +405,17 @@ export default function Attendance() {
               if (!payload?.length) return null;
               const d = payload[0].payload;
               return (
-                <div className="neu-raised p-3 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                <div className="glass-sm p-3 text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
                   <div className="font-semibold mb-1">
                     <span style={{ color: d.color }}>{d.awayTeam}</span>
-                    <span className="text-muted-foreground"> visiting </span>
+                    <span style={{ color: 'var(--glass-text-muted)' }}> visiting </span>
                     <span style={{ color: mutedTeamColor(selectedTeam!, isDark) }}>{selectedTeamObj?.short}</span>
                   </div>
                   <div>Delta: <span className={d.delta >= 0 ? 'text-emerald' : 'text-coral'}>
                     {d.delta >= 0 ? '+' : ''}{d.delta.toLocaleString()}</span></div>
                   <div>Actual Attendance: <span className="text-cyan">{d.avgAtt.toLocaleString()}</span></div>
-                  <div>{selectedTeamObj?.short} Home Avg: <span className="text-muted-foreground">{d.homeAvg.toLocaleString()}</span></div>
-                  <div>Matches: <span className="text-muted-foreground">{d.matches}</span></div>
+                  <div style={{ color: 'var(--glass-text-muted)' }}>{selectedTeamObj?.short} Home Avg: {d.homeAvg.toLocaleString()}</div>
+                  <div style={{ color: 'var(--glass-text-muted)' }}>Matches: {d.matches}</div>
                 </div>
               );
             }} />

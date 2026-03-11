@@ -172,6 +172,15 @@
   --table-tile-outer-highlight: rgba(60, 60, 80, 0.08);
   --table-hover-tile: #2a2a42;
 
+  /* Glassmorphism tokens */
+  --glass-bg: rgba(20, 20, 40, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --glass-blur: 20px;
+  --glass-text: rgba(255, 255, 255, 0.92);
+  --glass-text-muted: rgba(255, 255, 255, 0.6);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 0 0 0.5px rgba(255, 255, 255, 0.05);
+
   /* Pitch visualization */
   --pitch-line: rgba(0, 212, 255, 0.2);
   --pitch-line-soft: rgba(0, 212, 255, 0.15);
@@ -298,6 +307,15 @@
   --table-tile-outer-highlight: rgba(255, 255, 255, 0.65);
   --table-hover-tile: #eaeaf4;
 
+  /* Glassmorphism tokens */
+  --glass-bg: rgba(240, 240, 248, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --glass-blur: 20px;
+  --glass-text: rgba(20, 20, 40, 0.92);
+  --glass-text-muted: rgba(20, 20, 40, 0.6);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 0 0 0.5px rgba(255, 255, 255, 0.4);
+
   /* Pitch visualization */
   --pitch-line: rgba(8, 145, 178, 0.25);
   --pitch-line-soft: rgba(8, 145, 178, 0.18);
@@ -389,6 +407,39 @@
   box-shadow:
     inset 2px 2px 5px var(--neu-shadow-dark),
     inset -2px -2px 5px var(--neu-shadow-light);
+}
+
+/* ============ GLASSMORPHISM ============ */
+/* Ensure Recharts tooltip wrapper is transparent so glass effect shows */
+.recharts-tooltip-wrapper {
+  pointer-events: none;
+}
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--glass-shadow) !important;
+  color: var(--glass-text) !important;
+}
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+  color: var(--glass-text);
+  border-radius: 12px;
+}
+.glass-sm {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+  color: var(--glass-text);
+  border-radius: 8px;
 }
 
 /* ============ GLOW EFFECTS ============ */

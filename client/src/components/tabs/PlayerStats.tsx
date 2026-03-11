@@ -366,9 +366,9 @@ export default function PlayerStats() {
               if (!payload?.length) return null;
               const d = payload[0].payload;
               return (
-                <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                <div className="glass-sm p-2 text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
                   <div className="text-cyan font-semibold">{d.name}</div>
-                  <div className="text-muted-foreground">{d.team} · {d.position}</div>
+                  <div style={{ color: 'var(--glass-text-muted)' }}>{d.team} · {d.position}</div>
                   <div>
                     {xOpt.label}: <span className="text-amber">{xOpt.format ? xOpt.format(d.xVal) : d.xVal.toLocaleString()}</span>
                     {' | '}
@@ -784,9 +784,9 @@ function ScatterChartWithTrend({
               if (!payload?.length) return null;
               const d = payload[0].payload;
               return (
-                <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                <div className="glass-sm p-2 text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
                   <div className="text-cyan font-semibold">{d.name}</div>
-                  <div className="text-muted-foreground">{d.team} · {d.position}</div>
+                  <div style={{ color: 'var(--glass-text-muted)' }}>{d.team} · {d.position}</div>
                   <div>
                     {xOpt.label}: <span className="text-amber">{xOpt.format ? xOpt.format(d.xVal) : d.xVal.toLocaleString()}</span>
                     {' | '}
