@@ -350,7 +350,7 @@ export default function PlayerStats() {
             <MaximizeButton onClick={() => setMaximized('table')} />
           </div>
         </div>
-        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto" style={{ background: 'var(--neu-bg-concave-from)', padding: '2px 0' }}>
           <table className="data-table">
             <thead>
               <tr>

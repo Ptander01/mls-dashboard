@@ -164,6 +164,14 @@
   --noise-opacity: 0.03;
   --hero-brightness: 0.3;
 
+  /* Table tile neumorphic tokens */
+  --table-tile-highlight: rgba(255, 255, 255, 0.06);
+  --table-tile-highlight-hover: rgba(255, 255, 255, 0.09);
+  --table-tile-shadow: rgba(0, 0, 0, 0.3);
+  --table-tile-outer-shadow: rgba(0, 0, 0, 0.35);
+  --table-tile-outer-highlight: rgba(60, 60, 80, 0.08);
+  --table-hover-tile: #2a2a42;
+
   /* Pitch visualization */
   --pitch-line: rgba(0, 212, 255, 0.2);
   --pitch-line-soft: rgba(0, 212, 255, 0.15);
@@ -281,6 +289,14 @@
   --scan-line-color: rgba(8, 145, 178, 0.05);
   --noise-opacity: 0.015;
   --hero-brightness: 0.6;
+
+  /* Table tile neumorphic tokens */
+  --table-tile-highlight: rgba(255, 255, 255, 0.7);
+  --table-tile-highlight-hover: rgba(255, 255, 255, 0.85);
+  --table-tile-shadow: rgba(166, 170, 190, 0.3);
+  --table-tile-outer-shadow: rgba(166, 170, 190, 0.3);
+  --table-tile-outer-highlight: rgba(255, 255, 255, 0.65);
+  --table-hover-tile: #eaeaf4;
 
   /* Pitch visualization */
   --pitch-line: rgba(8, 145, 178, 0.25);
@@ -437,11 +453,12 @@
   background: var(--scrollbar-thumb-hover);
 }
 
-/* ============ DATA TABLE ============ */
+/* ============ DATA TABLE — Neumorphic Raised Tiles ============ */
 .data-table {
   width: 100%;
   border-collapse: separate;
-  border-spacing: 0;
+  border-spacing: 0 3px; /* recessed channel gap between rows */
+  padding: 0 4px;
 }
 .data-table th {
   background: var(--table-header-bg);
@@ -452,24 +469,51 @@
   letter-spacing: 0.08em;
   padding: 0.6rem 0.8rem;
   text-align: left;
-  border-bottom: 1px solid var(--table-border);
   position: sticky;
   top: 0;
   z-index: 2;
   font-family: 'Space Grotesk', sans-serif;
+  border-bottom: none;
 }
+/* First and last header cells get rounded corners */
+.data-table th:first-child { border-radius: 6px 0 0 6px; }
+.data-table th:last-child { border-radius: 0 6px 6px 0; }
+
 .data-table td {
-  padding: 0.5rem 0.8rem;
-  font-size: 0.8rem;
-  border-bottom: 1px solid var(--table-row-border);
+  padding: 0.55rem 0.8rem;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.75rem;
+  border-bottom: none;
+  position: relative;
 }
+
+/* Raised tile effect on each row */
 .data-table tbody tr {
-  transition: background 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--neu-bg-raised);
+  box-shadow:
+    /* Top-left highlight edge (light coming from top-left) */
+    inset 0 1px 0 0 var(--table-tile-highlight),
+    /* Bottom-right shadow edge */
+    inset 0 -1px 0 0 var(--table-tile-shadow),
+    /* Outer raised shadow */
+    2px 2px 4px var(--table-tile-outer-shadow),
+    -1px -1px 3px var(--table-tile-outer-highlight);
+  border-radius: 6px;
 }
+/* Round the first and last cells of each row */
+.data-table tbody tr td:first-child { border-radius: 6px 0 0 6px; }
+.data-table tbody tr td:last-child { border-radius: 0 6px 6px 0; }
+
+/* Hover: slightly more elevated, subtle lift */
 .data-table tbody tr:hover {
-  background: var(--table-hover);
+  background: var(--table-hover-tile);
+  box-shadow:
+    inset 0 1px 0 0 var(--table-tile-highlight-hover),
+    inset 0 -1px 0 0 var(--table-tile-shadow),
+    3px 3px 6px var(--table-tile-outer-shadow),
+    -2px -2px 4px var(--table-tile-outer-highlight);
+  transform: translateY(-1px);
 }
 
 /* ============ ANIMATIONS ============ */
