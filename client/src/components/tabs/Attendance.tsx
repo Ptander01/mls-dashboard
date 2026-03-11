@@ -10,6 +10,16 @@ import {
 } from 'recharts';
 import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home } from 'lucide-react';
 
+// ─── Stadium Capacities (MLS-specific seating for soccer config) ───
+const STADIUM_CAPACITY: Record<string, number> = {
+  ATL: 42500, ATX: 20738, MTL: 19619, CLT: 30000, CHI: 20000,
+  COL: 18061, CLB: 20371, DC: 20000, CIN: 26000, DAL: 20500,
+  HOU: 22039, MIA: 21550, LAG: 27000, LAFC: 22000, MIN: 19400,
+  NSH: 30000, NE: 20000, NYRB: 25000, NYC: 17950, ORL: 25500,
+  PHI: 18500, POR: 25218, RSL: 20213, SD: 35000, SEA: 37722,
+  SJ: 18000, SKC: 18467, STL: 22500, TOR: 30000, VAN: 22120,
+};
+
 // ─── Visibility-enhanced team colors for dark backgrounds ───
 const VIS_COLORS: Record<string, string> = {
   'MTL': '#4488cc', 'CLB': '#ffc72c', 'DC': '#c8102e',
@@ -50,7 +60,7 @@ export default function Attendance() {
     return filteredTeams.map(t => {
       const homeMatches = filteredMatches.filter(m => m.homeTeam === t.id && m.attendance > 0);
       const avg = homeMatches.length > 0 ? homeMatches.reduce((s, m) => s + m.attendance, 0) / homeMatches.length : 0;
-      return { name: t.short, id: t.id, avg: Math.round(avg), color: teamColor(t.id) };
+      return { name: t.short, id: t.id, avg: Math.round(avg), capacity: STADIUM_CAPACITY[t.id] || 0, color: teamColor(t.id) };
     }).sort((a, b) => b.avg - a.avg);
   }, [filteredTeams, filteredMatches]);
 
@@ -68,6 +78,14 @@ export default function Attendance() {
       max: Math.max(...atts), min: Math.min(...atts),
     })).sort((a, b) => a.week - b.week);
   }, [filteredMatches]);
+
+  // ═══════════════════════════════════════════
+  // LEAGUE-AVERAGE CAPACITY (weighted by filtered teams)
+  // ═══════════════════════════════════════════
+  const avgCapacity = useMemo(() => {
+    const caps = filteredTeams.map(t => STADIUM_CAPACITY[t.id] || 0).filter(c => c > 0);
+    return caps.length > 0 ? Math.round(caps.reduce((s, c) => s + c, 0) / caps.length) : 0;
+  }, [filteredTeams]);
 
   // ═══════════════════════════════════════════
   // GRAVITATIONAL PULL — League-wide net impact
@@ -189,14 +207,49 @@ export default function Attendance() {
           <Tooltip content={({ payload }) => {
             if (!payload?.length) return null;
             const d = payload[0].payload;
+            const pct = d.capacity > 0 ? Math.round((d.avg / d.capacity) * 100) : 0;
             return (
               <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
                 <div className="font-semibold" style={{ color: d.color }}>{d.name}</div>
                 <div>Avg: <span className="text-amber">{d.avg.toLocaleString()}</span></div>
+                {d.capacity > 0 && (
+                  <>
+                    <div>Capacity: <span className="text-muted-foreground">{d.capacity.toLocaleString()}</span></div>
+                    <div>Fill Rate: <span className={pct >= 90 ? 'text-emerald' : pct >= 70 ? 'text-amber' : 'text-coral'}>{pct}%</span></div>
+                  </>
+                )}
               </div>
             );
           }} />
-          <Bar dataKey="avg" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(d: any) => setSelectedTeam(d.id)}>
+          <Bar dataKey="avg" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(d: any) => setSelectedTeam(d.id)}
+            shape={(props: any) => {
+              const { x, y, width, height: h, payload } = props;
+              const cap = payload?.capacity || 0;
+              const avg = payload?.avg || 0;
+              const fill = props.fill || '#666';
+              const fillOp = props.fillOpacity ?? 0.7;
+              const stroke = props.stroke || 'none';
+              const sw = props.strokeWidth || 0;
+              // Calculate capacity Y position relative to bar
+              const yAxis = (y + h); // bottom of chart area
+              const barScale = avg > 0 ? h / avg : 0;
+              const capY = cap > 0 ? yAxis - (cap * barScale) : 0;
+              return (
+                <g>
+                  {/* The actual bar */}
+                  <rect x={x} y={y} width={width} height={h} rx={4} ry={4}
+                    fill={fill} fillOpacity={fillOp} stroke={stroke} strokeWidth={sw} />
+                  {/* Capacity ceiling marker */}
+                  {cap > 0 && (
+                    <>
+                      <line x1={x - 2} y1={capY} x2={x + width + 2} y2={capY}
+                        stroke="#ff6b9d" strokeWidth={1.5} strokeDasharray="3 2" strokeOpacity={0.7} />
+                      <circle cx={x + width / 2} cy={capY} r={2} fill="#ff6b9d" fillOpacity={0.8} />
+                    </>
+                  )}
+                </g>
+              );
+            }}>
             {homeAvgData.map((d, i) => (
               <Cell key={i} fill={d.color} fillOpacity={selectedTeam === d.id ? 1 : 0.7} stroke={selectedTeam === d.id ? '#ffffff' : 'none'} strokeWidth={selectedTeam === d.id ? 2 : 0} />
             ))}
@@ -220,6 +273,10 @@ export default function Attendance() {
           <XAxis dataKey="week" stroke="#8892b0" fontSize={10} tickLine={false} />
           <YAxis stroke="#8892b0" fontSize={10} tickLine={false} />
           <Tooltip contentStyle={{ background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 11, fontFamily: 'JetBrains Mono' }} />
+          {avgCapacity > 0 && (
+            <ReferenceLine y={avgCapacity} stroke="#ff6b9d" strokeDasharray="6 3" strokeWidth={1.5} strokeOpacity={0.6}
+              label={{ value: `Avg Capacity ${(avgCapacity / 1000).toFixed(1)}k`, position: 'right', fill: '#ff6b9d', fontSize: 9, fontFamily: 'JetBrains Mono' }} />
+          )}
           <Area type="monotone" dataKey="avg" stroke="#00d4ff" fill="url(#attGrad)" strokeWidth={2} name="Avg Attendance" />
           <Line type="monotone" dataKey="max" stroke="#ffb347" strokeWidth={1} strokeDasharray="4 4" dot={false} name="Max" />
         </AreaChart>
