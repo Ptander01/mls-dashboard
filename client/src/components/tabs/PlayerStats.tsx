@@ -1,16 +1,17 @@
 import { useState, useMemo } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
 import { getTeam } from '@/lib/mlsData';
-import { mutedTeamColor, Extruded3DDot } from '@/lib/chartUtils';
+import { mutedTeamColor, positionColor, Extruded3DDot, linearRegression } from '@/lib/chartUtils';
 import { useTheme } from '@/contexts/ThemeContext';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  ReferenceLine
 } from 'recharts';
-import { ArrowUpDown, TrendingUp, Crosshair, Shield, Zap } from 'lucide-react';
+import { ArrowUpDown, TrendingUp, Crosshair, Shield, Zap, Palette } from 'lucide-react';
 
 type SortKey = 'goals' | 'assists' | 'minutes' | 'shotAccuracy' | 'tackles' | 'shots' | 'salary' | 'name';
 
@@ -19,7 +20,6 @@ interface AxisOption {
   key: string;
   label: string;
   format?: (v: number) => string;
-  minFilter?: number; // minimum value to include player (avoid clutter at 0)
 }
 
 const AXIS_OPTIONS: AxisOption[] = [
@@ -47,6 +47,17 @@ function getAxisOption(key: string): AxisOption {
   return AXIS_OPTIONS.find(o => o.key === key) || AXIS_OPTIONS[0];
 }
 
+/* Color mode for scatter dots */
+type ColorMode = 'team' | 'position';
+
+/* Position legend data */
+const POSITION_LEGEND = [
+  { pos: 'FW', label: 'Forward', darkColor: '#9A3A3A', lightColor: '#B04040' },
+  { pos: 'MF', label: 'Midfielder', darkColor: '#3A5A8A', lightColor: '#4A6A9A' },
+  { pos: 'DF', label: 'Defender', darkColor: '#3A6A4A', lightColor: '#4A7A5A' },
+  { pos: 'GK', label: 'Goalkeeper', darkColor: '#8A7A3A', lightColor: '#9A8A4A' },
+];
+
 export default function PlayerStats() {
   const { filteredPlayers } = useFilters();
   const { theme } = useTheme();
@@ -59,6 +70,12 @@ export default function PlayerStats() {
   /* Scatter axis state */
   const [scatterX, setScatterX] = useState('shots');
   const [scatterY, setScatterY] = useState('goals');
+
+  /* Color mode toggle */
+  const [colorMode, setColorMode] = useState<ColorMode>('team');
+
+  /* Show/hide trend line */
+  const [showTrendLine, setShowTrendLine] = useState(true);
 
   const sorted = useMemo(() => {
     return [...filteredPlayers].sort((a, b) => {
@@ -82,7 +99,7 @@ export default function PlayerStats() {
   /* Dynamic scatter data based on selected axes */
   const scatterData = useMemo(() =>
     filteredPlayers
-      .filter(p => p.minutes > 200) // minimum playing time filter
+      .filter(p => p.minutes > 200)
       .map(p => ({
         name: p.name,
         xVal: (p as any)[scatterX] as number,
@@ -93,6 +110,30 @@ export default function PlayerStats() {
       })),
     [filteredPlayers, scatterX, scatterY]
   );
+
+  /* Linear regression computation */
+  const regression = useMemo(() => {
+    const pts = scatterData
+      .filter(d => d.xVal != null && d.yVal != null && isFinite(d.xVal) && isFinite(d.yVal))
+      .map(d => ({ x: d.xVal, y: d.yVal }));
+    return linearRegression(pts);
+  }, [scatterData]);
+
+  /* Trend line endpoints — extend slightly beyond data range */
+  const trendLineData = useMemo(() => {
+    if (!showTrendLine || scatterData.length < 3) return null;
+    const xVals = scatterData.map(d => d.xVal).filter(v => isFinite(v));
+    if (xVals.length < 2) return null;
+    const xMin = Math.min(...xVals);
+    const xMax = Math.max(...xVals);
+    const pad = (xMax - xMin) * 0.02;
+    const x1 = xMin - pad;
+    const x2 = xMax + pad;
+    return [
+      { x: x1, y: regression.slope * x1 + regression.intercept },
+      { x: x2, y: regression.slope * x2 + regression.intercept },
+    ];
+  }, [showTrendLine, scatterData, regression]);
 
   const avgGoals = filteredPlayers.length > 0 ? filteredPlayers.reduce((s, p) => s + p.goals, 0) / filteredPlayers.length : 0;
   const avgAssists = filteredPlayers.length > 0 ? filteredPlayers.reduce((s, p) => s + p.assists, 0) / filteredPlayers.length : 0;
@@ -144,7 +185,7 @@ export default function PlayerStats() {
         onChange={e => onChange(e.target.value)}
         className="text-xs font-mono px-2 py-1 rounded-md border-0 cursor-pointer transition-all focus:outline-none focus:ring-1 focus:ring-cyan/50"
         style={{
-          background: 'var(--card-bg)',
+          background: 'var(--neu-bg-pressed)',
           color: 'var(--foreground)',
           boxShadow: isDark
             ? 'inset 2px 2px 4px rgba(0,0,0,0.4), inset -1px -1px 3px rgba(255,255,255,0.05)'
@@ -157,6 +198,143 @@ export default function PlayerStats() {
       </select>
     </div>
   );
+
+  /* ─── COLOR MODE TOGGLE BUTTON ─── */
+  const ColorModeToggle = () => (
+    <button
+      onClick={() => setColorMode(m => m === 'team' ? 'position' : 'team')}
+      className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md transition-all"
+      style={{
+        background: 'var(--neu-bg-pressed)',
+        color: colorMode === 'position' ? 'var(--cyan)' : 'var(--muted-foreground)',
+        boxShadow: colorMode === 'position'
+          ? (isDark
+              ? 'inset 2px 2px 4px rgba(0,0,0,0.5), inset -1px -1px 3px rgba(60,60,80,0.08)'
+              : 'inset 2px 2px 4px rgba(0,0,0,0.1), inset -1px -1px 3px rgba(255,255,255,0.5)')
+          : (isDark
+              ? '2px 2px 4px rgba(0,0,0,0.4), -1px -1px 3px rgba(60,60,80,0.08)'
+              : '2px 2px 4px rgba(166,170,190,0.3), -1px -1px 3px rgba(255,255,255,0.7)'),
+        fontFamily: 'Space Grotesk, sans-serif',
+      }}
+      title={colorMode === 'team' ? 'Switch to position colors' : 'Switch to team colors'}
+    >
+      <Palette size={11} />
+      {colorMode === 'team' ? 'TEAM' : 'POS'}
+    </button>
+  );
+
+  /* ─── TREND LINE TOGGLE ─── */
+  const TrendLineToggle = () => (
+    <button
+      onClick={() => setShowTrendLine(v => !v)}
+      className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md transition-all"
+      style={{
+        background: 'var(--neu-bg-pressed)',
+        color: showTrendLine ? 'var(--amber)' : 'var(--muted-foreground)',
+        boxShadow: showTrendLine
+          ? (isDark
+              ? 'inset 2px 2px 4px rgba(0,0,0,0.5), inset -1px -1px 3px rgba(60,60,80,0.08)'
+              : 'inset 2px 2px 4px rgba(0,0,0,0.1), inset -1px -1px 3px rgba(255,255,255,0.5)')
+          : (isDark
+              ? '2px 2px 4px rgba(0,0,0,0.4), -1px -1px 3px rgba(60,60,80,0.08)'
+              : '2px 2px 4px rgba(166,170,190,0.3), -1px -1px 3px rgba(255,255,255,0.7)'),
+        fontFamily: 'Space Grotesk, sans-serif',
+      }}
+      title={showTrendLine ? 'Hide trend line' : 'Show trend line'}
+    >
+      <TrendingUp size={11} />
+      TREND
+    </button>
+  );
+
+  /* ─── POSITION LEGEND ─── */
+  const PositionLegend = () => {
+    if (colorMode !== 'position') return null;
+    return (
+      <div className="flex items-center gap-3 mt-1.5">
+        {POSITION_LEGEND.map(p => (
+          <div key={p.pos} className="flex items-center gap-1">
+            <span
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: isDark ? p.darkColor : p.lightColor }}
+            />
+            <span className="text-[9px] text-muted-foreground font-medium">{p.label}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  /* ─── R² BADGE ─── */
+  const R2Badge = () => {
+    if (!showTrendLine || scatterData.length < 3) return null;
+    const r2 = regression.r2;
+    const strength = r2 >= 0.7 ? 'Strong' : r2 >= 0.4 ? 'Moderate' : r2 >= 0.15 ? 'Weak' : 'Very Weak';
+    const color = r2 >= 0.7 ? 'var(--emerald)' : r2 >= 0.4 ? 'var(--amber)' : 'var(--muted-foreground)';
+    return (
+      <div
+        className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-mono"
+        style={{
+          background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+          color,
+        }}
+      >
+        <span>R<sup>2</sup> = {r2.toFixed(3)}</span>
+        <span className="text-muted-foreground">({strength})</span>
+      </div>
+    );
+  };
+
+  /* ─── CUSTOM TREND LINE rendered as SVG inside Recharts ─── */
+  const TrendLineSVG = ({ xAxisMap, yAxisMap }: any) => {
+    if (!trendLineData || !xAxisMap || !yAxisMap) return null;
+    // Access the first axis map entries
+    const xAxis = Object.values(xAxisMap)[0] as any;
+    const yAxis = Object.values(yAxisMap)[0] as any;
+    if (!xAxis?.scale || !yAxis?.scale) return null;
+
+    const x1 = xAxis.scale(trendLineData[0].x);
+    const y1 = yAxis.scale(trendLineData[0].y);
+    const x2 = xAxis.scale(trendLineData[1].x);
+    const y2 = yAxis.scale(trendLineData[1].y);
+
+    if ([x1, y1, x2, y2].some(v => !isFinite(v))) return null;
+
+    const trendColor = isDark ? 'rgba(255,179,71,0.6)' : 'rgba(217,119,6,0.5)';
+    const shadowColor = isDark ? 'rgba(255,179,71,0.15)' : 'rgba(217,119,6,0.1)';
+
+    return (
+      <g>
+        {/* Shadow line underneath */}
+        <line
+          x1={x1} y1={y1 + 3}
+          x2={x2} y2={y2 + 3}
+          stroke={shadowColor}
+          strokeWidth={4}
+          strokeLinecap="round"
+          style={{ filter: 'blur(3px)' }}
+        />
+        {/* Main trend line */}
+        <line
+          x1={x1} y1={y1}
+          x2={x2} y2={y2}
+          stroke={trendColor}
+          strokeWidth={2}
+          strokeDasharray="8 4"
+          strokeLinecap="round"
+        />
+        {/* Bright highlight on top */}
+        <line
+          x1={x1} y1={y1 - 0.5}
+          x2={x2} y2={y2 - 0.5}
+          stroke={isDark ? 'rgba(255,220,150,0.2)' : 'rgba(217,119,6,0.15)'}
+          strokeWidth={1}
+          strokeDasharray="8 4"
+          strokeLinecap="round"
+        />
+      </g>
+    );
+  };
 
   /* ─── SCATTER CHART CONTENT ─── */
   const ScatterContent = ({ height = 280 }: { height?: number }) => (
@@ -200,18 +378,33 @@ export default function PlayerStats() {
               );
             }}
           />
+          {/* Trend line rendered via customized layer */}
           <Scatter
             data={scatterData}
             fill={isDark ? '#3A6A7A' : '#4A7A8A'}
             fillOpacity={0.8}
             r={5}
             shape={(props: any) => {
-              const teamColor = mutedTeamColor(props.payload?.teamId || '', isDark);
-              return <Extruded3DDot {...props} fill={teamColor} />;
+              const dotColor = colorMode === 'position'
+                ? positionColor(props.payload?.position || '', isDark)
+                : mutedTeamColor(props.payload?.teamId || '', isDark);
+              return <Extruded3DDot {...props} fill={dotColor} />;
             }}
           />
+          {/* Render trend line using customized content */}
+          {showTrendLine && trendLineData && (
+            <Scatter
+              data={[]}
+              fill="transparent"
+              isAnimationActive={false}
+              legendType="none"
+              // @ts-ignore — access internal axis maps via customized content
+              shape={() => null}
+            />
+          )}
         </ScatterChart>
       </ResponsiveContainer>
+      {/* Overlay trend line using a separate SVG approach */}
     </div>
   );
 
@@ -250,20 +443,36 @@ export default function PlayerStats() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Scatter Plot with Axis Selectors */}
+        {/* Scatter Plot with Axis Selectors, Color Mode, and Trend Line */}
         <NeuCard delay={0.15} className="p-4 lg:col-span-2">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-1">
             <h3 className="text-sm font-semibold flex items-center gap-2" style={{ fontFamily: 'Space Grotesk' }}>
               <Crosshair size={14} className="text-cyan" />
               Player Comparison
             </h3>
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <AxisDropdown value={scatterX} onChange={setScatterX} label="X" />
               <AxisDropdown value={scatterY} onChange={setScatterY} label="Y" />
+              <ColorModeToggle />
+              <TrendLineToggle />
               <MaximizeButton onClick={() => setMaximized('scatter')} />
             </div>
           </div>
-          <ScatterContent />
+          <div className="flex items-center justify-between mb-2">
+            <PositionLegend />
+            <R2Badge />
+          </div>
+          <ScatterChartWithTrend
+            scatterData={scatterData}
+            xOpt={xOpt}
+            yOpt={yOpt}
+            formatTick={formatTick}
+            isDark={isDark}
+            colorMode={colorMode}
+            showTrendLine={showTrendLine}
+            regression={regression}
+            height={280}
+          />
         </NeuCard>
 
         {/* Top Scorers */}
@@ -402,11 +611,27 @@ export default function PlayerStats() {
 
       {/* Maximize Modals */}
       <ChartModal isOpen={maximized === 'scatter'} onClose={() => setMaximized(null)} title={`${yOpt.label} vs ${xOpt.label}`}>
-        <div className="flex items-center gap-4 mb-4 flex-wrap">
+        <div className="flex items-center gap-3 mb-2 flex-wrap">
           <AxisDropdown value={scatterX} onChange={setScatterX} label="X Axis" />
           <AxisDropdown value={scatterY} onChange={setScatterY} label="Y Axis" />
+          <ColorModeToggle />
+          <TrendLineToggle />
         </div>
-        <ScatterContent height={600} />
+        <div className="flex items-center justify-between mb-3">
+          <PositionLegend />
+          <R2Badge />
+        </div>
+        <ScatterChartWithTrend
+          scatterData={scatterData}
+          xOpt={xOpt}
+          yOpt={yOpt}
+          formatTick={formatTick}
+          isDark={isDark}
+          colorMode={colorMode}
+          showTrendLine={showTrendLine}
+          regression={regression}
+          height={600}
+        />
       </ChartModal>
 
       <ChartModal isOpen={maximized === 'scorers'} onClose={() => setMaximized(null)} title="Top Scorers">
@@ -426,7 +651,7 @@ export default function PlayerStats() {
         </div>
       </ChartModal>
 
-      <ChartModal isOpen={maximized === 'radar'} onClose={() => setMaximized(null)} title={selPlayer ? `${selPlayer.name} — Performance Radar` : 'Player Radar'}>
+      <ChartModal isOpen={maximized === 'radar'} onClose={() => setMaximized(null)} title={selPlayer ? `${selPlayer.name} \u2014 Performance Radar` : 'Player Radar'}>
         {selPlayer && radarData && (
           <div className="flex items-center justify-center" style={{ height: 500 }}>
             <ResponsiveContainer>
@@ -441,7 +666,7 @@ export default function PlayerStats() {
         )}
       </ChartModal>
 
-      <ChartModal isOpen={maximized === 'table'} onClose={() => setMaximized(null)} title={`Player Database — ${sorted.length} players`}>
+      <ChartModal isOpen={maximized === 'table'} onClose={() => setMaximized(null)} title={`Player Database \u2014 ${sorted.length} players`}>
         <div className="overflow-x-auto max-h-[75vh] overflow-y-auto">
           <table className="data-table">
             <thead>
@@ -491,6 +716,118 @@ export default function PlayerStats() {
           </table>
         </div>
       </ChartModal>
+    </div>
+  );
+}
+
+/**
+ * ScatterChartWithTrend — Scatter plot with an SVG overlay trend line
+ * Uses a ref-based approach to draw the regression line directly on the SVG
+ */
+function ScatterChartWithTrend({
+  scatterData,
+  xOpt,
+  yOpt,
+  formatTick,
+  isDark,
+  colorMode,
+  showTrendLine,
+  regression,
+  height = 280,
+}: {
+  scatterData: any[];
+  xOpt: AxisOption;
+  yOpt: AxisOption;
+  formatTick: (opt: AxisOption) => (v: number) => string;
+  isDark: boolean;
+  colorMode: ColorMode;
+  showTrendLine: boolean;
+  regression: { slope: number; intercept: number; r2: number };
+  height?: number;
+}) {
+  /* Compute trend line reference line segment endpoints */
+  const trendLinePoints = useMemo(() => {
+    if (!showTrendLine || scatterData.length < 3) return null;
+    const xVals = scatterData.map(d => d.xVal).filter((v: number) => isFinite(v));
+    if (xVals.length < 2) return null;
+    const xMin = Math.min(...xVals);
+    const xMax = Math.max(...xVals);
+    return { xMin, xMax, yMin: regression.slope * xMin + regression.intercept, yMax: regression.slope * xMax + regression.intercept };
+  }, [showTrendLine, scatterData, regression]);
+
+  return (
+    <div style={{ height }}>
+      <ResponsiveContainer>
+        <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
+          <XAxis
+            dataKey="xVal"
+            name={xOpt.label}
+            type="number"
+            stroke="var(--table-header-color)"
+            fontSize={10}
+            tickLine={false}
+            tickFormatter={formatTick(xOpt)}
+            label={{ value: xOpt.label, position: 'bottom', fill: 'var(--table-header-color)', fontSize: 10 }}
+          />
+          <YAxis
+            dataKey="yVal"
+            name={yOpt.label}
+            stroke="var(--table-header-color)"
+            fontSize={10}
+            tickLine={false}
+            tickFormatter={formatTick(yOpt)}
+            label={{ value: yOpt.label, angle: -90, position: 'insideLeft', fill: 'var(--table-header-color)', fontSize: 10 }}
+          />
+          <Tooltip
+            content={({ payload }) => {
+              if (!payload?.length) return null;
+              const d = payload[0].payload;
+              return (
+                <div className="neu-raised p-2 rounded-lg text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                  <div className="text-cyan font-semibold">{d.name}</div>
+                  <div className="text-muted-foreground">{d.team} · {d.position}</div>
+                  <div>
+                    {xOpt.label}: <span className="text-amber">{xOpt.format ? xOpt.format(d.xVal) : d.xVal.toLocaleString()}</span>
+                    {' | '}
+                    {yOpt.label}: <span className="text-emerald">{yOpt.format ? yOpt.format(d.yVal) : d.yVal.toLocaleString()}</span>
+                  </div>
+                </div>
+              );
+            }}
+          />
+          {/* Trend line as ReferenceLine — using segment prop */}
+          {showTrendLine && trendLinePoints && (
+            <ReferenceLine
+              segment={[
+                { x: trendLinePoints.xMin, y: trendLinePoints.yMin },
+                { x: trendLinePoints.xMax, y: trendLinePoints.yMax },
+              ] as any}
+              stroke={isDark ? 'rgba(255,179,71,0.55)' : 'rgba(180,100,20,0.45)'}
+              strokeWidth={2}
+              strokeDasharray="8 4"
+              ifOverflow="extendDomain"
+              style={{
+                filter: isDark
+                  ? 'drop-shadow(2px 3px 3px rgba(255,179,71,0.2))'
+                  : 'drop-shadow(2px 3px 3px rgba(180,100,20,0.15))',
+              }}
+            />
+          )}
+          <Scatter
+            data={scatterData}
+            fill={isDark ? '#3A6A7A' : '#4A7A8A'}
+            fillOpacity={0.8}
+            r={5}
+            shape={(props: any) => {
+              const dotColor = colorMode === 'position'
+                ? positionColor(props.payload?.position || '', isDark)
+                : mutedTeamColor(props.payload?.teamId || '', isDark);
+              return <Extruded3DDot {...props} fill={dotColor} />;
+            }}
+          />
+        </ScatterChart>
+      </ResponsiveContainer>
     </div>
   );
 }

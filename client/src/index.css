@@ -690,38 +690,42 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* ============ 3D CHART EFFECTS ============ */
 
-/* 3D bar effect: each bar gets a subtle gradient overlay for depth */
-.recharts-bar-rectangle path,
-.recharts-bar-rectangle rect {
-  filter: drop-shadow(var(--chart-bar-shadow));
-  transition: filter 0.2s ease;
+/* 3D Sculptural Data — shadows are rendered in SVG custom shapes (chartUtils.tsx)
+   CSS handles overflow, transitions, and hover enhancements */
+
+/* Allow SVG shadows to render outside clip boundaries */
+.recharts-surface {
+  overflow: visible;
+}
+.recharts-bar,
+.recharts-scatter,
+.recharts-line,
+.recharts-area {
+  overflow: visible;
 }
 
-/* Extruded line effect: lines get a soft shadow underneath */
+/* Extruded line effect: lines get a cast shadow underneath */
 .recharts-line .recharts-curve,
 .recharts-area .recharts-curve {
-  filter: drop-shadow(var(--chart-line-shadow));
+  filter: drop-shadow(3px 4px 4px rgba(0, 0, 0, 0.4)) drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.2));
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-/* Area fill gets a subtle inner shadow effect */
+/* Area fill gets a subtle depth shadow */
 .recharts-area .recharts-area-area {
-  filter: drop-shadow(var(--chart-area-shadow));
+  filter: drop-shadow(0 -2px 6px rgba(0, 0, 0, 0.15));
 }
 
-/* Bar hover: lift effect */
-.recharts-bar-rectangle:hover path,
-.recharts-bar-rectangle:hover rect {
-  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.5)) brightness(1.1);
+/* Bar hover: subtle brightness lift (shadow is in SVG) */
+.recharts-bar-rectangle:hover g {
+  filter: brightness(1.12);
+  transition: filter 0.15s ease;
 }
 
 /* Reference lines get subtle depth */
 .recharts-reference-line line {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-}
-
-/* Dot/scatter points get 3D pop */
-.recharts-dot {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
 }
 
 /* ============ 3D NEUMORPHIC THEME TOGGLE ============ */
