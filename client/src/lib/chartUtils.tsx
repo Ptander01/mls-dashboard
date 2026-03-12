@@ -517,14 +517,12 @@ export function Extruded3DHorizontalBar(props: any) {
         fillOpacity={0.65}
       />
 
-      {/* Right side face */}
-      {width >= 0 && (
-        <path
-          d={`M${barX + barWidth},${y} L${barX + barWidth + extrudeX},${y + extrudeY} L${barX + barWidth + extrudeX},${y + h + extrudeY} L${barX + barWidth},${y + h} Z`}
-          fill={sideColor}
-          fillOpacity={0.5}
-        />
-      )}
+      {/* Right side face — for positive bars, this is the far end; for negative bars, this is the edge closest to the zero line */}
+      <path
+        d={`M${barX + barWidth},${y} L${barX + barWidth + extrudeX},${y + extrudeY} L${barX + barWidth + extrudeX},${y + h + extrudeY} L${barX + barWidth},${y + h} Z`}
+        fill={sideColor}
+        fillOpacity={0.5}
+      />
 
       {/* Front face */}
       <rect

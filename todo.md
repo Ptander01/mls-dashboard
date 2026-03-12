@@ -18,13 +18,18 @@
 
 # Pie Chart Refinements
 
-- [ ] Add percentages to data labels (e.g. "Forwards $14.5M (43%)")
-- [ ] Make inner hole a recessed "floor" — not raised — so segments cast shadows inward onto it
-- [ ] Add subtle inner wall illumination on light-facing segments (interior edge catches light)
-- [ ] Tone down blue segment gradient (less white/bright on the highlight)
-- [ ] Remove the extruded/raised look from the inner hole center
+- [x] Add percentages to data labels (e.g. "Forwards $14.5M (43%)")
+- [x] Make inner hole a recessed "floor" — not raised — so segments cast shadows inward onto it
+- [x] Add subtle inner wall illumination on light-facing segments (interior edge catches light)
+- [x] Tone down blue segment gradient (less white/bright on the highlight)
+- [x] Remove the extruded/raised look from the inner hole center
 
 # Attendance Chart Fixes
 
 - [x] Offset attendance bars above X axis (same fix as team salary stacked bars)
 - [x] Replace stadium capacity dotted lines with textured 3D braille dots with lighting gradients and cast shadows
+
+# Attendance Tab Bugs
+
+- [x] Fix negative-delta horizontal bars missing right-side 3D face near the zero/average line
+- [x] Fix maximize buttons not working for some Attendance tab charts (all 5 maximize buttons verified working)
