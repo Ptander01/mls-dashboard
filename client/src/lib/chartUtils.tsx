@@ -697,6 +697,14 @@ export function Extruded3DBarWithCeiling(props: any) {
   const extrudeX = 3;
   const extrudeY = 3;
 
+  // Offset bar upward so the 3D bottom face rests ON the X axis line
+  const adjustedY = y - extrudeY;
+  const adjustedH = h;
+
+  // Recalculate capY with the offset
+  const adjustedYAxis = adjustedY + adjustedH;
+  const adjustedCapY = cap > 0 ? adjustedYAxis - (cap * barScale) : 0;
+
   return (
     <g>
       <defs>
@@ -710,14 +718,31 @@ export function Extruded3DBarWithCeiling(props: any) {
         <filter id={`${id}_shadow`} x="-30%" y="-15%" width="170%" height="150%">
           <feGaussianBlur in="SourceGraphic" stdDeviation="4" />
         </filter>
+        {/* Braille dot shadow filter */}
+        <filter id={`${id}_dotShadow`} x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
+        </filter>
+        {/* Braille dot lighting gradient */}
+        <radialGradient id={`${id}_dotGrad`} cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity={0.95} />
+          <stop offset="40%" stopColor="#e8e4dc" stopOpacity={0.85} />
+          <stop offset="75%" stopColor="#b8b4ac" stopOpacity={0.7} />
+          <stop offset="100%" stopColor="#888480" stopOpacity={0.6} />
+        </radialGradient>
+        <radialGradient id={`${id}_dotGradDark`} cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity={0.9} />
+          <stop offset="40%" stopColor="#c8c4bc" stopOpacity={0.7} />
+          <stop offset="75%" stopColor="#8a8680" stopOpacity={0.5} />
+          <stop offset="100%" stopColor="#5a5650" stopOpacity={0.4} />
+        </radialGradient>
       </defs>
 
       {/* Cast shadow — enhanced for topographic depth */}
       <rect
         x={x + SHADOW.offsetX}
-        y={y + SHADOW.offsetY}
+        y={adjustedY + SHADOW.offsetY}
         width={width + 2}
-        height={h + 2}
+        height={adjustedH + 2}
         rx={3}
         fill="rgba(0,0,0,0.5)"
         filter={`url(#${id}_shadow)`}
@@ -725,7 +750,7 @@ export function Extruded3DBarWithCeiling(props: any) {
       {/* Ambient ground shadow */}
       <rect
         x={x + 2}
-        y={y + h - 2}
+        y={adjustedY + adjustedH - 2}
         width={width}
         height={6}
         rx={3}
@@ -735,48 +760,75 @@ export function Extruded3DBarWithCeiling(props: any) {
 
       {/* Right side face */}
       <path
-        d={`M${x + width},${y} L${x + width + extrudeX},${y + extrudeY} L${x + width + extrudeX},${y + h + extrudeY} L${x + width},${y + h} Z`}
+        d={`M${x + width},${adjustedY} L${x + width + extrudeX},${adjustedY + extrudeY} L${x + width + extrudeX},${adjustedY + adjustedH + extrudeY} L${x + width},${adjustedY + adjustedH} Z`}
         fill={sideColor}
         fillOpacity={0.7}
       />
 
       {/* Bottom face */}
       <path
-        d={`M${x},${y + h} L${x + extrudeX},${y + h + extrudeY} L${x + width + extrudeX},${y + h + extrudeY} L${x + width},${y + h} Z`}
+        d={`M${x},${adjustedY + adjustedH} L${x + extrudeX},${adjustedY + adjustedH + extrudeY} L${x + width + extrudeX},${adjustedY + adjustedH + extrudeY} L${x + width},${adjustedY + adjustedH} Z`}
         fill={darken(baseColor, 0.5)}
         fillOpacity={0.6}
       />
 
       {/* Front face */}
-      <rect x={x} y={y} width={width} height={h} rx={2} ry={2} fill={`url(#${id})`} />
+      <rect x={x} y={adjustedY} width={width} height={adjustedH} rx={2} ry={2} fill={`url(#${id})`} />
 
       {/* Top face */}
       <path
-        d={`M${x},${y} L${x + extrudeX},${y - extrudeY + 1} L${x + width + extrudeX},${y - extrudeY + 1} L${x + width},${y} Z`}
+        d={`M${x},${adjustedY} L${x + extrudeX},${adjustedY - extrudeY + 1} L${x + width + extrudeX},${adjustedY - extrudeY + 1} L${x + width},${adjustedY} Z`}
         fill={highlightColor}
         fillOpacity={0.3}
       />
 
       {/* Top highlight */}
-      <rect x={x + 1} y={y} width={width - 2} height={Math.min(2.5, h * 0.06)} rx={1.5}
+      <rect x={x + 1} y={adjustedY} width={width - 2} height={Math.min(2.5, adjustedH * 0.06)} rx={1.5}
         fill={highlightColor} fillOpacity={0.55} />
 
-      {/* Capacity ceiling marker — white 3D bump */}
-      {cap > 0 && (
-        <>
-          {/* Shadow line underneath for depth */}
-          <line x1={x - 2} y1={capY + 1.5} x2={x + width + 2} y2={capY + 1.5}
-            stroke="rgba(0,0,0,0.35)" strokeWidth={2} strokeDasharray="3 2" strokeOpacity={0.5} />
-          {/* Main white dashed line */}
-          <line x1={x - 2} y1={capY} x2={x + width + 2} y2={capY}
-            stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeDasharray="3 2" strokeOpacity={0.9} />
-          {/* Highlight line above for 3D bump */}
-          <line x1={x - 2} y1={capY - 0.5} x2={x + width + 2} y2={capY - 0.5}
-            stroke="rgba(255,255,255,0.4)" strokeWidth={0.5} strokeDasharray="3 2" strokeOpacity={0.6} />
-          {/* Diamond marker instead of circle for cleaner look */}
-          <circle cx={x + width / 2} cy={capY} r={2} fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.3)" strokeWidth={0.5} />
-        </>
-      )}
+      {/* Capacity ceiling marker — 3D braille dots with lighting and cast shadows */}
+      {cap > 0 && (() => {
+        const dotRadius = 2.2;
+        const dotSpacing = 7;
+        const lineStart = x - 3;
+        const lineEnd = x + width + 3;
+        const lineLen = lineEnd - lineStart;
+        const dotCount = Math.max(2, Math.floor(lineLen / dotSpacing));
+        const actualSpacing = lineLen / dotCount;
+        const isDarkTheme = baseColor.length > 0; // always true, we use the prop from parent
+        const dots = [];
+        for (let di = 0; di <= dotCount; di++) {
+          const dotX = lineStart + di * actualSpacing;
+          dots.push(
+            <React.Fragment key={`dot_${di}`}>
+              {/* Cast shadow — offset down-right like all other 3D elements */}
+              <ellipse
+                cx={dotX + 1.5}
+                cy={adjustedCapY + 2}
+                rx={dotRadius + 0.8}
+                ry={dotRadius * 0.5 + 0.5}
+                fill="rgba(0,0,0,0.35)"
+                filter={`url(#${id}_dotShadow)`}
+              />
+              {/* 3D dot with radial gradient lighting */}
+              <circle
+                cx={dotX}
+                cy={adjustedCapY}
+                r={dotRadius}
+                fill={`url(#${id}_dotGrad)`}
+              />
+              {/* Specular highlight — tiny bright spot upper-left */}
+              <circle
+                cx={dotX - dotRadius * 0.3}
+                cy={adjustedCapY - dotRadius * 0.3}
+                r={dotRadius * 0.35}
+                fill="rgba(255,255,255,0.7)"
+              />
+            </React.Fragment>
+          );
+        }
+        return <>{dots}</>;
+      })()}
     </g>
   );
 }

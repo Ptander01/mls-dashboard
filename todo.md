@@ -23,3 +23,8 @@
 - [ ] Add subtle inner wall illumination on light-facing segments (interior edge catches light)
 - [ ] Tone down blue segment gradient (less white/bright on the highlight)
 - [ ] Remove the extruded/raised look from the inner hole center
+
+# Attendance Chart Fixes
+
+- [x] Offset attendance bars above X axis (same fix as team salary stacked bars)
+- [x] Replace stadium capacity dotted lines with textured 3D braille dots with lighting gradients and cast shadows
