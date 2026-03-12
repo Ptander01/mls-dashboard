@@ -2,7 +2,7 @@
 
 An advanced interactive dashboard for Major League Soccer statistical analysis featuring the 2025 season. Built with React 19, Tailwind CSS 4, Recharts, and Three.js, the dashboard showcases a custom **Industrial Neumorphic 3D** design system with extruded chart elements, gradient lighting, cast shadows, and glassmorphic overlays.
 
-![Player Stats — Scatter plot, top scorers, and full player database](https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/01-player-stats_de0c193d.webp)
+![Player Stats — Scatter plot, top scorers, and full player database](docs/screenshots/01-player-stats.webp)
 
 ---
 
@@ -14,24 +14,24 @@ Compare individual player performance across the 2025 MLS season. The scatter pl
 ### Team Budget
 Analyze how each MLS club allocates its salary budget across Designated Players, TAM, and regular contracts. Click any team bar to drill into positional salary breakdowns (via a 3D neumorphic donut chart) and see top earners with cost-per-goal efficiency metrics.
 
-![Team Salary Breakdown with 3D stacked bars](https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/02-team-budget_e3321419.webp)
+![Team Salary Breakdown with 3D stacked bars](docs/screenshots/02-team-budget.webp)
 
-![Team Budget drill-down — 3D donut pie chart and top earners table](https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/06-team-budget-drilldown_db337e2c.webp)
+![Team Budget drill-down — 3D donut pie chart and top earners table](docs/screenshots/06-team-budget-drilldown.webp)
 
 ### Attendance
 Explore match-day attendance across all MLS venues. The bar chart ranks teams by average home attendance with 3D braille-dot stadium capacity markers. Toggle to fill rate mode to see stadium utilization. The trend chart tracks weekly patterns, and the Gravitational Pull section reveals how specific away teams affect host venue turnout.
 
-![Attendance analysis with braille capacity dots and trend chart](https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/07-attendance-detail_d6a8497e.webp)
+![Attendance analysis with braille capacity dots and trend chart](docs/screenshots/07-attendance-detail.webp)
 
 ### Travel Map
 Visualize the travel burden across MLS clubs on an interactive 3D globe built with Three.js. Each team's stadium appears as a glowing orb, and animated arcs trace away-game routes week by week. Scrub through the season timeline to watch travel patterns unfold. Conference-heavy schedules mean Western teams often face significantly more travel than Eastern counterparts.
 
-![Interactive 3D travel map with animated route arcs](https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/04-travel-map_89dda9d8.webp)
+![Interactive 3D travel map with animated route arcs](docs/screenshots/04-travel-map.webp)
 
 ### Pitch Match
 Dive into tactical match data on a virtual pitch. The heatmap shows player positioning intensity, the shot map plots every attempt with xG-scaled markers (goals highlighted), and the passing network reveals team shape and link-up play. Select any team to see their tactical fingerprint.
 
-![Pitch Match — Player heatmap on virtual pitch](https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/05-pitch-match_4874fce4.webp)
+![Pitch Match — Player heatmap on virtual pitch](docs/screenshots/05-pitch-match.webp)
 
 ---
 
