@@ -33,3 +33,8 @@
 
 - [x] Fix negative-delta horizontal bars missing right-side 3D face near the zero/average line
 - [x] Fix maximize buttons not working for some Attendance tab charts (all 5 maximize buttons verified working)
+
+# New Bugs
+
+- [ ] Fix maximize modals not rendering properly in published preview (charts appear tiny/compressed in corners)
+- [ ] Investigate and fix flat attendance trend lines for some teams (e.g., Austin FC shows perfectly straight line for all 32 weeks)

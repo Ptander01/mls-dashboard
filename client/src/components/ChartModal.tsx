@@ -16,7 +16,6 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
   useEffect(() => {
     if (isOpen) {
       document.addEventListener('keydown', handleEsc);
-      // Lock scroll on BOTH html and body to prevent background scrolling
       document.documentElement.style.overflow = 'hidden';
       document.body.style.overflow = 'hidden';
     }
@@ -31,46 +30,82 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex flex-col"
+      className="fixed inset-0 z-[9999]"
       onClick={onClose}
-      style={{ isolation: 'isolate' }}
+      style={{
+        isolation: 'isolate',
+        width: '100vw',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
     >
       {/* Backdrop — covers everything */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-
-      {/* Scrollable content area — this is the ONLY thing that scrolls */}
       <div
-        className="relative flex-1 overflow-y-auto"
+        className="backdrop-blur-sm"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.8)',
+        }}
+      />
+
+      {/* Scrollable content area */}
+      <div
         onClick={e => e.stopPropagation()}
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          overflowY: 'auto',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+          padding: '2rem 1rem',
+        }}
       >
-        <div className="flex items-start justify-center min-h-full py-8 px-4">
-          {/* Modal card */}
+        {/* Modal card */}
+        <div
+          className="neu-raised rounded-2xl"
+          style={{
+            position: 'relative',
+            width: '95vw',
+            maxWidth: '95vw',
+            overflow: 'hidden',
+            animation: 'modal-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          }}
+        >
+          {/* Header */}
           <div
-            className="relative w-[95vw] neu-raised rounded-2xl overflow-hidden"
+            className="border-b border-white/5"
             style={{
-              animation: 'modal-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '1rem 1.5rem',
+              background: 'var(--card-bg, var(--background))',
             }}
           >
-            {/* Header */}
-            <div
-              className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-white/5"
-              style={{ background: 'var(--card-bg, var(--background))' }}
+            <h2 className="text-lg font-semibold text-foreground" style={{ fontFamily: 'Space Grotesk' }}>
+              {title}
+            </h2>
+            <button
+              onClick={(e) => { e.stopPropagation(); onClose(); }}
+              className="p-2 rounded-lg neu-raised hover:text-cyan transition-colors"
             >
-              <h2 className="text-lg font-semibold text-foreground" style={{ fontFamily: 'Space Grotesk' }}>
-                {title}
-              </h2>
-              <button
-                onClick={(e) => { e.stopPropagation(); onClose(); }}
-                className="p-2 rounded-lg neu-raised hover:text-cyan transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
+              <X size={18} />
+            </button>
+          </div>
 
-            {/* Content */}
-            <div className="p-6">
-              {children}
-            </div>
+          {/* Content */}
+          <div style={{ padding: '1.5rem' }}>
+            {children}
           </div>
         </div>
       </div>
