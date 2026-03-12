@@ -65,7 +65,13 @@ export default function TeamBudget() {
   const BudgetBarContent = ({ height = 350 }: { height?: number }) => (
     <div style={{ height }}>
       <ResponsiveContainer>
-        <BarChart data={budgetData} margin={{ top: 5, right: 10, bottom: 60, left: 0 }}>
+        <BarChart data={budgetData} margin={{ top: 5, right: 10, bottom: 60, left: 0 }}
+          onClick={(state: any) => {
+            if (state?.activePayload?.[0]?.payload?.id) {
+              const id = state.activePayload[0].payload.id;
+              setSelectedTeam(id === selectedTeam ? null : id);
+            }
+          }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
           <XAxis dataKey="name" stroke="var(--table-header-color)" fontSize={9} tickLine={false} angle={-45} textAnchor="end" interval={0} tickMargin={6} />
           <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false} label={{ value: '$ Millions', angle: -90, position: 'insideLeft', fill: 'var(--table-header-color)', fontSize: 10 }} />
@@ -85,11 +91,11 @@ export default function TeamBudget() {
             }}
           />
           <Bar dataKey="dp" stackId="a" fill={isDark ? '#1A4A6A' : '#2A5A7A'} name="DP Spend" radius={[0, 0, 0, 0]}
-            shape={(props: any) => <Extruded3DStackedBar {...props} stackPosition="bottom" />} />
+            shape={(props: any) => <Extruded3DStackedBar {...props} stackPosition="bottom" onBarClick={(p: any) => setSelectedTeam(p.id === selectedTeam ? null : p.id)} />} />
           <Bar dataKey="tam" stackId="a" fill={isDark ? '#8B6914' : '#9A7828'} name="TAM Spend"
-            shape={(props: any) => <Extruded3DStackedBar {...props} stackPosition="middle" />} />
+            shape={(props: any) => <Extruded3DStackedBar {...props} stackPosition="middle" onBarClick={(p: any) => setSelectedTeam(p.id === selectedTeam ? null : p.id)} />} />
           <Bar dataKey="regular" stackId="a" fill={isDark ? '#1A3A1A' : '#2A4A2A'} name="Regular" radius={[3, 3, 0, 0]}
-            shape={(props: any) => <Extruded3DStackedBar {...props} stackPosition="top" />} />
+            shape={(props: any) => <Extruded3DStackedBar {...props} stackPosition="top" onBarClick={(p: any) => setSelectedTeam(p.id === selectedTeam ? null : p.id)} />} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -143,13 +149,24 @@ export default function TeamBudget() {
           <MaximizeButton onClick={() => setMaximized('budget')} />
         </div>
         <BudgetBarContent />
-        <div className="flex justify-center gap-6 mt-2">
-          {[{ label: 'Designated Players', color: isDark ? '#1A4A6A' : '#2A5A7A' }, { label: 'TAM', color: isDark ? '#8B6914' : '#9A7828' }, { label: 'Regular', color: isDark ? '#1A3A1A' : '#2A4A2A' }].map(l => (
-            <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: l.color }} />
-              {l.label}
-            </div>
-          ))}
+        <div className="flex flex-col items-center gap-2 mt-3">
+          <div className="flex justify-center gap-6">
+            {[
+              { label: 'Designated Players', color: isDark ? '#1A4A6A' : '#2A5A7A' },
+              { label: 'TAM', color: isDark ? '#8B6914' : '#9A7828' },
+              { label: 'Regular', color: isDark ? '#1A3A1A' : '#2A4A2A' },
+            ].map(l => (
+              <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: l.color }} />
+                {l.label}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-center gap-4 text-[9px] text-muted-foreground/70 max-w-2xl text-center leading-relaxed">
+            <span><strong className="text-muted-foreground">DP</strong> = Designated Players, the highest-paid stars exempt from the salary cap (max 3 per team)</span>
+            <span className="border-l border-muted-foreground/20 pl-4"><strong className="text-muted-foreground">TAM</strong> = Targeted Allocation Money, extra funds to sign players above the cap but below DP level</span>
+            <span className="border-l border-muted-foreground/20 pl-4"><strong className="text-muted-foreground">Regular</strong> = Standard roster players signed within the league salary cap</span>
+          </div>
         </div>
       </NeuCard>
 

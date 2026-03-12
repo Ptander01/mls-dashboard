@@ -314,7 +314,7 @@ export function Extruded3DBar(props: any) {
  *   - top: front gradient + side face + top face cap, no shadow/bottom
  */
 export function Extruded3DStackedBar(props: any & { stackPosition?: 'bottom' | 'middle' | 'top' }) {
-  const { x, y, width, height: h, fill, stackPosition = 'bottom' } = props;
+  const { x, y, width, height: h, fill, stackPosition = 'bottom', onBarClick, payload, ...restProps } = props;
   if (!h || h <= 0 || !width || width <= 0) return null;
 
   const baseColor = fill || '#4A4A5A';
@@ -328,8 +328,14 @@ export function Extruded3DStackedBar(props: any & { stackPosition?: 'bottom' | '
   const isBottom = stackPosition === 'bottom';
   const isTop = stackPosition === 'top';
 
+  const handleClick = () => {
+    if (typeof onBarClick === 'function' && payload) {
+      onBarClick(payload);
+    }
+  };
+
   return (
-    <g>
+    <g style={{ cursor: 'pointer' }} onClick={handleClick}>
       <defs>
         {/* Front face gradient */}
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
@@ -430,6 +436,16 @@ export function Extruded3DStackedBar(props: any & { stackPosition?: 'bottom' | '
         rx={0.5}
         fill={highlightColor}
         fillOpacity={0.15}
+      />
+
+      {/* Invisible click target — ensures Recharts onClick fires through custom shape */}
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={h}
+        fill="transparent"
+        style={{ cursor: 'pointer' }}
       />
     </g>
   );
