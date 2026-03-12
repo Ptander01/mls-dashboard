@@ -884,13 +884,17 @@ export function Extruded3DPie({
           <stop offset="100%" stopColor="rgba(255,255,255,0)" />
         </radialGradient>
 
-        {/* Inner hole metallic/concave gradient — like reference image 1 */}
-        <radialGradient id={`${id}_innerHole`} cx="40%" cy="38%" r="65%">
-          <stop offset="0%" stopColor={isDark ? '#3a3a5e' : '#ffffff'} stopOpacity={isDark ? 0.8 : 0.95} />
-          <stop offset="35%" stopColor={isDark ? '#2a2a48' : '#f0ece6'} stopOpacity={isDark ? 0.7 : 0.85} />
-          <stop offset="70%" stopColor={isDark ? '#1e1e36' : '#ddd8d0'} stopOpacity={isDark ? 0.85 : 0.7} />
-          <stop offset="100%" stopColor={isDark ? '#141428' : '#c8c2b8'} stopOpacity={isDark ? 0.95 : 0.6} />
+        {/* Inner hole — recessed floor look (darker center, shadow from above) */}
+        <radialGradient id={`${id}_innerHole`} cx="55%" cy="58%" r="60%">
+          <stop offset="0%" stopColor={isDark ? '#1a1a30' : '#d8d4cc'} stopOpacity={isDark ? 0.95 : 0.75} />
+          <stop offset="50%" stopColor={isDark ? '#161628' : '#c8c2b8'} stopOpacity={isDark ? 0.9 : 0.65} />
+          <stop offset="100%" stopColor={isDark ? '#121222' : '#bab4a8'} stopOpacity={isDark ? 0.95 : 0.55} />
         </radialGradient>
+
+        {/* Inner hole inward shadow filter — for segments casting shadows onto the floor */}
+        <filter id={`${id}_innerFloorShadow`} x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="5" />
+        </filter>
 
         {/* Per-segment gradients — simulate directional lighting with stronger contrast */}
         {slices.map((s, i) => {
@@ -903,12 +907,12 @@ export function Extruded3DPie({
 
           // How much this segment faces the light (dot product)
           const facingLight = Math.cos(segAngle - lightAngle);
-          const lightBoost = facingLight * 0.18;
+          const lightBoost = facingLight * 0.14; // toned down from 0.18
 
           return (
             <linearGradient key={i} id={`${id}_grad_${i}`} x1={gx1} y1={gy1} x2={gx2} y2={gy2}>
-              <stop offset="0%" stopColor={lighten(s.color, 0.38 + lightBoost)} stopOpacity={0.97} />
-              <stop offset="25%" stopColor={lighten(s.color, 0.15 + lightBoost)} stopOpacity={0.94} />
+              <stop offset="0%" stopColor={lighten(s.color, 0.28 + lightBoost)} stopOpacity={0.97} />
+              <stop offset="25%" stopColor={lighten(s.color, 0.1 + lightBoost)} stopOpacity={0.94} />
               <stop offset="60%" stopColor={s.color} stopOpacity={0.92} />
               <stop offset="85%" stopColor={darken(s.color, 0.15 - lightBoost * 0.3)} stopOpacity={0.94} />
               <stop offset="100%" stopColor={darken(s.color, 0.3 - lightBoost * 0.4)} stopOpacity={0.97} />
@@ -1020,50 +1024,70 @@ export function Extruded3DPie({
         style={{ pointerEvents: 'none' }}
       />
 
-      {/* ── Layer 9: Inner donut hole — metallic concave look ── */}
+      {/* ── Layer 9: Inner donut hole — recessed floor ── */}
       {innerRadius > 0 && (
         <>
-          {/* Metallic/concave gradient fill */}
+          {/* Recessed floor fill — darker, matte surface */}
           <circle
             cx={cx}
             cy={cy}
             r={innerRadius}
             fill={`url(#${id}_innerHole)`}
           />
-          {/* Inner shadow ring — creates the recessed/inset look */}
+
+          {/* Inward cast shadows from segments onto the floor */}
+          {/* Each segment casts a shadow inward toward the center */}
+          {slices.map((s, i) => {
+            // Shadow direction: from the segment inward toward center, offset by light direction
+            const inShadowX = Math.cos(lightAngle) * 3;
+            const inShadowY = Math.sin(lightAngle) * 3;
+            // Only segments on the shadow side (away from light) cast visible inner shadows
+            const facingAway = -Math.cos(s.midAngle - lightAngle);
+            const shadowStrength = Math.max(0, facingAway) * 0.6 + 0.15;
+            return (
+              <path
+                key={`innerFloorShadow_${i}`}
+                d={arcPath(s.startAngle - 0.03, s.endAngle + 0.03, innerRadius + 1, Math.max(innerRadius * 0.5, innerRadius - 18), -inShadowX, -inShadowY)}
+                fill={isDark ? `rgba(0,0,0,${shadowStrength * 0.7})` : `rgba(0,0,0,${shadowStrength * 0.25})`}
+                filter={`url(#${id}_innerFloorShadow)`}
+                style={{ pointerEvents: 'none' }}
+                clipPath={`circle(${innerRadius}px at ${cx}px ${cy}px)`}
+              />
+            );
+          })}
+
+          {/* Inner wall illumination — light-facing segments get a subtle glow on their inner edge */}
+          {slices.map((s, i) => {
+            const facingLight = Math.cos(s.midAngle - lightAngle);
+            if (facingLight < 0.2 || innerRadius <= 0) return null;
+            const glowOpacity = Math.min(facingLight * 0.25, 0.2);
+            return (
+              <path
+                key={`innerWallGlow_${i}`}
+                d={arcPath(s.startAngle, s.endAngle, innerRadius + 6, innerRadius + 1)}
+                fill={isDark ? `rgba(255,255,255,${glowOpacity * 0.7})` : `rgba(255,255,255,${glowOpacity * 1.2})`}
+                style={{ pointerEvents: 'none' }}
+              />
+            );
+          })}
+
+          {/* Recessed rim shadow — top-right edge darker (shadow falls into the hole) */}
           <circle
-            cx={cx}
-            cy={cy}
+            cx={cx + 1.5}
+            cy={cy + 2}
             r={innerRadius}
             fill="none"
-            stroke={isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)'}
-            strokeWidth={5}
-            style={{ pointerEvents: 'none' }}
-          />
-          {/* Second inner shadow — tighter, darker on shadow side */}
-          <circle
-            cx={cx + 1}
-            cy={cy + 1.5}
-            r={innerRadius - 2}
-            fill="none"
-            stroke={isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.08)'}
+            stroke={isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.12)'}
             strokeWidth={3}
             style={{ pointerEvents: 'none' }}
           />
-          {/* Inner highlight arc on the light side (upper-left quadrant) */}
+
+          {/* Recessed rim highlight — upper-left edge lighter (light catches the lip) */}
           <path
             d={`M${cx},${cy - innerRadius} A${innerRadius},${innerRadius} 0 0 0 ${cx - innerRadius},${cy}`}
             fill="none"
-            stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.5)'}
-            strokeWidth={2.5}
-            style={{ pointerEvents: 'none' }}
-          />
-          {/* Subtle inner specular dot — center glow */}
-          <circle
-            cx={cx - innerRadius * 0.2}
-            cy={cy - innerRadius * 0.2}
-            r={innerRadius * 0.35}
-            fill={isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.15)'}
+            stroke={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.35)'}
+            strokeWidth={2}
             style={{ pointerEvents: 'none' }}
           />
         </>
@@ -1079,6 +1103,7 @@ export function Extruded3DPie({
         const connY = pty(s.midAngle, connR);
         const anchor = Math.cos(s.midAngle) > 0.1 ? 'start' : Math.cos(s.midAngle) < -0.1 ? 'end' : 'middle';
         const fmtVal = formatValue ? formatValue(s.value) : `$${(s.value / 1e6).toFixed(1)}M`;
+        const pct = ((s.value / total) * 100).toFixed(1);
         return (
           <React.Fragment key={`label_${i}`}>
             <line
@@ -1106,7 +1131,7 @@ export function Extruded3DPie({
               fontSize={10}
               style={{ fontFamily: 'Space Grotesk, sans-serif' }}
             >
-              {fmtVal}
+              {fmtVal} ({pct}%)
             </text>
           </React.Fragment>
         );

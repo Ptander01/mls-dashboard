@@ -15,3 +15,11 @@
 # X Axis / Stacked Bar Fix
 
 - [x] Fix X axis line overlap with stacked bar 3D extrusion in Team Budget chart — bars should rest ON the X axis line, not hang through it
+
+# Pie Chart Refinements
+
+- [ ] Add percentages to data labels (e.g. "Forwards $14.5M (43%)")
+- [ ] Make inner hole a recessed "floor" — not raised — so segments cast shadows inward onto it
+- [ ] Add subtle inner wall illumination on light-facing segments (interior edge catches light)
+- [ ] Tone down blue segment gradient (less white/bright on the highlight)
+- [ ] Remove the extruded/raised look from the inner hole center
