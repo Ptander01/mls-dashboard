@@ -19,9 +19,16 @@ Analyze how each MLS club allocates its salary budget across Designated Players,
 ![Team Budget drill-down — 3D donut pie chart and top earners table](docs/screenshots/06-team-budget-drilldown.webp)
 
 ### Attendance
-Explore match-day attendance across all MLS venues. The bar chart ranks teams by average home attendance with 3D braille-dot stadium capacity markers. Toggle to fill rate mode to see stadium utilization. The trend chart tracks weekly patterns, and the Gravitational Pull section reveals how specific away teams affect host venue turnout.
+Explore match-day attendance across all MLS venues. The bar chart ranks teams by average home attendance with 3D braille-dot stadium capacity markers. Toggle to fill rate mode to see stadium utilization. The trend chart tracks weekly patterns.
 
 ![Attendance analysis with braille capacity dots and trend chart](docs/screenshots/07-attendance-detail.webp)
+
+The Gravitational Pull section reveals how specific away teams affect host venue turnout.
+<img width="1920" height="930" alt="image" src="https://github.com/user-attachments/assets/7959cf97-b840-4307-9dd8-aaaa6ace38b1" />
+
+
+<img width="1920" height="614" alt="image" src="https://github.com/user-attachments/assets/0f5a9965-28f7-4c21-9e9b-049755c9d085" />
+
 
 ### Travel Map
 Visualize the travel burden across MLS clubs on an interactive 3D globe built with Three.js. Each team's stadium appears as a glowing orb, and animated arcs trace away-game routes week by week. Scrub through the season timeline to watch travel patterns unfold. Conference-heavy schedules mean Western teams often face significantly more travel than Eastern counterparts.
