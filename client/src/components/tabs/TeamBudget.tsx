@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
 import { getTeam, TEAM_BUDGETS } from '@/lib/mlsData';
-import { Extruded3DBar } from '@/lib/chartUtils';
+import { Extruded3DStackedBar } from '@/lib/chartUtils';
 import { useTheme } from '@/contexts/ThemeContext';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
@@ -67,7 +67,7 @@ export default function TeamBudget() {
       <ResponsiveContainer>
         <BarChart data={budgetData} margin={{ top: 5, right: 10, bottom: 60, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
-          <XAxis dataKey="name" stroke="var(--table-header-color)" fontSize={9} tickLine={false} angle={-45} textAnchor="end" interval={0} />
+          <XAxis dataKey="name" stroke="var(--table-header-color)" fontSize={9} tickLine={false} angle={-45} textAnchor="end" interval={0} tickMargin={6} />
           <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false} label={{ value: '$ Millions', angle: -90, position: 'insideLeft', fill: 'var(--table-header-color)', fontSize: 10 }} />
           <Tooltip
             content={({ payload }) => {
@@ -85,11 +85,11 @@ export default function TeamBudget() {
             }}
           />
           <Bar dataKey="dp" stackId="a" fill={isDark ? '#1A4A6A' : '#2A5A7A'} name="DP Spend" radius={[0, 0, 0, 0]}
-            shape={(props: any) => <Extruded3DBar {...props} />} />
+            shape={(props: any) => <Extruded3DStackedBar {...props} stackPosition="bottom" />} />
           <Bar dataKey="tam" stackId="a" fill={isDark ? '#8B6914' : '#9A7828'} name="TAM Spend"
-            shape={(props: any) => <Extruded3DBar {...props} />} />
+            shape={(props: any) => <Extruded3DStackedBar {...props} stackPosition="middle" />} />
           <Bar dataKey="regular" stackId="a" fill={isDark ? '#1A3A1A' : '#2A4A2A'} name="Regular" radius={[3, 3, 0, 0]}
-            shape={(props: any) => <Extruded3DBar {...props} />} />
+            shape={(props: any) => <Extruded3DStackedBar {...props} stackPosition="top" />} />
         </BarChart>
       </ResponsiveContainer>
     </div>

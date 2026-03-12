@@ -303,6 +303,139 @@ export function Extruded3DBar(props: any) {
 }
 
 /**
+ * 3D Extruded Stacked Bar — For stacked bar charts where segments should NOT
+ * cast shadows on each other. Only the bottom segment gets the full 3D base
+ * extrusion (cast shadow, bottom face, side face). Middle and top segments
+ * get only a front-face gradient and a thin side face for depth.
+ * 
+ * stackPosition: 'bottom' | 'middle' | 'top'
+ *   - bottom: full 3D treatment (shadow, side, bottom face, top highlight)
+ *   - middle: front gradient + side face only, no shadow/bottom
+ *   - top: front gradient + side face + top face cap, no shadow/bottom
+ */
+export function Extruded3DStackedBar(props: any & { stackPosition?: 'bottom' | 'middle' | 'top' }) {
+  const { x, y, width, height: h, fill, stackPosition = 'bottom' } = props;
+  if (!h || h <= 0 || !width || width <= 0) return null;
+
+  const baseColor = fill || '#4A4A5A';
+  const id = `sbar3d_${gradientCounter++}`;
+  const highlightColor = lighten(baseColor, 0.4);
+  const shadowColor = darken(baseColor, 0.5);
+  const sideColor = darken(baseColor, 0.35);
+
+  const extrudeX = 4;
+  const extrudeY = 4;
+  const isBottom = stackPosition === 'bottom';
+  const isTop = stackPosition === 'top';
+
+  return (
+    <g>
+      <defs>
+        {/* Front face gradient */}
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={highlightColor} stopOpacity={0.95} />
+          <stop offset="8%" stopColor={lighten(baseColor, 0.15)} stopOpacity={0.92} />
+          <stop offset="50%" stopColor={baseColor} stopOpacity={0.88} />
+          <stop offset="92%" stopColor={darken(baseColor, 0.15)} stopOpacity={0.88} />
+          <stop offset="100%" stopColor={shadowColor} stopOpacity={0.92} />
+        </linearGradient>
+        <linearGradient id={`${id}_side`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor={sideColor} stopOpacity={0.9} />
+          <stop offset="100%" stopColor={darken(baseColor, 0.55)} stopOpacity={0.95} />
+        </linearGradient>
+        {isBottom && (
+          <filter id={`${id}_shadow`} x="-30%" y="-15%" width="170%" height="150%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="4" />
+          </filter>
+        )}
+      </defs>
+
+      {/* === CAST SHADOW — only on bottom segment === */}
+      {isBottom && (
+        <>
+          <rect
+            x={x + SHADOW.offsetX}
+            y={y + SHADOW.offsetY}
+            width={width + 2}
+            height={h + 2}
+            rx={3}
+            ry={3}
+            fill="rgba(0,0,0,0.5)"
+            filter={`url(#${id}_shadow)`}
+          />
+          <rect
+            x={x + 2}
+            y={y + h - 2}
+            width={width}
+            height={6}
+            rx={3}
+            fill="rgba(0,0,0,0.2)"
+            filter={`url(#${id}_shadow)`}
+          />
+        </>
+      )}
+
+      {/* === RIGHT SIDE FACE — all segments get a thin side for depth === */}
+      <path
+        d={`M${x + width},${y} L${x + width + extrudeX},${y + extrudeY} L${x + width + extrudeX},${y + h + extrudeY} L${x + width},${y + h} Z`}
+        fill={`url(#${id}_side)`}
+      />
+
+      {/* === BOTTOM FACE — only on bottom segment === */}
+      {isBottom && (
+        <path
+          d={`M${x},${y + h} L${x + extrudeX},${y + h + extrudeY} L${x + width + extrudeX},${y + h + extrudeY} L${x + width},${y + h} Z`}
+          fill={darken(baseColor, 0.5)}
+          fillOpacity={0.7}
+        />
+      )}
+
+      {/* === FRONT FACE (main visible surface) === */}
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={h}
+        fill={`url(#${id})`}
+      />
+
+      {/* === TOP FACE — only on top segment (cap) === */}
+      {isTop && (
+        <path
+          d={`M${x},${y} L${x + extrudeX},${y - extrudeY + 1} L${x + width + extrudeX},${y - extrudeY + 1} L${x + width},${y} Z`}
+          fill={highlightColor}
+          fillOpacity={0.35}
+        />
+      )}
+
+      {/* Top highlight line — only on top segment */}
+      {isTop && (
+        <rect
+          x={x + 1}
+          y={y}
+          width={width - 2}
+          height={Math.min(2.5, h * 0.06)}
+          rx={1.5}
+          fill={highlightColor}
+          fillOpacity={0.55}
+        />
+      )}
+
+      {/* Left highlight edge — subtle rim light on all segments */}
+      <rect
+        x={x}
+        y={y + 1}
+        width={Math.min(1, width * 0.06)}
+        height={h - 2}
+        rx={0.5}
+        fill={highlightColor}
+        fillOpacity={0.15}
+      />
+    </g>
+  );
+}
+
+/**
  * 3D Extruded Horizontal Bar — For layout="vertical" charts (e.g., Gravitational Pull)
  * Same physical extrusion but oriented horizontally
  */
