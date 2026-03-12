@@ -1,14 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
 import { getTeam, TEAM_BUDGETS } from '@/lib/mlsData';
-import { Extruded3DStackedBar } from '@/lib/chartUtils';
+import { Extruded3DStackedBar, Extruded3DPie } from '@/lib/chartUtils';
 import { useTheme } from '@/contexts/ThemeContext';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { DollarSign, TrendingUp, Users, Trophy } from 'lucide-react';
 
@@ -186,16 +185,17 @@ export default function TeamBudget() {
             ))}
           </div>
           {salaryBreakdown.length > 0 ? (
-            <div style={{ height: 200 }}>
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie data={salaryBreakdown} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value"
-                    label={({ name, value }) => `${name}: $${value}M`} labelLine={false}>
-                    {salaryBreakdown.map((d, i) => (<Cell key={i} fill={d.color} />))}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'blur(20px) saturate(1.4)', WebkitBackdropFilter: 'blur(20px) saturate(1.4)', border: '1px solid var(--glass-border)', borderRadius: 12, fontSize: 11, color: 'var(--glass-text)', boxShadow: 'var(--glass-shadow)' }} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="flex justify-center">
+              <Extruded3DPie
+                data={salaryBreakdown}
+                width={420}
+                height={260}
+                isDark={isDark}
+                innerRadius={50}
+                outerRadius={85}
+                extrudeDepth={12}
+                formatValue={(v) => `$${v.toFixed(1)}M`}
+              />
             </div>
           ) : (
             <div className="h-48 flex items-center justify-center text-xs text-muted-foreground">Select a team to view salary breakdown</div>
@@ -243,16 +243,17 @@ export default function TeamBudget() {
       </ChartModal>
       <ChartModal isOpen={maximized === 'salary'} onClose={() => setMaximized(null)} title={`Salary by Position${selTeam ? ` — ${selTeam.name}` : ''}`}>
         {salaryBreakdown.length > 0 ? (
-          <div style={{ height: 500 }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie data={salaryBreakdown} cx="50%" cy="50%" innerRadius={100} outerRadius={180} paddingAngle={3} dataKey="value"
-                  label={({ name, value }) => `${name}: $${value}M`}>
-                  {salaryBreakdown.map((d, i) => (<Cell key={i} fill={d.color} />))}
-                </Pie>
-                <Tooltip contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'blur(20px) saturate(1.4)', WebkitBackdropFilter: 'blur(20px) saturate(1.4)', border: '1px solid var(--glass-border)', borderRadius: 12, fontSize: 13, color: 'var(--glass-text)', boxShadow: 'var(--glass-shadow)' }} />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="flex justify-center">
+            <Extruded3DPie
+              data={salaryBreakdown}
+              width={700}
+              height={500}
+              isDark={isDark}
+              innerRadius={100}
+              outerRadius={180}
+              extrudeDepth={18}
+              formatValue={(v) => `$${v.toFixed(1)}M`}
+            />
           </div>
         ) : <div className="h-96 flex items-center justify-center text-muted-foreground">Select a team first</div>}
       </ChartModal>

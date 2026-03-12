@@ -775,3 +775,259 @@ export function Extruded3DBarWithCeiling(props: any) {
     </g>
   );
 }
+
+
+// ─── 3D EXTRUDED PIE / DONUT CHART ───
+
+interface PieSlice {
+  name: string;
+  value: number;
+  color: string;
+}
+
+interface Extruded3DPieProps {
+  data: PieSlice[];
+  width: number;
+  height: number;
+  isDark: boolean;
+  innerRadius?: number;
+  outerRadius?: number;
+  extrudeDepth?: number;
+  formatValue?: (v: number) => string;
+}
+
+export function Extruded3DPie({
+  data,
+  width,
+  height,
+  isDark,
+  innerRadius = 50,
+  outerRadius = 80,
+  extrudeDepth = 14,
+  formatValue,
+}: Extruded3DPieProps) {
+  if (!data.length) return null;
+
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return null;
+
+  const cx = width / 2;
+  const cy = (height - extrudeDepth) / 2;
+  const gapAngle = 0.03;
+  const id = `pie3d_${gradientCounter++}`;
+
+  const slices: Array<PieSlice & { startAngle: number; endAngle: number; midAngle: number }> = [];
+  let currentAngle = -Math.PI / 2;
+  data.forEach((d) => {
+    const sliceAngle = (d.value / total) * Math.PI * 2;
+    const start = currentAngle + gapAngle / 2;
+    const end = currentAngle + sliceAngle - gapAngle / 2;
+    slices.push({ ...d, startAngle: start, endAngle: end, midAngle: (start + end) / 2 });
+    currentAngle += sliceAngle;
+  });
+
+  const ySquash = 0.92;
+  const ptx = (angle: number, r: number) => cx + Math.cos(angle) * r;
+  const pty = (angle: number, r: number) => cy + Math.sin(angle) * r * ySquash;
+
+  const arcPath = (startA: number, endA: number, rOuter: number, rInner: number) => {
+    const largeArc = endA - startA > Math.PI ? 1 : 0;
+    const os = { x: ptx(startA, rOuter), y: pty(startA, rOuter) };
+    const oe = { x: ptx(endA, rOuter), y: pty(endA, rOuter) };
+    const is_ = { x: ptx(startA, rInner), y: pty(startA, rInner) };
+    const ie = { x: ptx(endA, rInner), y: pty(endA, rInner) };
+    const rxO = rOuter; const ryO = rOuter * ySquash;
+    const rxI = rInner; const ryI = rInner * ySquash;
+    if (rInner > 0) {
+      return `M${os.x},${os.y} A${rxO},${ryO} 0 ${largeArc} 1 ${oe.x},${oe.y} L${ie.x},${ie.y} A${rxI},${ryI} 0 ${largeArc} 0 ${is_.x},${is_.y} Z`;
+    }
+    return `M${cx},${cy} L${os.x},${os.y} A${rxO},${ryO} 0 ${largeArc} 1 ${oe.x},${oe.y} Z`;
+  };
+
+  const sideWallPath = (startA: number, endA: number, r: number, depth: number) => {
+    const steps = Math.max(8, Math.ceil(((endA - startA) / (Math.PI * 2)) * 48));
+    const topPts: string[] = [];
+    const botPts: string[] = [];
+    for (let i = 0; i <= steps; i++) {
+      const angle = startA + (endA - startA) * (i / steps);
+      const xp = ptx(angle, r);
+      const yTop = pty(angle, r);
+      topPts.push(`${xp},${yTop}`);
+      botPts.push(`${xp},${yTop + depth}`);
+    }
+    return `M${topPts[0]} ${topPts.slice(1).map(p => `L${p}`).join(' ')} ${botPts.reverse().map(p => `L${p}`).join(' ')} Z`;
+  };
+
+  const bgStroke = isDark ? '#1a1a2e' : '#e8e4de';
+  const textColor = isDark ? 'rgba(255,255,255,0.85)' : 'rgba(30,30,30,0.85)';
+  const subTextColor = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(30,30,30,0.5)';
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+      <defs>
+        <filter id={`${id}_castShadow`} x="-40%" y="-20%" width="180%" height="180%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6" />
+        </filter>
+        <filter id={`${id}_innerShadow`} x="-10%" y="-10%" width="120%" height="120%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+        </filter>
+        {slices.map((s, i) => (
+          <React.Fragment key={i}>
+            <linearGradient id={`${id}_top_${i}`} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor={lighten(s.color, 0.35)} stopOpacity={0.95} />
+              <stop offset="35%" stopColor={lighten(s.color, 0.1)} stopOpacity={0.9} />
+              <stop offset="70%" stopColor={s.color} stopOpacity={0.88} />
+              <stop offset="100%" stopColor={darken(s.color, 0.2)} stopOpacity={0.92} />
+            </linearGradient>
+            <linearGradient id={`${id}_side_${i}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={darken(s.color, 0.35)} stopOpacity={0.9} />
+              <stop offset="100%" stopColor={darken(s.color, 0.55)} stopOpacity={0.95} />
+            </linearGradient>
+          </React.Fragment>
+        ))}
+      </defs>
+
+      {/* Cast shadow — elliptical shadow beneath the pie */}
+      <ellipse
+        cx={cx + 5}
+        cy={cy + extrudeDepth + 8}
+        rx={outerRadius + 8}
+        ry={outerRadius * ySquash * 0.5}
+        fill="rgba(0,0,0,0.45)"
+        filter={`url(#${id}_castShadow)`}
+      />
+
+      {/* Extruded side walls — only render slices in the bottom half (visible sides) */}
+      {slices.map((s, i) => {
+        const visStart = Math.max(s.startAngle, -0.05);
+        const visEnd = Math.min(s.endAngle, Math.PI + 0.05);
+        if (visStart >= visEnd) return null;
+        return (
+          <React.Fragment key={`side_${i}`}>
+            {/* Outer wall */}
+            <path
+              d={sideWallPath(visStart, visEnd, outerRadius, extrudeDepth)}
+              fill={`url(#${id}_side_${i})`}
+              stroke={bgStroke}
+              strokeWidth={0.5}
+            />
+            {/* Inner wall (for donut) */}
+            {innerRadius > 0 && (
+              <path
+                d={sideWallPath(visStart, visEnd, innerRadius, extrudeDepth)}
+                fill={darken(s.color, 0.45)}
+                fillOpacity={0.8}
+                stroke={bgStroke}
+                strokeWidth={0.5}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+
+      {/* Side wall edge caps — vertical lines at slice boundaries */}
+      {slices.map((s, i) => {
+        const startInBottom = s.startAngle > -0.05 && s.startAngle < Math.PI + 0.05;
+        const endInBottom = s.endAngle > -0.05 && s.endAngle < Math.PI + 0.05;
+        return (
+          <React.Fragment key={`cap_${i}`}>
+            {startInBottom && (
+              <>
+                <line
+                  x1={ptx(s.startAngle, outerRadius)} y1={pty(s.startAngle, outerRadius)}
+                  x2={ptx(s.startAngle, outerRadius)} y2={pty(s.startAngle, outerRadius) + extrudeDepth}
+                  stroke={bgStroke} strokeWidth={1.5}
+                />
+                {innerRadius > 0 && (
+                  <line
+                    x1={ptx(s.startAngle, innerRadius)} y1={pty(s.startAngle, innerRadius)}
+                    x2={ptx(s.startAngle, innerRadius)} y2={pty(s.startAngle, innerRadius) + extrudeDepth}
+                    stroke={bgStroke} strokeWidth={1.5}
+                  />
+                )}
+              </>
+            )}
+            {endInBottom && (
+              <>
+                <line
+                  x1={ptx(s.endAngle, outerRadius)} y1={pty(s.endAngle, outerRadius)}
+                  x2={ptx(s.endAngle, outerRadius)} y2={pty(s.endAngle, outerRadius) + extrudeDepth}
+                  stroke={bgStroke} strokeWidth={1.5}
+                />
+                {innerRadius > 0 && (
+                  <line
+                    x1={ptx(s.endAngle, innerRadius)} y1={pty(s.endAngle, innerRadius)}
+                    x2={ptx(s.endAngle, innerRadius)} y2={pty(s.endAngle, innerRadius) + extrudeDepth}
+                    stroke={bgStroke} strokeWidth={1.5}
+                  />
+                )}
+              </>
+            )}
+          </React.Fragment>
+        );
+      })}
+
+      {/* Top face — the main visible pie surface */}
+      {slices.map((s, i) => (
+        <path
+          key={`top_${i}`}
+          d={arcPath(s.startAngle, s.endAngle, outerRadius, innerRadius)}
+          fill={`url(#${id}_top_${i})`}
+          stroke={bgStroke}
+          strokeWidth={1.5}
+        />
+      ))}
+
+      {/* Specular highlight — a subtle arc of light on the upper-left */}
+      <ellipse
+        cx={cx - outerRadius * 0.25}
+        cy={cy - outerRadius * ySquash * 0.25}
+        rx={outerRadius * 0.45}
+        ry={outerRadius * ySquash * 0.3}
+        fill="rgba(255,255,255,0.08)"
+        style={{ pointerEvents: 'none' }}
+      />
+
+      {/* Labels with leader lines */}
+      {slices.map((s, i) => {
+        const labelR = outerRadius + 20;
+        const lx = ptx(s.midAngle, labelR);
+        const ly = pty(s.midAngle, labelR);
+        const connR = outerRadius + 6;
+        const connX = ptx(s.midAngle, connR);
+        const connY = pty(s.midAngle, connR);
+        const anchor = Math.cos(s.midAngle) > 0.1 ? 'start' : Math.cos(s.midAngle) < -0.1 ? 'end' : 'middle';
+        const fmtVal = formatValue ? formatValue(s.value) : `$${(s.value / 1e6).toFixed(1)}M`;
+        return (
+          <React.Fragment key={`label_${i}`}>
+            <line
+              x1={connX} y1={connY}
+              x2={lx} y2={ly}
+              stroke={isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}
+              strokeWidth={1}
+            />
+            <text
+              x={lx}
+              y={ly - 4}
+              textAnchor={anchor as any}
+              fill={textColor}
+              fontSize={11}
+              fontWeight={600}
+            >
+              {s.name}
+            </text>
+            <text
+              x={lx}
+              y={ly + 10}
+              textAnchor={anchor as any}
+              fill={subTextColor}
+              fontSize={10}
+            >
+              {fmtVal}
+            </text>
+          </React.Fragment>
+        );
+      })}
+    </svg>
+  );
+}
