@@ -11,3 +11,7 @@
 - [ ] Team-colored animated flow dots on arcs
 - [ ] Proper depth of field / atmospheric perspective
 - [ ] Test and verify visual quality matches reference images
+
+# X Axis / Stacked Bar Fix
+
+- [x] Fix X axis line overlap with stacked bar 3D extrusion in Team Budget chart — bars should rest ON the X axis line, not hang through it

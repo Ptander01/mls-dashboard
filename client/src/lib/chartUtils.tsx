@@ -314,8 +314,8 @@ export function Extruded3DBar(props: any) {
  *   - top: front gradient + side face + top face cap, no shadow/bottom
  */
 export function Extruded3DStackedBar(props: any & { stackPosition?: 'bottom' | 'middle' | 'top' }) {
-  const { x, y, width, height: h, fill, stackPosition = 'bottom', onBarClick, payload, ...restProps } = props;
-  if (!h || h <= 0 || !width || width <= 0) return null;
+  const { x, y: rawY, width, height: rawH, fill, stackPosition = 'bottom', onBarClick, payload, ...restProps } = props;
+  if (!rawH || rawH <= 0 || !width || width <= 0) return null;
 
   const baseColor = fill || '#4A4A5A';
   const id = `sbar3d_${gradientCounter++}`;
@@ -327,6 +327,11 @@ export function Extruded3DStackedBar(props: any & { stackPosition?: 'bottom' | '
   const extrudeY = 4;
   const isBottom = stackPosition === 'bottom';
   const isTop = stackPosition === 'top';
+
+  // Shift all bars up by extrudeY so the 3D bottom-face extrusion
+  // rests exactly ON the X axis line instead of hanging through it.
+  const y = rawY - extrudeY;
+  const h = rawH;
 
   const handleClick = () => {
     if (typeof onBarClick === 'function' && payload) {
