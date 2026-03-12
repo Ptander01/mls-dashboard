@@ -777,7 +777,7 @@ export function Extruded3DBarWithCeiling(props: any) {
 }
 
 
-// ─── 3D EXTRUDED PIE / DONUT CHART ───
+// ─── 3D EXTRUDED PIE / DONUT CHART (Flat Circular with Neumorphic Shadows) ───
 
 interface PieSlice {
   name: string;
@@ -803,7 +803,6 @@ export function Extruded3DPie({
   isDark,
   innerRadius = 50,
   outerRadius = 80,
-  extrudeDepth = 14,
   formatValue,
 }: Extruded3DPieProps) {
   if (!data.length) return null;
@@ -812,12 +811,15 @@ export function Extruded3DPie({
   if (total === 0) return null;
 
   const cx = width / 2;
-  const cy = (height - extrudeDepth) / 2;
-  const gapAngle = 0.03;
+  const cy = height / 2;
+  const gapAngle = 0.045; // gap between segments in radians (~2.6 degrees)
+  const shadowOffsetX = 6;
+  const shadowOffsetY = 8;
   const id = `pie3d_${gradientCounter++}`;
 
+  // Build slice geometry
   const slices: Array<PieSlice & { startAngle: number; endAngle: number; midAngle: number }> = [];
-  let currentAngle = -Math.PI / 2;
+  let currentAngle = -Math.PI / 2; // start at 12 o'clock
   data.forEach((d) => {
     const sliceAngle = (d.value / total) * Math.PI * 2;
     const start = currentAngle + gapAngle / 2;
@@ -826,174 +828,248 @@ export function Extruded3DPie({
     currentAngle += sliceAngle;
   });
 
-  const ySquash = 0.92;
+  // Helper: point on circle
   const ptx = (angle: number, r: number) => cx + Math.cos(angle) * r;
-  const pty = (angle: number, r: number) => cy + Math.sin(angle) * r * ySquash;
+  const pty = (angle: number, r: number) => cy + Math.sin(angle) * r;
 
-  const arcPath = (startA: number, endA: number, rOuter: number, rInner: number) => {
+  // Helper: arc path for a donut segment (flat, no squash)
+  const arcPath = (startA: number, endA: number, rOuter: number, rInner: number, offsetX = 0, offsetY = 0) => {
     const largeArc = endA - startA > Math.PI ? 1 : 0;
-    const os = { x: ptx(startA, rOuter), y: pty(startA, rOuter) };
-    const oe = { x: ptx(endA, rOuter), y: pty(endA, rOuter) };
-    const is_ = { x: ptx(startA, rInner), y: pty(startA, rInner) };
-    const ie = { x: ptx(endA, rInner), y: pty(endA, rInner) };
-    const rxO = rOuter; const ryO = rOuter * ySquash;
-    const rxI = rInner; const ryI = rInner * ySquash;
+    const os = { x: ptx(startA, rOuter) + offsetX, y: pty(startA, rOuter) + offsetY };
+    const oe = { x: ptx(endA, rOuter) + offsetX, y: pty(endA, rOuter) + offsetY };
+    const is_ = { x: ptx(startA, rInner) + offsetX, y: pty(startA, rInner) + offsetY };
+    const ie = { x: ptx(endA, rInner) + offsetX, y: pty(endA, rInner) + offsetY };
     if (rInner > 0) {
-      return `M${os.x},${os.y} A${rxO},${ryO} 0 ${largeArc} 1 ${oe.x},${oe.y} L${ie.x},${ie.y} A${rxI},${ryI} 0 ${largeArc} 0 ${is_.x},${is_.y} Z`;
+      return `M${os.x},${os.y} A${rOuter},${rOuter} 0 ${largeArc} 1 ${oe.x},${oe.y} L${ie.x},${ie.y} A${rInner},${rInner} 0 ${largeArc} 0 ${is_.x},${is_.y} Z`;
     }
-    return `M${cx},${cy} L${os.x},${os.y} A${rxO},${ryO} 0 ${largeArc} 1 ${oe.x},${oe.y} Z`;
+    return `M${cx + offsetX},${cy + offsetY} L${os.x},${os.y} A${rOuter},${rOuter} 0 ${largeArc} 1 ${oe.x},${oe.y} Z`;
   };
 
-  const sideWallPath = (startA: number, endA: number, r: number, depth: number) => {
-    const steps = Math.max(8, Math.ceil(((endA - startA) / (Math.PI * 2)) * 48));
-    const topPts: string[] = [];
-    const botPts: string[] = [];
-    for (let i = 0; i <= steps; i++) {
-      const angle = startA + (endA - startA) * (i / steps);
-      const xp = ptx(angle, r);
-      const yTop = pty(angle, r);
-      topPts.push(`${xp},${yTop}`);
-      botPts.push(`${xp},${yTop + depth}`);
-    }
-    return `M${topPts[0]} ${topPts.slice(1).map(p => `L${p}`).join(' ')} ${botPts.reverse().map(p => `L${p}`).join(' ')} Z`;
-  };
+  const bgStroke = isDark ? 'rgba(20,20,38,0.9)' : 'rgba(220,216,210,0.9)';
+  const textColor = isDark ? 'rgba(255,255,255,0.88)' : 'rgba(30,30,30,0.88)';
+  const subTextColor = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(30,30,30,0.55)';
 
-  const bgStroke = isDark ? '#1a1a2e' : '#e8e4de';
-  const textColor = isDark ? 'rgba(255,255,255,0.85)' : 'rgba(30,30,30,0.85)';
-  const subTextColor = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(30,30,30,0.5)';
+  // Light source direction (upper-left)
+  const lightAngle = -Math.PI * 0.75; // 135 degrees from right = upper-left
 
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
       <defs>
-        <filter id={`${id}_castShadow`} x="-40%" y="-20%" width="180%" height="180%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="6" />
+        {/* Primary cast shadow filter — deep, soft blur */}
+        <filter id={`${id}_segShadow`} x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
         </filter>
-        <filter id={`${id}_innerShadow`} x="-10%" y="-10%" width="120%" height="120%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+
+        {/* Secondary ambient shadow — tighter */}
+        <filter id={`${id}_ambientShadow`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" />
         </filter>
-        {slices.map((s, i) => (
-          <React.Fragment key={i}>
-            <linearGradient id={`${id}_top_${i}`} x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor={lighten(s.color, 0.35)} stopOpacity={0.95} />
-              <stop offset="35%" stopColor={lighten(s.color, 0.1)} stopOpacity={0.9} />
-              <stop offset="70%" stopColor={s.color} stopOpacity={0.88} />
-              <stop offset="100%" stopColor={darken(s.color, 0.2)} stopOpacity={0.92} />
+
+        {/* Inner hole inset shadow filter */}
+        <filter id={`${id}_innerShadow`} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="blur" />
+          <feOffset dx="3" dy="4" result="offsetBlur" />
+          <feComposite in="SourceGraphic" in2="offsetBlur" operator="over" />
+        </filter>
+
+        {/* Specular radial highlight — upper-left glow */}
+        <radialGradient id={`${id}_specular`} cx="30%" cy="30%" r="70%">
+          <stop offset="0%" stopColor={isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.35)'} />
+          <stop offset="50%" stopColor={isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.08)'} />
+          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </radialGradient>
+
+        {/* Inner hole metallic/concave gradient — like reference image 1 */}
+        <radialGradient id={`${id}_innerHole`} cx="40%" cy="38%" r="65%">
+          <stop offset="0%" stopColor={isDark ? '#3a3a5e' : '#ffffff'} stopOpacity={isDark ? 0.8 : 0.95} />
+          <stop offset="35%" stopColor={isDark ? '#2a2a48' : '#f0ece6'} stopOpacity={isDark ? 0.7 : 0.85} />
+          <stop offset="70%" stopColor={isDark ? '#1e1e36' : '#ddd8d0'} stopOpacity={isDark ? 0.85 : 0.7} />
+          <stop offset="100%" stopColor={isDark ? '#141428' : '#c8c2b8'} stopOpacity={isDark ? 0.95 : 0.6} />
+        </radialGradient>
+
+        {/* Per-segment gradients — simulate directional lighting with stronger contrast */}
+        {slices.map((s, i) => {
+          const segAngle = s.midAngle;
+          // Gradient runs from light source direction to opposite
+          const gx1 = 0.5 + Math.cos(lightAngle) * 0.5;
+          const gy1 = 0.5 + Math.sin(lightAngle) * 0.5;
+          const gx2 = 0.5 - Math.cos(lightAngle) * 0.5;
+          const gy2 = 0.5 - Math.sin(lightAngle) * 0.5;
+
+          // How much this segment faces the light (dot product)
+          const facingLight = Math.cos(segAngle - lightAngle);
+          const lightBoost = facingLight * 0.18;
+
+          return (
+            <linearGradient key={i} id={`${id}_grad_${i}`} x1={gx1} y1={gy1} x2={gx2} y2={gy2}>
+              <stop offset="0%" stopColor={lighten(s.color, 0.38 + lightBoost)} stopOpacity={0.97} />
+              <stop offset="25%" stopColor={lighten(s.color, 0.15 + lightBoost)} stopOpacity={0.94} />
+              <stop offset="60%" stopColor={s.color} stopOpacity={0.92} />
+              <stop offset="85%" stopColor={darken(s.color, 0.15 - lightBoost * 0.3)} stopOpacity={0.94} />
+              <stop offset="100%" stopColor={darken(s.color, 0.3 - lightBoost * 0.4)} stopOpacity={0.97} />
             </linearGradient>
-            <linearGradient id={`${id}_side_${i}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={darken(s.color, 0.35)} stopOpacity={0.9} />
-              <stop offset="100%" stopColor={darken(s.color, 0.55)} stopOpacity={0.95} />
-            </linearGradient>
-          </React.Fragment>
-        ))}
+          );
+        })}
       </defs>
 
-      {/* Cast shadow — elliptical shadow beneath the pie */}
-      <ellipse
-        cx={cx + 5}
-        cy={cy + extrudeDepth + 8}
-        rx={outerRadius + 8}
-        ry={outerRadius * ySquash * 0.5}
-        fill="rgba(0,0,0,0.45)"
-        filter={`url(#${id}_castShadow)`}
-      />
-
-      {/* Extruded side walls — only render slices in the bottom half (visible sides) */}
-      {slices.map((s, i) => {
-        const visStart = Math.max(s.startAngle, -0.05);
-        const visEnd = Math.min(s.endAngle, Math.PI + 0.05);
-        if (visStart >= visEnd) return null;
-        return (
-          <React.Fragment key={`side_${i}`}>
-            {/* Outer wall */}
-            <path
-              d={sideWallPath(visStart, visEnd, outerRadius, extrudeDepth)}
-              fill={`url(#${id}_side_${i})`}
-              stroke={bgStroke}
-              strokeWidth={0.5}
-            />
-            {/* Inner wall (for donut) */}
-            {innerRadius > 0 && (
-              <path
-                d={sideWallPath(visStart, visEnd, innerRadius, extrudeDepth)}
-                fill={darken(s.color, 0.45)}
-                fillOpacity={0.8}
-                stroke={bgStroke}
-                strokeWidth={0.5}
-              />
-            )}
-          </React.Fragment>
-        );
-      })}
-
-      {/* Side wall edge caps — vertical lines at slice boundaries */}
-      {slices.map((s, i) => {
-        const startInBottom = s.startAngle > -0.05 && s.startAngle < Math.PI + 0.05;
-        const endInBottom = s.endAngle > -0.05 && s.endAngle < Math.PI + 0.05;
-        return (
-          <React.Fragment key={`cap_${i}`}>
-            {startInBottom && (
-              <>
-                <line
-                  x1={ptx(s.startAngle, outerRadius)} y1={pty(s.startAngle, outerRadius)}
-                  x2={ptx(s.startAngle, outerRadius)} y2={pty(s.startAngle, outerRadius) + extrudeDepth}
-                  stroke={bgStroke} strokeWidth={1.5}
-                />
-                {innerRadius > 0 && (
-                  <line
-                    x1={ptx(s.startAngle, innerRadius)} y1={pty(s.startAngle, innerRadius)}
-                    x2={ptx(s.startAngle, innerRadius)} y2={pty(s.startAngle, innerRadius) + extrudeDepth}
-                    stroke={bgStroke} strokeWidth={1.5}
-                  />
-                )}
-              </>
-            )}
-            {endInBottom && (
-              <>
-                <line
-                  x1={ptx(s.endAngle, outerRadius)} y1={pty(s.endAngle, outerRadius)}
-                  x2={ptx(s.endAngle, outerRadius)} y2={pty(s.endAngle, outerRadius) + extrudeDepth}
-                  stroke={bgStroke} strokeWidth={1.5}
-                />
-                {innerRadius > 0 && (
-                  <line
-                    x1={ptx(s.endAngle, innerRadius)} y1={pty(s.endAngle, innerRadius)}
-                    x2={ptx(s.endAngle, innerRadius)} y2={pty(s.endAngle, innerRadius) + extrudeDepth}
-                    stroke={bgStroke} strokeWidth={1.5}
-                  />
-                )}
-              </>
-            )}
-          </React.Fragment>
-        );
-      })}
-
-      {/* Top face — the main visible pie surface */}
+      {/* ── Layer 1: Deep cast shadows (per-segment) ── */}
+      {/* Each segment casts its own shadow offset to the bottom-right */}
       {slices.map((s, i) => (
         <path
-          key={`top_${i}`}
+          key={`deepShadow_${i}`}
+          d={arcPath(s.startAngle, s.endAngle, outerRadius + 2, innerRadius > 0 ? innerRadius - 2 : 0, shadowOffsetX, shadowOffsetY)}
+          fill={isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.2)'}
+          filter={`url(#${id}_segShadow)`}
+          style={{ pointerEvents: 'none' }}
+        />
+      ))}
+
+      {/* ── Layer 2: Ambient contact shadow (tighter, under the donut ring) ── */}
+      {slices.map((s, i) => (
+        <path
+          key={`ambientShadow_${i}`}
+          d={arcPath(s.startAngle, s.endAngle, outerRadius, innerRadius > 0 ? innerRadius : 0, shadowOffsetX * 0.4, shadowOffsetY * 0.5)}
+          fill={isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.1)'}
+          filter={`url(#${id}_ambientShadow)`}
+          style={{ pointerEvents: 'none' }}
+        />
+      ))}
+
+      {/* ── Layer 3: Main pie segments — top face with gradient ── */}
+      {slices.map((s, i) => (
+        <path
+          key={`face_${i}`}
           d={arcPath(s.startAngle, s.endAngle, outerRadius, innerRadius)}
-          fill={`url(#${id}_top_${i})`}
+          fill={`url(#${id}_grad_${i})`}
           stroke={bgStroke}
           strokeWidth={1.5}
         />
       ))}
 
-      {/* Specular highlight — a subtle arc of light on the upper-left */}
-      <ellipse
-        cx={cx - outerRadius * 0.25}
-        cy={cy - outerRadius * ySquash * 0.25}
-        rx={outerRadius * 0.45}
-        ry={outerRadius * ySquash * 0.3}
-        fill="rgba(255,255,255,0.08)"
+      {/* ── Layer 4: Outer edge highlight — bright rim on light-facing outer edge ── */}
+      {slices.map((s, i) => {
+        const facingLight = Math.cos(s.midAngle - lightAngle);
+        if (facingLight < 0.1) return null;
+        const highlightOpacity = Math.min(facingLight * 0.35, 0.3);
+        return (
+          <path
+            key={`outerHighlight_${i}`}
+            d={arcPath(s.startAngle, s.endAngle, outerRadius, outerRadius - 3)}
+            fill={`rgba(255,255,255,${highlightOpacity})`}
+            style={{ pointerEvents: 'none' }}
+          />
+        );
+      })}
+
+      {/* ── Layer 5: Inner edge highlight — bright rim on light-facing inner edge ── */}
+      {slices.map((s, i) => {
+        const facingLight = Math.cos(s.midAngle - lightAngle);
+        if (facingLight < 0.15 || innerRadius <= 0) return null;
+        const highlightOpacity = Math.min(facingLight * 0.3, 0.25);
+        return (
+          <path
+            key={`innerHighlight_${i}`}
+            d={arcPath(s.startAngle, s.endAngle, innerRadius + 5, innerRadius + 1)}
+            fill={`rgba(255,255,255,${highlightOpacity})`}
+            style={{ pointerEvents: 'none' }}
+          />
+        );
+      })}
+
+      {/* ── Layer 6: Outer edge shadow — dark rim on shadow-facing outer edge ── */}
+      {slices.map((s, i) => {
+        const facingAway = -Math.cos(s.midAngle - lightAngle);
+        if (facingAway < 0.1) return null;
+        const shadowOpacity = Math.min(facingAway * 0.3, 0.25);
+        return (
+          <path
+            key={`outerEdgeShadow_${i}`}
+            d={arcPath(s.startAngle, s.endAngle, outerRadius, outerRadius - 4)}
+            fill={`rgba(0,0,0,${shadowOpacity})`}
+            style={{ pointerEvents: 'none' }}
+          />
+        );
+      })}
+
+      {/* ── Layer 7: Inner edge shadow — dark rim on shadow-facing inner edge ── */}
+      {slices.map((s, i) => {
+        const facingAway = -Math.cos(s.midAngle - lightAngle);
+        if (facingAway < 0.05 || innerRadius <= 0) return null;
+        const shadowOpacity = Math.min(facingAway * 0.25, 0.2);
+        return (
+          <path
+            key={`innerEdgeShadow_${i}`}
+            d={arcPath(s.startAngle, s.endAngle, innerRadius + 4, innerRadius)}
+            fill={`rgba(0,0,0,${shadowOpacity})`}
+            style={{ pointerEvents: 'none' }}
+          />
+        );
+      })}
+
+      {/* ── Layer 8: Specular highlight overlay — radial glow from upper-left ── */}
+      <circle
+        cx={cx - outerRadius * 0.18}
+        cy={cy - outerRadius * 0.18}
+        r={outerRadius * 0.9}
+        fill={`url(#${id}_specular)`}
         style={{ pointerEvents: 'none' }}
       />
 
-      {/* Labels with leader lines */}
+      {/* ── Layer 9: Inner donut hole — metallic concave look ── */}
+      {innerRadius > 0 && (
+        <>
+          {/* Metallic/concave gradient fill */}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={innerRadius}
+            fill={`url(#${id}_innerHole)`}
+          />
+          {/* Inner shadow ring — creates the recessed/inset look */}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={innerRadius}
+            fill="none"
+            stroke={isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)'}
+            strokeWidth={5}
+            style={{ pointerEvents: 'none' }}
+          />
+          {/* Second inner shadow — tighter, darker on shadow side */}
+          <circle
+            cx={cx + 1}
+            cy={cy + 1.5}
+            r={innerRadius - 2}
+            fill="none"
+            stroke={isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.08)'}
+            strokeWidth={3}
+            style={{ pointerEvents: 'none' }}
+          />
+          {/* Inner highlight arc on the light side (upper-left quadrant) */}
+          <path
+            d={`M${cx},${cy - innerRadius} A${innerRadius},${innerRadius} 0 0 0 ${cx - innerRadius},${cy}`}
+            fill="none"
+            stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.5)'}
+            strokeWidth={2.5}
+            style={{ pointerEvents: 'none' }}
+          />
+          {/* Subtle inner specular dot — center glow */}
+          <circle
+            cx={cx - innerRadius * 0.2}
+            cy={cy - innerRadius * 0.2}
+            r={innerRadius * 0.35}
+            fill={isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.15)'}
+            style={{ pointerEvents: 'none' }}
+          />
+        </>
+      )}
+
+      {/* ── Labels with leader lines ── */}
       {slices.map((s, i) => {
-        const labelR = outerRadius + 20;
+        const labelR = outerRadius + 24;
         const lx = ptx(s.midAngle, labelR);
         const ly = pty(s.midAngle, labelR);
-        const connR = outerRadius + 6;
+        const connR = outerRadius + 4;
         const connX = ptx(s.midAngle, connR);
         const connY = pty(s.midAngle, connR);
         const anchor = Math.cos(s.midAngle) > 0.1 ? 'start' : Math.cos(s.midAngle) < -0.1 ? 'end' : 'middle';
@@ -1003,25 +1079,27 @@ export function Extruded3DPie({
             <line
               x1={connX} y1={connY}
               x2={lx} y2={ly}
-              stroke={isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}
+              stroke={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.18)'}
               strokeWidth={1}
             />
             <text
               x={lx}
-              y={ly - 4}
+              y={ly - 5}
               textAnchor={anchor as any}
               fill={textColor}
               fontSize={11}
               fontWeight={600}
+              style={{ fontFamily: 'Space Grotesk, sans-serif' }}
             >
               {s.name}
             </text>
             <text
               x={lx}
-              y={ly + 10}
+              y={ly + 9}
               textAnchor={anchor as any}
               fill={subTextColor}
               fontSize={10}
+              style={{ fontFamily: 'Space Grotesk, sans-serif' }}
             >
               {fmtVal}
             </text>
