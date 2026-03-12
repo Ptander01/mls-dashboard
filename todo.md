@@ -38,3 +38,8 @@
 
 - [ ] Fix maximize modals not rendering properly in published preview (charts appear tiny/compressed in corners)
 - [ ] Investigate and fix flat attendance trend lines for some teams (e.g., Austin FC shows perfectly straight line for all 32 weeks)
+
+# Theme Preference
+
+- [x] Switch default theme from dark to light mode
+- [x] Update handoff document to reflect light mode preference
