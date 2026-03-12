@@ -97,6 +97,13 @@ export default function TeamBudget() {
 
   return (
     <div className="space-y-4 mt-4">
+      {/* Tab Description */}
+      <div className="px-1">
+        <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <span className="font-semibold text-foreground">Team Budget</span> — Analyze how each MLS club allocates its salary budget across Designated Players, TAM, and regular contracts. Click a bar to drill into that team's positional salary breakdown and top earners. Use this to identify which teams invest heavily in attack vs. defense and spot potential value signings.
+        </p>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <NeuCard delay={0.05} glow="amber" className="p-4">

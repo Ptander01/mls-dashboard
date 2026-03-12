@@ -207,8 +207,9 @@ export default function Attendance() {
               );
             }} />
             {showFillRate && (
-              <ReferenceLine y={100} stroke="#ff6b9d" strokeDasharray="6 3" strokeWidth={1.5} strokeOpacity={0.6}
-                label={{ value: '100% Capacity', position: 'right', fill: '#ff6b9d', fontSize: 9, fontFamily: 'JetBrains Mono' }} />
+              <ReferenceLine y={100} stroke={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.25)'} strokeDasharray="6 3" strokeWidth={2} strokeOpacity={1}
+                style={{ filter: isDark ? 'drop-shadow(0 1px 2px rgba(255,255,255,0.3)) drop-shadow(0 -1px 0 rgba(255,255,255,0.15))' : 'drop-shadow(0 1px 2px rgba(0,0,0,0.15)) drop-shadow(0 -1px 0 rgba(255,255,255,0.5))' }}
+                label={{ value: '100% Capacity', position: 'right', fill: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)', fontSize: 9, fontFamily: 'JetBrains Mono' }} />
             )}
             <Bar dataKey={dataKey} radius={[4, 4, 0, 0]} cursor="pointer"
               onClick={(d: any) => { setSelectedTeam(d.id); setTrendTeamOverride(d.id); }}
@@ -245,12 +246,13 @@ export default function Attendance() {
             <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
             <Tooltip contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'blur(20px) saturate(1.4)', WebkitBackdropFilter: 'blur(20px) saturate(1.4)', border: '1px solid var(--glass-border)', borderRadius: 12, fontSize: 11, fontFamily: 'JetBrains Mono', color: 'var(--glass-text)', boxShadow: 'var(--glass-shadow)' }} />
             {trendCapacity > 0 && (
-              <ReferenceLine y={trendCapacity} stroke="#ff6b9d" strokeDasharray="6 3" strokeWidth={1.5} strokeOpacity={0.6}
+              <ReferenceLine y={trendCapacity} stroke={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.25)'} strokeDasharray="6 3" strokeWidth={2} strokeOpacity={1}
+                style={{ filter: isDark ? 'drop-shadow(0 1px 2px rgba(255,255,255,0.3)) drop-shadow(0 -1px 0 rgba(255,255,255,0.15))' : 'drop-shadow(0 1px 2px rgba(0,0,0,0.15)) drop-shadow(0 -1px 0 rgba(255,255,255,0.5))' }}
                 label={{
                   value: effectiveTrendTeam
                     ? `${trendTeamObj?.short} Capacity ${(trendCapacity / 1000).toFixed(1)}k`
                     : `Avg Capacity ${(trendCapacity / 1000).toFixed(1)}k`,
-                  position: 'right', fill: '#ff6b9d', fontSize: 9, fontFamily: 'JetBrains Mono'
+                  position: 'right', fill: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)', fontSize: 9, fontFamily: 'JetBrains Mono'
                 }} />
             )}
             <Area type="monotone" dataKey="avg" stroke={areaColor} fill="url(#attGrad3d)" strokeWidth={2.5}
@@ -434,6 +436,13 @@ export default function Attendance() {
 
   return (
     <div className="space-y-4 mt-4">
+      {/* Tab Description */}
+      <div className="px-1">
+        <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <span className="font-semibold text-foreground">Attendance</span> — Explore match-day attendance across all MLS venues. The bar chart ranks teams by average home attendance (toggle to fill rate to see stadium utilization). The dotted white line shows stadium capacity. The trend chart tracks weekly attendance patterns, and the drill-down panels reveal how specific away teams affect turnout.
+        </p>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <NeuCard delay={0.05} className="p-4">
@@ -474,9 +483,17 @@ export default function Attendance() {
       {/* Home Attendance with Fill Rate Toggle */}
       <NeuCard delay={0.15} className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-            {showFillRate ? 'Stadium Fill Rate by Team' : 'Average Home Attendance by Team'}
-          </h3>
+          <div>
+            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
+              {showFillRate ? 'Stadium Fill Rate by Team' : 'Average Home Attendance by Team'}
+            </h3>
+            {!showFillRate && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="inline-block w-5 border-t-2 border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.25)' }} />
+                <span className="text-[9px] text-muted-foreground" style={{ fontFamily: 'JetBrains Mono' }}>Stadium Capacity</span>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFillRate(!showFillRate)}

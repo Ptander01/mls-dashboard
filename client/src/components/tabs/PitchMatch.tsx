@@ -284,6 +284,13 @@ export default function PitchMatch() {
 
   return (
     <div className="space-y-4 mt-4">
+      {/* Tab Description */}
+      <div className="px-1">
+        <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <span className="font-semibold text-foreground">Pitch Match</span> — Dive into tactical match data on a virtual pitch. The heatmap shows player positioning intensity, the shot map plots every attempt with xG-scaled markers (goals highlighted), and the passing network reveals team shape and key link-up play. Select a team to see their tactical fingerprint.
+        </p>
+      </div>
+
       {/* View Selector */}
       <div className="flex items-center gap-3">
         {([

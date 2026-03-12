@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import { ArrowUpDown, TrendingUp, Crosshair, Shield, Zap, Palette } from 'lucide-react';
 
-type SortKey = 'goals' | 'assists' | 'minutes' | 'shotAccuracy' | 'tackles' | 'shots' | 'salary' | 'name';
+type SortKey = 'name' | 'team' | 'position' | 'age' | 'games' | 'minutes' | 'goals' | 'assists' | 'shots' | 'shotsOnTarget' | 'shotAccuracy' | 'tackles' | 'interceptions' | 'fouls' | 'yellowCards' | 'redCards' | 'salary';
 
 /* ─── SCATTER AXIS OPTIONS ─── */
 interface AxisOption {
@@ -79,8 +79,14 @@ export default function PlayerStats() {
 
   const sorted = useMemo(() => {
     return [...filteredPlayers].sort((a, b) => {
-      const va = a[sortKey] as number | string;
-      const vb = b[sortKey] as number | string;
+      let va: any, vb: any;
+      if (sortKey === 'team') {
+        va = getTeam(a.team)?.short || '';
+        vb = getTeam(b.team)?.short || '';
+      } else {
+        va = a[sortKey];
+        vb = b[sortKey];
+      }
       if (typeof va === 'string') return sortDir === 'asc' ? va.localeCompare(vb as string) : (vb as string).localeCompare(va);
       return sortDir === 'asc' ? (va as number) - (vb as number) : (vb as number) - (va as number);
     });
@@ -410,6 +416,13 @@ export default function PlayerStats() {
 
   return (
     <div className="space-y-4 mt-4">
+      {/* Tab Description */}
+      <div className="px-1">
+        <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <span className="font-semibold text-foreground">Player Stats</span> — Compare individual player performance across the 2025 MLS season. Use the scatter plot to explore relationships between any two metrics (e.g., Shots vs Goals). Toggle between team and position coloring, and use the trend line to gauge correlation strength. Click any player row or dot to view their full performance radar.
+        </p>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <NeuCard delay={0.05} glow="cyan" className="p-4">
@@ -564,21 +577,21 @@ export default function PlayerStats() {
             <thead>
               <tr>
                 <SortHeader label="Player" k="name" w="160px" />
-                <th>Team</th>
-                <th>Pos</th>
-                <th>Age</th>
-                <th>GP</th>
+                <SortHeader label="Team" k="team" />
+                <SortHeader label="Pos" k="position" />
+                <SortHeader label="Age" k="age" />
+                <SortHeader label="GP" k="games" />
                 <SortHeader label="Min" k="minutes" />
                 <SortHeader label="Goals" k="goals" />
                 <SortHeader label="Assists" k="assists" />
                 <SortHeader label="Shots" k="shots" />
-                <th>SOT</th>
+                <SortHeader label="SOT" k="shotsOnTarget" />
                 <SortHeader label="Shot %" k="shotAccuracy" />
                 <SortHeader label="Tackles" k="tackles" />
-                <th>Int</th>
-                <th>Fouls</th>
-                <th>YC</th>
-                <th>RC</th>
+                <SortHeader label="Int" k="interceptions" />
+                <SortHeader label="Fouls" k="fouls" />
+                <SortHeader label="YC" k="yellowCards" />
+                <SortHeader label="RC" k="redCards" />
                 <SortHeader label="Salary" k="salary" />
               </tr>
             </thead>
@@ -672,21 +685,21 @@ export default function PlayerStats() {
             <thead>
               <tr>
                 <SortHeader label="Player" k="name" w="180px" />
-                <th>Team</th>
-                <th>Pos</th>
-                <th>Age</th>
-                <th>GP</th>
+                <SortHeader label="Team" k="team" />
+                <SortHeader label="Pos" k="position" />
+                <SortHeader label="Age" k="age" />
+                <SortHeader label="GP" k="games" />
                 <SortHeader label="Min" k="minutes" />
                 <SortHeader label="Goals" k="goals" />
                 <SortHeader label="Assists" k="assists" />
                 <SortHeader label="Shots" k="shots" />
-                <th>SOT</th>
+                <SortHeader label="SOT" k="shotsOnTarget" />
                 <SortHeader label="Shot %" k="shotAccuracy" />
                 <SortHeader label="Tackles" k="tackles" />
-                <th>Int</th>
-                <th>Fouls</th>
-                <th>YC</th>
-                <th>RC</th>
+                <SortHeader label="Int" k="interceptions" />
+                <SortHeader label="Fouls" k="fouls" />
+                <SortHeader label="YC" k="yellowCards" />
+                <SortHeader label="RC" k="redCards" />
                 <SortHeader label="Salary" k="salary" />
               </tr>
             </thead>
