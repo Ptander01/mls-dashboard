@@ -607,12 +607,20 @@ export function Extruded3DBarWithCeiling(props: any) {
       <rect x={x + 1} y={y} width={width - 2} height={Math.min(2.5, h * 0.06)} rx={1.5}
         fill={highlightColor} fillOpacity={0.55} />
 
-      {/* Capacity ceiling marker */}
+      {/* Capacity ceiling marker — white 3D bump */}
       {cap > 0 && (
         <>
+          {/* Shadow line underneath for depth */}
+          <line x1={x - 2} y1={capY + 1.5} x2={x + width + 2} y2={capY + 1.5}
+            stroke="rgba(0,0,0,0.35)" strokeWidth={2} strokeDasharray="3 2" strokeOpacity={0.5} />
+          {/* Main white dashed line */}
           <line x1={x - 2} y1={capY} x2={x + width + 2} y2={capY}
-            stroke="#ff6b9d" strokeWidth={1.5} strokeDasharray="3 2" strokeOpacity={0.7} />
-          <circle cx={x + width / 2} cy={capY} r={2} fill="#ff6b9d" fillOpacity={0.8} />
+            stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeDasharray="3 2" strokeOpacity={0.9} />
+          {/* Highlight line above for 3D bump */}
+          <line x1={x - 2} y1={capY - 0.5} x2={x + width + 2} y2={capY - 0.5}
+            stroke="rgba(255,255,255,0.4)" strokeWidth={0.5} strokeDasharray="3 2" strokeOpacity={0.6} />
+          {/* Diamond marker instead of circle for cleaner look */}
+          <circle cx={x + width / 2} cy={capY} r={2} fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.3)" strokeWidth={0.5} />
         </>
       )}
     </g>
