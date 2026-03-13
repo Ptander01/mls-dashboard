@@ -14,7 +14,7 @@ import {
 import { ArrowUpDown, TrendingUp, Crosshair, Shield, Zap, Palette } from 'lucide-react';
 import { InsightPanel, InsightHeadline } from '@/components/InsightPanel';
 import { playerStatsHeadline, playerStatsInsights, computeOutliers, scatterCardInsights, topScorersCardInsights, playerRadarCardInsights, playerTableCardInsights } from '@/lib/insightEngine';
-import { CardInsightButton, CardInsightInline } from '@/components/CardInsight';
+import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
 
 type SortKey = 'name' | 'team' | 'position' | 'age' | 'games' | 'minutes' | 'goals' | 'assists' | 'shots' | 'shotsOnTarget' | 'shotAccuracy' | 'tackles' | 'interceptions' | 'fouls' | 'yellowCards' | 'redCards' | 'salary';
 
@@ -82,6 +82,12 @@ export default function PlayerStats() {
 
   /* Insight engine state */
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  /* Per-card insight toggle states */
+  const [showScatterInsights, setShowScatterInsights] = useState(false);
+  const [showScorersInsights, setShowScorersInsights] = useState(false);
+  const [showRadarInsights, setShowRadarInsights] = useState(false);
+  const [showTableInsights, setShowTableInsights] = useState(false);
 
   const headline = useMemo(() =>
     playerStatsHeadline(filteredPlayers, scatterX, scatterY),
@@ -513,10 +519,11 @@ export default function PlayerStats() {
               <AxisDropdown value={scatterY} onChange={setScatterY} label="Y" />
               <ColorModeToggle />
               <TrendLineToggle />
-              <CardInsightButton insights={scatterInsights} isDark={isDark} compact />
+              <CardInsightToggle isOpen={showScatterInsights} onToggle={() => setShowScatterInsights(v => !v)} isDark={isDark} compact />
               <MaximizeButton onClick={() => setMaximized('scatter')} />
             </div>
           </div>
+          <CardInsightSection isOpen={showScatterInsights} insights={scatterInsights} isDark={isDark} />
           <div className="flex items-center justify-between mb-2">
             <PositionLegend />
             <R2Badge />
@@ -540,10 +547,11 @@ export default function PlayerStats() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Top Scorers</h3>
             <div className="flex items-center gap-2">
-              <CardInsightButton insights={scorersInsights} isDark={isDark} compact />
+              <CardInsightToggle isOpen={showScorersInsights} onToggle={() => setShowScorersInsights(v => !v)} isDark={isDark} compact />
               <MaximizeButton onClick={() => setMaximized('scorers')} />
             </div>
           </div>
+          <CardInsightSection isOpen={showScorersInsights} insights={scorersInsights} isDark={isDark} />
           <div className="space-y-1.5">
             {topScorers.map((p, i) => (
               <div
@@ -573,11 +581,12 @@ export default function PlayerStats() {
               <p className="text-xs text-muted-foreground">{getTeam(selPlayer.team)?.short} · {selPlayer.position} · Age {selPlayer.age}</p>
             </div>
             <div className="flex items-center gap-2">
-              <CardInsightButton insights={selPlayer ? playerRadarCardInsights(selPlayer, filteredPlayers) : []} isDark={isDark} compact />
+              <CardInsightToggle isOpen={showRadarInsights} onToggle={() => setShowRadarInsights(v => !v)} isDark={isDark} compact />
               <MaximizeButton onClick={() => setMaximized('radar')} />
               <button onClick={() => setSelectedPlayer(null)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
             </div>
           </div>
+          <CardInsightSection isOpen={showRadarInsights} insights={selPlayer ? playerRadarCardInsights(selPlayer, filteredPlayers) : []} isDark={isDark} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div style={{ height: 220 }}>
               <ResponsiveContainer>
@@ -620,10 +629,11 @@ export default function PlayerStats() {
           <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Player Database</h3>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground font-mono">{sorted.length} players</span>
-            <CardInsightButton insights={tableInsights} isDark={isDark} compact />
+            <CardInsightToggle isOpen={showTableInsights} onToggle={() => setShowTableInsights(v => !v)} isDark={isDark} compact />
             <MaximizeButton onClick={() => setMaximized('table')} />
           </div>
         </div>
+        <CardInsightSection isOpen={showTableInsights} insights={tableInsights} isDark={isDark} />
         <div className="overflow-x-auto max-h-[500px] overflow-y-auto" style={{ background: 'var(--neu-bg-concave-from)', padding: '2px 0' }}>
           <table className="data-table">
             <thead>

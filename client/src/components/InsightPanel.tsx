@@ -1,9 +1,14 @@
 /**
- * InsightPanel — Neumorphic insight cards with "Analyze" toggle
+ * InsightPanel — Tab-wide neumorphic insight section
  *
- * Renders a collapsible panel of data-driven insight cards.
- * Each card has an icon, bold headline, supporting detail, and accent color.
- * The panel slides in with Framer Motion when the user clicks "Analyze."
+ * Layout:
+ *   [ANALYZE button]                    ← always visible, outside the container
+ *   [NeuInsightContainer]               ← depression groove when closed, elevated with cards when open
+ *     └── 2x2 grid of InsightCards      ← only when open
+ *
+ * The container always renders (showing the depression floor when collapsed).
+ * When the user clicks ANALYZE, the container rises above surrounding content
+ * with deeper shadows than standard NeuCards, and the insight cards animate in.
  */
 
 import { useState } from 'react';
@@ -13,6 +18,7 @@ import {
   DollarSign, Users, BarChart3, Lightbulb, ChevronDown, ChevronUp
 } from 'lucide-react';
 import type { Insight } from '@/lib/insightEngine';
+import { NeuInsightContainer } from './NeuInsightContainer';
 
 const ICON_MAP: Record<Insight['icon'], React.ElementType> = {
   'trending-up': TrendingUp,
@@ -53,10 +59,10 @@ export function InsightPanel({ insights, isDark, className = '' }: InsightPanelP
 
   return (
     <div className={className}>
-      {/* Analyze Toggle Button */}
+      {/* Analyze Toggle Button — always visible, outside the container */}
       <button
         onClick={() => setIsOpen(v => !v)}
-        className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-lg transition-all"
+        className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-lg transition-all mb-2"
         style={{
           fontFamily: 'Space Grotesk, sans-serif',
           background: isOpen ? 'var(--neu-bg-pressed)' : 'var(--neu-bg-raised)',
@@ -75,24 +81,16 @@ export function InsightPanel({ insights, isDark, className = '' }: InsightPanelP
         {isOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
       </button>
 
-      {/* Insight Cards */}
-      <AnimatePresence>
+      {/* NeuInsightContainer — shows depression groove when closed, rises when open */}
+      <NeuInsightContainer isOpen={isOpen} isDark={isDark} variant="full" showDepression={true}>
         {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3">
-              {insights.map((insight, i) => (
-                <InsightCard key={i} insight={insight} isDark={isDark} index={i} />
-              ))}
-            </div>
-          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {insights.map((insight, i) => (
+              <InsightCard key={i} insight={insight} isDark={isDark} index={i} />
+            ))}
+          </div>
         )}
-      </AnimatePresence>
+      </NeuInsightContainer>
     </div>
   );
 }
@@ -108,7 +106,7 @@ function InsightCard({ insight, isDark, index }: { insight: Insight; isDark: boo
     <motion.div
       initial={{ opacity: 0, y: 12, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay: index * 0.08, duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+      transition={{ delay: index * 0.08 + 0.1, duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       className="rounded-xl p-3.5 transition-colors"
       style={{
         background: bgColor,
@@ -151,7 +149,6 @@ function InsightCard({ insight, isDark, index }: { insight: Insight; isDark: boo
 
 /**
  * InsightHeadline — Animated headline that replaces the static chart title
- * when the user is in "Analyze" mode.
  */
 interface InsightHeadlineProps {
   headline: string;
@@ -161,10 +158,8 @@ interface InsightHeadlineProps {
 }
 
 export function InsightHeadline({ headline, isAnalyzing, staticTitle, isDark }: InsightHeadlineProps) {
-  // Always show the computed headline above the static description
   return (
     <div className="space-y-1.5">
-      {/* Computed insight headline — always visible */}
       <AnimatePresence mode="wait">
         <motion.p
           key={headline}
@@ -182,7 +177,6 @@ export function InsightHeadline({ headline, isAnalyzing, staticTitle, isDark }: 
           {headline}
         </motion.p>
       </AnimatePresence>
-      {/* Static description below */}
       <div
         className="text-[11px] text-muted-foreground leading-relaxed"
         style={{ fontFamily: 'Inter, sans-serif' }}
