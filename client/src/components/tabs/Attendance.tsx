@@ -12,7 +12,8 @@ import {
 import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home, BarChart3, Percent } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { InsightPanel, InsightHeadline } from '@/components/InsightPanel';
-import { attendanceHeadline, attendanceInsights } from '@/lib/insightEngine';
+import { attendanceHeadline, attendanceInsights, attendanceTrendCardInsights, capacityFillCardInsights, gravPullCardInsights } from '@/lib/insightEngine';
+import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
 
 // ─── Stadium Capacities (expandable max for multi-use venues) ───
 const STADIUM_CAPACITY: Record<string, number> = {
@@ -32,6 +33,9 @@ export default function Attendance() {
   const [maximized, setMaximized] = useState<string | null>(null);
   const [showFillRate, setShowFillRate] = useState(false);
   const [trendTeamOverride, setTrendTeamOverride] = useState<string | ''>('');
+  const [showCapacityInsights, setShowCapacityInsights] = useState(false);
+  const [showTrendInsights, setShowTrendInsights] = useState(false);
+  const [showGravInsights, setShowGravInsights] = useState(false);
 
   // Auto-select team when exactly one team is filtered globally
   useEffect(() => {
@@ -178,6 +182,11 @@ export default function Attendance() {
     attendanceInsights(filteredMatches, filteredTeams),
     [filteredMatches, filteredTeams]
   );
+
+  /* Per-card insights */
+  const capacityFillInsights = useMemo(() => capacityFillCardInsights(filteredTeams, filteredMatches), [filteredTeams, filteredMatches]);
+  const trendInsights = useMemo(() => attendanceTrendCardInsights(filteredMatches, filteredTeams), [filteredMatches, filteredTeams]);
+  const gravInsights = useMemo(() => gravPullCardInsights(filteredTeams, filteredMatches), [filteredTeams, filteredMatches]);
 
   const selectedTeamObj = selectedTeam ? getTeam(selectedTeam) : null;
   const selectedHomeAvg = useMemo(() => {
@@ -526,9 +535,11 @@ export default function Attendance() {
               {showFillRate ? <BarChart3 size={11} /> : <Percent size={11} />}
               {showFillRate ? 'Absolute' : 'Fill Rate'}
             </button>
+            <CardInsightToggle isOpen={showCapacityInsights} onToggle={() => setShowCapacityInsights(v => !v)} isDark={isDark} />
             <MaximizeButton onClick={() => setMaximized('home')} />
           </div>
         </div>
+        <CardInsightSection isOpen={showCapacityInsights} insights={capacityFillInsights} isDark={isDark} />
         <HomeBarContent />
       </NeuCard>
 
@@ -560,9 +571,11 @@ export default function Attendance() {
                 <option key={t.id} value={t.id}>{t.short}</option>
               ))}
             </select>
+            <CardInsightToggle isOpen={showTrendInsights} onToggle={() => setShowTrendInsights(v => !v)} isDark={isDark} />
             <MaximizeButton onClick={() => setMaximized('weekly')} />
           </div>
         </div>
+        <CardInsightSection isOpen={showTrendInsights} insights={trendInsights} isDark={isDark} />
         <WeeklyContent />
       </NeuCard>
 
@@ -580,8 +593,10 @@ export default function Attendance() {
               Cumulative attendance delta across all away games. Positive = team draws more fans than the host's average when visiting.
             </p>
           </div>
+          <CardInsightToggle isOpen={showGravInsights} onToggle={() => setShowGravInsights(v => !v)} isDark={isDark} />
           <MaximizeButton onClick={() => setMaximized('gravity')} />
         </div>
+        <CardInsightSection isOpen={showGravInsights} insights={gravInsights} isDark={isDark} />
         {selectedTeam && (
           <div className="flex items-center gap-2 mb-2 ml-6">
             <span className="text-[10px] text-muted-foreground">Selected:</span>

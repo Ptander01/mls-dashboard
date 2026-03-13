@@ -885,3 +885,283 @@ export function playerTableCardInsights(players: Player[]): CardInsightItem[] {
 
   return items.slice(0, 3);
 }
+
+
+// ═══════════════════════════════════════════
+// PER-CARD INSIGHTS — TEAM BUDGET TAB
+// ═══════════════════════════════════════════
+
+/**
+ * Insights for the Budget Breakdown bar chart card
+ */
+export function budgetBarCardInsights(teams: Team[], players: Player[]): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+  if (teams.length < 5) return [];
+
+  const teamBudgets = teams.map(t => {
+    const b = TEAM_BUDGETS[t.id];
+    const total = b ? b.totalSalary : 0;
+    const dp = b ? b.dpSalary : 0;
+    return { name: t.short, id: t.id, total, dp, dpPct: total > 0 ? dp / total : 0 };
+  }).sort((a, b) => b.total - a.total);
+
+  // Spending gap: top vs bottom
+  const top3 = teamBudgets.slice(0, 3);
+  const bot3 = teamBudgets.slice(-3);
+  const topAvg = top3.reduce((s, t) => s + t.total, 0) / 3;
+  const botAvg = bot3.reduce((s, t) => s + t.total, 0) / 3;
+  if (botAvg > 0) {
+    items.push({
+      text: `The top 3 spenders (${top3.map(t => t.name).join(', ')}) average ${fmtSalary(topAvg)} — ${(topAvg / botAvg).toFixed(1)}x more than the bottom 3 (${bot3.map(t => t.name).join(', ')}) at ${fmtSalary(botAvg)}.`,
+      accent: 'amber',
+    });
+  }
+
+  // DP dependency — who relies most on DPs
+  const dpHeavy = teamBudgets.filter(t => t.total > 0).sort((a, b) => b.dpPct - a.dpPct);
+  if (dpHeavy.length >= 5) {
+    const most = dpHeavy[0];
+    const least = dpHeavy.filter(t => t.dpPct > 0).slice(-1)[0];
+    items.push({
+      text: `${most.name} allocates ${(most.dpPct * 100).toFixed(0)}% of salary to DPs — the most DP-dependent team. ${least ? `${least.name} allocates just ${(least.dpPct * 100).toFixed(0)}%.` : ''}`,
+      accent: 'cyan',
+    });
+  }
+
+  // League-wide total
+  const leagueTotal = teamBudgets.reduce((s, t) => s + t.total, 0);
+  const medianBudget = median(teamBudgets.map(t => t.total));
+  items.push({
+    text: `League total payroll: ${fmtSalary(leagueTotal)}. Median team budget: ${fmtSalary(medianBudget)}. ${teamBudgets.filter(t => t.total > medianBudget * 1.5).length} teams spend 50%+ above the median.`,
+    accent: 'emerald',
+  });
+
+  return items.slice(0, 3);
+}
+
+/**
+ * Insights for the Salary by Position pie chart card
+ */
+export function salaryPieCardInsights(selectedTeam: Team | null, players: Player[], allTeams: Team[]): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+
+  if (!selectedTeam) {
+    // No team selected — show league-wide position spending
+    if (players.length < 50) return [];
+    const posSalary: Record<string, number> = {};
+    const posCount: Record<string, number> = {};
+    players.forEach(p => {
+      posSalary[p.position] = (posSalary[p.position] || 0) + p.salary;
+      posCount[p.position] = (posCount[p.position] || 0) + 1;
+    });
+    const entries = Object.entries(posSalary).sort((a, b) => b[1] - a[1]);
+    if (entries.length >= 2) {
+      const topPos = entries[0];
+      const avgPerPlayer = topPos[1] / (posCount[topPos[0]] || 1);
+      items.push({
+        text: `Select a team to see its salary breakdown. League-wide, ${topPos[0]}s command the most total salary (${fmtSalary(topPos[1])}) at ${fmtSalary(avgPerPlayer)}/player.`,
+        accent: 'amber',
+      });
+    }
+    return items;
+  }
+
+  const teamPlayers = players.filter(p => p.team === selectedTeam.id);
+  if (teamPlayers.length < 3) return [];
+
+  const posSalary: Record<string, { total: number; count: number }> = {};
+  teamPlayers.forEach(p => {
+    if (!posSalary[p.position]) posSalary[p.position] = { total: 0, count: 0 };
+    posSalary[p.position].total += p.salary;
+    posSalary[p.position].count += 1;
+  });
+
+  const entries = Object.entries(posSalary).sort((a, b) => b[1].total - a[1].total);
+  const totalSalary = entries.reduce((s, [, v]) => s + v.total, 0);
+
+  // Biggest allocation
+  if (entries.length >= 2) {
+    const top = entries[0];
+    const pct = totalSalary > 0 ? (top[1].total / totalSalary * 100).toFixed(0) : '0';
+    items.push({
+      text: `${selectedTeam.short} invests ${pct}% of salary in ${top[0]}s (${fmtSalary(top[1].total)} across ${top[1].count} players). Their cheapest position group is ${entries[entries.length - 1][0]}s at ${fmtSalary(entries[entries.length - 1][1].total)}.`,
+      accent: 'cyan',
+    });
+  }
+
+  // Goals per dollar by position
+  const posGoals: Record<string, number> = {};
+  teamPlayers.forEach(p => { posGoals[p.position] = (posGoals[p.position] || 0) + p.goals; });
+  const bestROI = entries
+    .filter(([pos]) => (posGoals[pos] || 0) > 0 && posSalary[pos].total > 0)
+    .map(([pos]) => ({ pos, costPerGoal: posSalary[pos].total / (posGoals[pos] || 1) }))
+    .sort((a, b) => a.costPerGoal - b.costPerGoal);
+  if (bestROI.length >= 1) {
+    items.push({
+      text: `Best goal ROI: ${bestROI[0].pos}s at ${fmtSalary(bestROI[0].costPerGoal)}/goal (${posGoals[bestROI[0].pos]} goals from ${fmtSalary(posSalary[bestROI[0].pos].total)}).`,
+      accent: 'emerald',
+    });
+  }
+
+  return items.slice(0, 3);
+}
+
+/**
+ * Insights for the Top Earners table card
+ */
+export function topEarnersCardInsights(selectedTeam: Team | null, players: Player[]): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+
+  if (!selectedTeam) {
+    items.push({ text: `Select a team from the bar chart or team chips to see top earner analysis.`, accent: 'amber' });
+    return items;
+  }
+
+  const teamPlayers = players.filter(p => p.team === selectedTeam.id).sort((a, b) => b.salary - a.salary);
+  if (teamPlayers.length < 3) return [];
+
+  const topEarner = teamPlayers[0];
+  const teamTotal = teamPlayers.reduce((s, p) => s + p.salary, 0);
+  const topPct = teamTotal > 0 ? (topEarner.salary / teamTotal * 100).toFixed(0) : '0';
+
+  items.push({
+    text: `${topEarner.name} earns ${fmtSalary(topEarner.salary)} — ${topPct}% of ${selectedTeam.short}'s total payroll. ${topEarner.goals > 0 ? `At ${fmtSalary(topEarner.salary / topEarner.goals)}/goal, ` : 'With 0 goals, '}${topEarner.goals > 0 ? 'that\'s ' + (topEarner.salary / topEarner.goals > 500000 ? 'expensive production.' : 'solid value.') : 'the investment hasn\'t paid off in goals yet.'}`,
+    accent: 'cyan',
+  });
+
+  // Salary concentration — top 3 vs rest
+  const top3Salary = teamPlayers.slice(0, 3).reduce((s, p) => s + p.salary, 0);
+  const restSalary = teamTotal - top3Salary;
+  const restCount = teamPlayers.length - 3;
+  if (restCount > 0 && restSalary > 0) {
+    items.push({
+      text: `Top 3 earners take ${(top3Salary / teamTotal * 100).toFixed(0)}% of the budget. The remaining ${restCount} players split ${fmtSalary(restSalary)} (avg ${fmtSalary(restSalary / restCount)}/player).`,
+      accent: 'amber',
+    });
+  }
+
+  return items.slice(0, 3);
+}
+
+
+// ═══════════════════════════════════════════
+// PER-CARD INSIGHTS — ATTENDANCE TAB
+// ═══════════════════════════════════════════
+
+/**
+ * Insights for the Attendance Trend line chart card
+ */
+export function attendanceTrendCardInsights(matches: Match[], teams: Team[]): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+  if (matches.length < 20) return [];
+
+  // Weekly trend direction
+  const weekMap: Record<number, number[]> = {};
+  matches.forEach(m => {
+    if (!weekMap[m.week]) weekMap[m.week] = [];
+    weekMap[m.week].push(m.attendance);
+  });
+  const weeks = Object.keys(weekMap).map(Number).sort((a, b) => a - b);
+  if (weeks.length >= 4) {
+    const firstHalf = weeks.slice(0, Math.floor(weeks.length / 2));
+    const secondHalf = weeks.slice(Math.floor(weeks.length / 2));
+    const firstAvg = firstHalf.reduce((s, w) => s + (weekMap[w].reduce((a, b) => a + b, 0) / weekMap[w].length), 0) / firstHalf.length;
+    const secondAvg = secondHalf.reduce((s, w) => s + (weekMap[w].reduce((a, b) => a + b, 0) / weekMap[w].length), 0) / secondHalf.length;
+    const change = ((secondAvg - firstAvg) / firstAvg * 100);
+    items.push({
+      text: `Attendance ${change > 0 ? 'grew' : 'declined'} ${Math.abs(change).toFixed(1)}% from the first half to the second half of the season (${fmt(Math.round(firstAvg))} → ${fmt(Math.round(secondAvg))} avg/match).`,
+      accent: change > 0 ? 'emerald' : 'coral',
+    });
+  }
+
+  // Peak week
+  const weekAvgs = weeks.map(w => ({ week: w, avg: weekMap[w].reduce((a, b) => a + b, 0) / weekMap[w].length }));
+  const peakWeek = weekAvgs.sort((a, b) => b.avg - a.avg)[0];
+  if (peakWeek) {
+    items.push({
+      text: `Peak attendance: Week ${peakWeek.week} averaged ${fmt(Math.round(peakWeek.avg))} fans/match. The lowest was Week ${weekAvgs[weekAvgs.length - 1].week} at ${fmt(Math.round(weekAvgs[weekAvgs.length - 1].avg))}.`,
+      accent: 'amber',
+    });
+  }
+
+  return items.slice(0, 3);
+}
+
+/**
+ * Insights for the Capacity Fill chart card
+ */
+const STADIUM_CAP: Record<string, number> = {
+  ATL: 71000, ATX: 20738, MTL: 19619, CLT: 75000, CHI: 61500,
+  COL: 18061, CLB: 20371, DC: 20000, CIN: 26000, DAL: 20500,
+  HOU: 22039, MIA: 21550, LAG: 27000, LAFC: 22000, MIN: 19400,
+  NSH: 30000, NE: 65878, NYRB: 25000, NYC: 28000, ORL: 25500,
+  PHI: 18500, POR: 25218, RSL: 20213, SD: 35000, SEA: 37722,
+  SJ: 18000, SKC: 18467, STL: 22500, TOR: 30000, VAN: 22120,
+};
+
+export function capacityFillCardInsights(teams: Team[], matches: Match[]): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+  if (teams.length < 5) return [];
+
+  // Compute fill rates
+  const teamFills = teams.map(t => {
+    const homeMatches = matches.filter(m => m.homeTeam === t.id);
+    const avgAtt = homeMatches.length > 0 ? homeMatches.reduce((s, m) => s + m.attendance, 0) / homeMatches.length : 0;
+    const cap = STADIUM_CAP[t.id] || 0;
+    const fillRate = cap > 0 ? avgAtt / cap : 0;
+    return { name: t.short, fillRate, avgAtt, capacity: cap };
+  }).filter(t => t.fillRate > 0).sort((a, b) => b.fillRate - a.fillRate);
+
+  if (teamFills.length >= 5) {
+    const overFill = teamFills.filter(t => t.fillRate > 1);
+    const under70 = teamFills.filter(t => t.fillRate < 0.7);
+    items.push({
+      text: `${overFill.length} team${overFill.length !== 1 ? 's' : ''} exceed${overFill.length === 1 ? 's' : ''} 100% capacity (standing room/expansion)${overFill.length > 0 ? ': ' + overFill.slice(0, 3).map(t => `${t.name} at ${(t.fillRate * 100).toFixed(0)}%`).join(', ') : ''}. ${under70.length} team${under70.length !== 1 ? 's' : ''} fill less than 70%.`,
+      accent: 'cyan',
+    });
+  }
+
+  // Best and worst
+  if (teamFills.length >= 2) {
+    const best = teamFills[0];
+    const worst = teamFills[teamFills.length - 1];
+    items.push({
+      text: `${best.name} leads at ${(best.fillRate * 100).toFixed(0)}% fill (${fmt(Math.round(best.avgAtt))} avg in a ${fmt(best.capacity)}-seat venue). ${worst.name} trails at ${(worst.fillRate * 100).toFixed(0)}% (${fmt(Math.round(worst.avgAtt))} of ${fmt(worst.capacity)}).`,
+      accent: 'emerald',
+    });
+  }
+
+  return items.slice(0, 3);
+}
+
+/**
+ * Insights for the Gravitational Pull chart card
+ */
+export function gravPullCardInsights(teams: Team[], matches: Match[]): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+  if (teams.length < 5) return [];
+
+  // Compute gravitational pull: avg away attendance when this team visits
+  const teamPull = teams.map(t => {
+    const awayMatches = matches.filter(m => m.awayTeam === t.id);
+    const avgAwayAtt = awayMatches.length > 0 ? awayMatches.reduce((s, m) => s + m.attendance, 0) / awayMatches.length : 0;
+    return { name: t.short, pull: avgAwayAtt, awayGames: awayMatches.length };
+  }).filter(t => t.awayGames >= 3).sort((a, b) => b.pull - a.pull);
+
+  if (teamPull.length >= 5) {
+    const top = teamPull[0];
+    const leagueAvg = teamPull.reduce((s, t) => s + t.pull, 0) / teamPull.length;
+    items.push({
+      text: `${top.name} draws ${fmt(Math.round(top.pull))} avg fans on the road — ${((top.pull / leagueAvg - 1) * 100).toFixed(0)}% above the league average of ${fmt(Math.round(leagueAvg))}. The "away day" premium suggests star power or rivalry draw.`,
+      accent: 'amber',
+    });
+
+    const bottom = teamPull[teamPull.length - 1];
+    items.push({
+      text: `${bottom.name} has the weakest road draw at ${fmt(Math.round(bottom.pull))} avg — ${((1 - bottom.pull / leagueAvg) * 100).toFixed(0)}% below average. ${teamPull.filter(t => t.pull > leagueAvg).length} of ${teamPull.length} teams draw above-average crowds away.`,
+      accent: 'coral',
+    });
+  }
+
+  return items.slice(0, 3);
+}

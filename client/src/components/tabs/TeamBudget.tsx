@@ -11,7 +11,8 @@ import {
 } from 'recharts';
 import { DollarSign, TrendingUp, Users, Trophy } from 'lucide-react';
 import { InsightPanel, InsightHeadline } from '@/components/InsightPanel';
-import { teamBudgetHeadline, teamBudgetInsights } from '@/lib/insightEngine';
+import { teamBudgetHeadline, teamBudgetInsights, budgetBarCardInsights, salaryPieCardInsights, topEarnersCardInsights } from '@/lib/insightEngine';
+import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
 
 export default function TeamBudget() {
   const { filteredTeams, filteredPlayers } = useFilters();
@@ -19,6 +20,9 @@ export default function TeamBudget() {
   const isDark = theme === 'dark';
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [maximized, setMaximized] = useState<string | null>(null);
+  const [showBudgetBarInsights, setShowBudgetBarInsights] = useState(false);
+  const [showPieInsights, setShowPieInsights] = useState(false);
+  const [showEarnersInsights, setShowEarnersInsights] = useState(false);
 
   // Auto-select team when exactly one team is filtered globally
   useEffect(() => {
@@ -73,6 +77,11 @@ export default function TeamBudget() {
   }, [selPlayers]);
 
   const topEarners = useMemo(() => [...selPlayers].sort((a, b) => b.salary - a.salary).slice(0, 8), [selPlayers]);
+
+  /* Per-card insights */
+  const budgetBarInsights = useMemo(() => budgetBarCardInsights(filteredTeams, filteredPlayers), [filteredTeams, filteredPlayers]);
+  const pieInsights = useMemo(() => salaryPieCardInsights(selTeam ?? null, filteredPlayers, filteredTeams), [selTeam, filteredPlayers, filteredTeams]);
+  const earnersInsights = useMemo(() => topEarnersCardInsights(selTeam ?? null, filteredPlayers), [selTeam, filteredPlayers]);
 
   const BudgetBarContent = ({ height = 350 }: { height?: number }) => (
     <div style={{ height }}>
@@ -164,8 +173,12 @@ export default function TeamBudget() {
       <NeuCard delay={0.15} className="p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Team Salary Breakdown ($ Millions)</h3>
-          <MaximizeButton onClick={() => setMaximized('budget')} />
+          <div className="flex items-center gap-1">
+            <CardInsightToggle isOpen={showBudgetBarInsights} onToggle={() => setShowBudgetBarInsights(v => !v)} isDark={isDark} />
+            <MaximizeButton onClick={() => setMaximized('budget')} />
+          </div>
         </div>
+        <CardInsightSection isOpen={showBudgetBarInsights} insights={budgetBarInsights} isDark={isDark} />
         <BudgetBarContent />
         <div className="flex flex-col items-center gap-2 mt-3">
           <div className="flex justify-center gap-6">
@@ -193,8 +206,12 @@ export default function TeamBudget() {
         <NeuCard delay={0.25} className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Team Salary by Position</h3>
-            <MaximizeButton onClick={() => setMaximized('salary')} />
+            <div className="flex items-center gap-1">
+              <CardInsightToggle isOpen={showPieInsights} onToggle={() => setShowPieInsights(v => !v)} isDark={isDark} />
+              <MaximizeButton onClick={() => setMaximized('salary')} />
+            </div>
           </div>
+          <CardInsightSection isOpen={showPieInsights} insights={pieInsights} isDark={isDark} />
           <div className="flex flex-wrap gap-1 mb-3">
             {filteredTeams.slice(0, 15).map(t => (
               <button key={t.id} onClick={() => setSelectedTeam(t.id === selectedTeam ? null : t.id)}
@@ -227,8 +244,12 @@ export default function TeamBudget() {
             <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
               {selTeam ? `${selTeam.short} — Top Earners` : 'Top Earners (select team)'}
             </h3>
-            {selTeam && <button onClick={() => setSelectedTeam(null)} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>}
+            <div className="flex items-center gap-1">
+              <CardInsightToggle isOpen={showEarnersInsights} onToggle={() => setShowEarnersInsights(v => !v)} isDark={isDark} />
+              {selTeam && <button onClick={() => setSelectedTeam(null)} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>}
+            </div>
           </div>
+          <CardInsightSection isOpen={showEarnersInsights} insights={earnersInsights} isDark={isDark} />
           {topEarners.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="data-table">
