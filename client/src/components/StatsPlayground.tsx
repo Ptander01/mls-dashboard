@@ -258,114 +258,129 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
   const matrixWidth = labelWidth + activeStats.length * cellSize;
 
   /**
-   * Blue-white-red color scale with stronger saturation:
-   * +1 = deep blue (#1e3a8a), 0 = white/neutral, -1 = deep red (#991b1b)
+   * Solid opaque hex colors — crisp like the bar charts.
+   * Uses solid RGB values, no transparency on front faces.
+   * +1 = deep blue, 0 = neutral surface, -1 = deep red
    */
   function getCellColor(r: number): string {
     const absR = Math.min(Math.abs(r), 1);
     if (absR < 0.02) {
-      return isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
+      return isDark ? '#2a2a3e' : '#dddde5';
     }
     if (r > 0) {
       if (isDark) {
-        // Stronger blue in dark mode
-        return `rgba(59, 130, 246, ${0.1 + absR * 0.85})`;
+        // Solid blue scale: dark surface → vivid blue
+        const rv = Math.round(42 - absR * 20);
+        const gv = Math.round(42 + absR * 80);
+        const bv = Math.round(62 + absR * 180);
+        return `rgb(${rv}, ${gv}, ${bv})`;
       } else {
-        // More saturated blue progression
-        const rv = Math.round(230 - absR * 200);
-        const gv = Math.round(238 - absR * 180);
-        const bv = Math.round(255 - absR * 55);
+        // Solid blue scale: light gray → saturated blue
+        const rv = Math.round(210 - absR * 175);
+        const gv = Math.round(215 - absR * 130);
+        const bv = Math.round(235 - absR * 25);
         return `rgb(${rv}, ${gv}, ${bv})`;
       }
     } else {
       if (isDark) {
-        return `rgba(239, 68, 68, ${0.1 + absR * 0.85})`;
+        // Solid red scale: dark surface → vivid red
+        const rv = Math.round(42 + absR * 190);
+        const gv = Math.round(42 - absR * 15);
+        const bv = Math.round(62 - absR * 20);
+        return `rgb(${rv}, ${gv}, ${bv})`;
       } else {
-        const rv = Math.round(255 - absR * 50);
-        const gv = Math.round(240 - absR * 210);
-        const bv = Math.round(240 - absR * 210);
+        // Solid red scale: light gray → saturated red
+        const rv = Math.round(235 - absR * 30);
+        const gv = Math.round(215 - absR * 170);
+        const bv = Math.round(215 - absR * 170);
         return `rgb(${rv}, ${gv}, ${bv})`;
       }
     }
   }
 
   /**
-   * Darker shade for the "side face" of the 3D block.
+   * Solid darker shade for the side face — 35% darker than front face.
+   * Matches the bar chart's hard-edged parallelogram side faces.
    */
   function getCellSideColor(r: number): string {
     const absR = Math.min(Math.abs(r), 1);
     if (absR < 0.05) return 'transparent';
     if (r > 0) {
       if (isDark) {
-        return `rgba(30, 64, 175, ${0.3 + absR * 0.6})`;
+        const rv = Math.round(22 - absR * 10);
+        const gv = Math.round(28 + absR * 45);
+        const bv = Math.round(42 + absR * 120);
+        return `rgb(${rv}, ${gv}, ${bv})`;
       } else {
-        const rv = Math.round(180 - absR * 150);
-        const gv = Math.round(190 - absR * 140);
-        const bv = Math.round(220 - absR * 50);
+        const rv = Math.round(150 - absR * 125);
+        const gv = Math.round(155 - absR * 95);
+        const bv = Math.round(185 - absR * 20);
         return `rgb(${rv}, ${gv}, ${bv})`;
       }
     } else {
       if (isDark) {
-        return `rgba(185, 28, 28, ${0.3 + absR * 0.6})`;
+        const rv = Math.round(28 + absR * 130);
+        const gv = Math.round(28 - absR * 10);
+        const bv = Math.round(42 - absR * 15);
+        return `rgb(${rv}, ${gv}, ${bv})`;
       } else {
-        const rv = Math.round(210 - absR * 50);
-        const gv = Math.round(160 - absR * 130);
-        const bv = Math.round(160 - absR * 130);
+        const rv = Math.round(185 - absR * 25);
+        const gv = Math.round(150 - absR * 120);
+        const bv = Math.round(150 - absR * 120);
         return `rgb(${rv}, ${gv}, ${bv})`;
       }
     }
   }
 
   /**
-   * Enhanced 3D shadow — dramatically deep.
-   * Positive r → raised with strong drop shadows
-   * Negative r → recessed with deep inset shadows
+   * Crisp, tight directional shadows — matching the bar chart style.
+   * Shadows are close to the object with minimal blur for sharp edges.
+   * Light source: top-left. Shadow falls bottom-right.
    */
   function getCellShadow(r: number, isHovered: boolean): string {
     const absR = Math.min(Math.abs(r), 1);
 
     if (absR < 0.05) {
       return isDark
-        ? 'inset 2px 2px 4px rgba(0,0,0,0.35), inset -1px -1px 3px rgba(255,255,255,0.04)'
-        : 'inset 2px 2px 4px rgba(0,0,0,0.08), inset -1px -1px 3px rgba(255,255,255,0.8)';
+        ? '1px 1px 2px rgba(0,0,0,0.4), -1px -1px 2px rgba(255,255,255,0.03)'
+        : '1px 1px 3px rgba(0,0,0,0.08), -1px -1px 2px rgba(255,255,255,0.7)';
     }
 
-    // Extreme depth scaling: 3px at weak → 16px at strong
-    const depth = Math.round(3 + absR * 13);
-    const blur = Math.round(depth * 2.2);
-    const spread = Math.round(absR * 4);
+    // Tight shadow: 2px at weak → 6px at strong (much less blur than before)
+    const depth = Math.round(2 + absR * 4);
+    const blur = Math.round(depth * 1.2);
     const hoverGlow = isHovered
       ? (r > 0
-        ? ', 0 0 20px rgba(59,130,246,0.6), 0 0 6px rgba(59,130,246,0.4)'
-        : ', 0 0 20px rgba(239,68,68,0.6), 0 0 6px rgba(239,68,68,0.4)')
+        ? ', 0 0 12px rgba(59,130,246,0.5)'
+        : ', 0 0 12px rgba(239,68,68,0.5)')
       : '';
 
     if (r > 0) {
-      // RAISED — strong extrusion with visible drop shadow
+      // RAISED — tight drop shadow, no spread, crisp edge
       if (isDark) {
-        return `${depth}px ${depth}px ${blur}px ${spread}px rgba(0,0,0,0.7), -${Math.round(depth*0.35)}px -${Math.round(depth*0.35)}px ${Math.round(blur*0.5)}px rgba(255,255,255,0.07)${hoverGlow}`;
+        return `${depth}px ${depth}px ${blur}px rgba(0,0,0,0.65)${hoverGlow}`;
       } else {
-        return `${depth}px ${depth}px ${blur}px ${spread}px rgba(0,0,0,0.22), -${Math.round(depth*0.35)}px -${Math.round(depth*0.35)}px ${Math.round(blur*0.5)}px rgba(255,255,255,0.95)${hoverGlow}`;
+        return `${depth}px ${depth}px ${blur}px rgba(0,0,0,0.18), -1px -1px 2px rgba(255,255,255,0.6)${hoverGlow}`;
       }
     } else {
-      // RECESSED — deep inset with strong inner shadow
+      // RECESSED — tight inset shadow, crisp inner edge
       if (isDark) {
-        return `inset ${depth}px ${depth}px ${blur}px ${spread}px rgba(0,0,0,0.8), inset -${Math.round(depth*0.35)}px -${Math.round(depth*0.35)}px ${Math.round(blur*0.5)}px rgba(255,255,255,0.05)${hoverGlow}`;
+        return `inset ${depth}px ${depth}px ${blur}px rgba(0,0,0,0.7), inset -1px -1px 2px rgba(255,255,255,0.04)${hoverGlow}`;
       } else {
-        return `inset ${depth}px ${depth}px ${blur}px ${spread}px rgba(0,0,0,0.18), inset -${Math.round(depth*0.35)}px -${Math.round(depth*0.35)}px ${Math.round(blur*0.5)}px rgba(255,255,255,0.85)${hoverGlow}`;
+        return `inset ${depth}px ${depth}px ${blur}px rgba(0,0,0,0.15), inset -1px -1px 2px rgba(255,255,255,0.5)${hoverGlow}`;
       }
     }
   }
 
   /**
-   * translateY for 3D depth — extremely dramatic.
-   * Positive r → lift up to 18px (cells visibly pop out)
-   * Negative r → push down up to 18px (cells visibly sink in)
+   * translateY for 3D depth — controlled like the hexagon tile reference.
+   * Positive r → lift up (cells pop out)
+   * Negative r → push down (cells sink in)
    */
   function getCellTranslateY(r: number): number {
     const absR = Math.min(Math.abs(r), 1);
     if (absR < 0.05) return 0;
-    const maxLift = 18;
+    const maxLift = 10;
     return r > 0 ? -(absR * maxLift) : (absR * maxLift);
   }
 
@@ -373,12 +388,12 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
    * Side face height for the pseudo-3D block effect.
    * Positive (raised) cells get bottom + right side faces.
    * Negative (recessed) cells get top + left "lip" faces.
-   * Range: 3px to 18px for maximum drama.
+   * Range: 2px to 10px — tight and geometric like the bar chart extrusions.
    */
   function getSideHeight(r: number): number {
     const absR = Math.min(Math.abs(r), 1);
     if (absR < 0.08) return 0;
-    return Math.round(3 + absR * 15); // 3px to 18px side face
+    return Math.round(2 + absR * 8); // 2px to 10px side face
   }
 
   return (
@@ -497,101 +512,127 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                     }}
                     title={`${rowStat.label} × ${colStat.label}: r = ${r.toFixed(3)}`}
                   >
-                    {/* 3D block: top face + right side face + bottom side face */}
+                    {/* 3D block: crisp industrial style matching bar charts */}
                     <motion.div
                       initial={false}
                       animate={{
-                        y: isHovered ? translateY * 1.4 : translateY,
-                        scale: isHovered ? 1.18 : 1,
+                        y: isHovered ? translateY * 1.3 : translateY,
+                        scale: isHovered ? 1.12 : 1,
                       }}
-                      transition={{ type: 'spring', stiffness: 350, damping: 22 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                       style={{
                         position: 'relative',
                         width: innerSize,
                         height: innerSize,
                       }}
                     >
-                      {/* Bottom side face — visible for raised (positive) cells */}
+                      {/* Bottom side face — hard-edged, fully opaque */}
                       {sideH > 0 && r > 0 && (
                         <div style={{
                           position: 'absolute',
                           bottom: -sideH,
-                          left: 1,
+                          left: 0,
                           right: 0,
                           height: sideH,
                           background: sideColor,
-                          borderRadius: '0 0 4px 4px',
-                          opacity: 0.9,
+                          borderRadius: '0 0 2px 2px',
                         }} />
                       )}
-                      {/* Right side face — visible for raised (positive) cells */}
+                      {/* Right side face — hard-edged, fully opaque */}
                       {sideH > 0 && r > 0 && (
                         <div style={{
                           position: 'absolute',
-                          top: 1,
-                          right: -Math.round(sideH * 0.6),
-                          bottom: -sideH + 1,
-                          width: Math.round(sideH * 0.6),
-                          background: sideColor,
-                          borderRadius: '0 4px 4px 0',
-                          opacity: 0.7,
-                        }} />
-                      )}
-                      {/* Top lip face — visible for recessed (negative) cells */}
-                      {sideH > 0 && r < 0 && (
-                        <div style={{
-                          position: 'absolute',
-                          top: -Math.round(sideH * 0.5),
-                          left: 0,
-                          right: 1,
-                          height: Math.round(sideH * 0.5),
-                          background: sideColor,
-                          borderRadius: '4px 4px 0 0',
-                          opacity: 0.7,
-                        }} />
-                      )}
-                      {/* Left lip face — visible for recessed (negative) cells */}
-                      {sideH > 0 && r < 0 && (
-                        <div style={{
-                          position: 'absolute',
-                          top: -Math.round(sideH * 0.5) + 1,
-                          left: -Math.round(sideH * 0.5),
-                          bottom: 1,
+                          top: 0,
+                          right: -Math.round(sideH * 0.5),
+                          bottom: -sideH,
                           width: Math.round(sideH * 0.5),
                           background: sideColor,
-                          borderRadius: '4px 0 0 4px',
-                          opacity: 0.5,
+                          borderRadius: '0 2px 2px 0',
                         }} />
                       )}
-                      {/* Top face — the main visible cell */}
+                      {/* Top lip face — recessed (negative) cells */}
+                      {sideH > 0 && r < 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: -Math.round(sideH * 0.4),
+                          left: 0,
+                          right: 0,
+                          height: Math.round(sideH * 0.4),
+                          background: sideColor,
+                          borderRadius: '2px 2px 0 0',
+                        }} />
+                      )}
+                      {/* Left lip face — recessed (negative) cells */}
+                      {sideH > 0 && r < 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: -Math.round(sideH * 0.4),
+                          left: -Math.round(sideH * 0.4),
+                          bottom: 0,
+                          width: Math.round(sideH * 0.4),
+                          background: sideColor,
+                          borderRadius: '2px 0 0 2px',
+                        }} />
+                      )}
+                      {/* Front face — multi-stop gradient like bar charts */}
                       <div style={{
                         position: 'relative',
                         width: '100%',
                         height: '100%',
                         background: bgColor,
-                        borderRadius: 4,
+                        borderRadius: 2,
                         boxShadow: shadow,
                         border: isDiagonal
-                          ? `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`
-                          : absR > 0.15
+                          ? `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`
+                          : absR > 0.08
                             ? `1px solid ${r > 0
-                              ? (isDark ? 'rgba(59,130,246,0.25)' : 'rgba(30,64,175,0.15)')
-                              : (isDark ? 'rgba(239,68,68,0.25)' : 'rgba(185,28,28,0.15)')}`
-                            : `1px solid ${isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'}`,
+                              ? (isDark ? 'rgba(100,160,255,0.35)' : 'rgba(30,64,175,0.2)')
+                              : (isDark ? 'rgba(255,100,100,0.35)' : 'rgba(185,28,28,0.2)')}`
+                            : `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
                         zIndex: 1,
-                        // Inner highlight for raised cells (light from top-left)
-                        ...(r > 0 && absR > 0.3 ? {
-                          backgroundImage: isDark
-                            ? 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%)'
-                            : 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%)',
-                        } : {}),
-                        // Inner shadow for recessed cells (dark from top-left, light from bottom-right)
-                        ...(r < 0 && absR > 0.15 ? {
-                          backgroundImage: isDark
-                            ? 'linear-gradient(135deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(255,255,255,0.04) 100%)'
-                            : 'linear-gradient(135deg, rgba(0,0,0,0.08) 0%, transparent 40%, rgba(255,255,255,0.4) 100%)',
-                        } : {}),
+                        overflow: 'hidden',
                       }}>
+                        {/* Multi-stop front face gradient — lit from top like bar charts */}
+                        {absR > 0.08 && !isDiagonal && (
+                          <div style={{
+                            position: 'absolute',
+                            inset: 0,
+                            backgroundImage: r > 0
+                              ? (isDark
+                                ? 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 8%, transparent 50%, rgba(0,0,0,0.08) 92%, rgba(0,0,0,0.15) 100%)'
+                                : 'linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.2) 8%, transparent 50%, rgba(0,0,0,0.04) 92%, rgba(0,0,0,0.1) 100%)')
+                              : (isDark
+                                ? 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.08) 15%, transparent 50%, rgba(255,255,255,0.03) 85%, rgba(255,255,255,0.06) 100%)'
+                                : 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.03) 15%, transparent 50%, rgba(255,255,255,0.2) 85%, rgba(255,255,255,0.35) 100%)'),
+                            borderRadius: 2,
+                            pointerEvents: 'none',
+                          }} />
+                        )}
+                        {/* Top highlight edge — 1px bright line where light catches */}
+                        {r > 0 && absR > 0.15 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 1,
+                            right: 1,
+                            height: 1.5,
+                            background: isDark ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.7)',
+                            borderRadius: '2px 2px 0 0',
+                            pointerEvents: 'none',
+                          }} />
+                        )}
+                        {/* Left highlight edge — subtle rim light */}
+                        {r > 0 && absR > 0.3 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: 2,
+                            left: 0,
+                            bottom: 2,
+                            width: 1,
+                            background: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.45)',
+                            pointerEvents: 'none',
+                          }} />
+                        )}
                         {/* Show r value on hover */}
                         {isHovered && !isDiagonal && (
                           <div style={{
@@ -607,6 +648,7 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                               ? (isDark ? '#fff' : (r > 0 ? '#1e3a8a' : '#7f1d1d'))
                               : 'var(--muted-foreground)',
                             textShadow: absR > 0.5 && isDark ? '0 1px 2px rgba(0,0,0,0.5)' : 'none',
+                            zIndex: 2,
                           }}>
                             {r.toFixed(2)}
                           </div>
@@ -621,28 +663,23 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
         </div>
       </div>
 
-      {/* ═══ 3D STEPPED LEGEND ═══ */}
+      {/* ═══ 3D STEPPED LEGEND — crisp industrial style ═══ */}
       <div className="flex flex-col items-center gap-4 mt-6">
-        {/* 3D stepped blocks — a dramatic staircase from deep recession to high extrusion */}
-        <div className="flex items-end gap-[6px]" style={{ height: 160, padding: '0 12px' }}>
-          {/* Labels */}
+        <div className="flex items-end gap-[5px]" style={{ height: 140, padding: '0 12px' }}>
           <span className="text-[10px] font-bold self-center mr-2" style={{
             fontFamily: 'JetBrains Mono',
             color: isDark ? '#f87171' : '#991b1b',
           }}>−1</span>
 
-          {/* Stepped blocks from -1 to +1 */}
           {([-1, -0.75, -0.5, -0.25, -0.1, 0, 0.1, 0.25, 0.5, 0.75, 1] as const).map((v, i) => {
             const absV = Math.abs(v);
-            // Height of each block scales with |v| — extremely tall for dramatic staircase
-            const blockH = v === 0 ? 14 : 14 + absV * 100;
-            const sideH = absV > 0.05 ? Math.round(3 + absV * 16) : 0;
-            const blockW = 34;
+            const blockH = v === 0 ? 14 : 14 + absV * 80;
+            const sideH = absV > 0.05 ? Math.round(2 + absV * 8) : 0;
+            const blockW = 30;
             const bg = getCellColor(v);
             const side = getCellSideColor(v);
             const shadow = Math.abs(v) > 0.05 ? getCellShadow(v, false) : 'none';
-            // Extreme Y offset: recessed blocks sit much lower, raised blocks much higher
-            const yOffset = v < 0 ? absV * 18 : -(absV * 18);
+            const yOffset = v < 0 ? absV * 10 : -(absV * 10);
 
             return (
               <div key={i} style={{
@@ -652,89 +689,102 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                 transform: `translateY(${yOffset}px)`,
                 transition: 'transform 0.3s ease',
               }}>
-                {/* The 3D block */}
                 <div style={{ position: 'relative', width: blockW }}>
-                  {/* Right side face for positive (raised) */}
+                  {/* Right side face — hard-edged */}
                   {sideH > 0 && v > 0 && (
                     <div style={{
                       position: 'absolute',
-                      top: 1,
-                      right: -Math.round(sideH * 0.55),
-                      bottom: -sideH + 1,
-                      width: Math.round(sideH * 0.55),
+                      top: 0,
+                      right: -Math.round(sideH * 0.5),
+                      bottom: -sideH,
+                      width: Math.round(sideH * 0.5),
                       background: side,
-                      borderRadius: '0 4px 4px 0',
-                      opacity: 0.7,
+                      borderRadius: '0 2px 2px 0',
                     }} />
                   )}
-                  {/* Bottom side face for positive (raised) */}
+                  {/* Bottom side face — hard-edged */}
                   {sideH > 0 && v > 0 && (
                     <div style={{
                       position: 'absolute',
                       bottom: -sideH,
-                      left: 1,
+                      left: 0,
                       right: 0,
                       height: sideH,
                       background: side,
-                      borderRadius: '0 0 4px 4px',
-                      opacity: 0.9,
+                      borderRadius: '0 0 2px 2px',
                     }} />
                   )}
-                  {/* Top lip face for negative (recessed) */}
+                  {/* Top lip face — recessed */}
                   {sideH > 0 && v < 0 && (
                     <div style={{
                       position: 'absolute',
-                      top: -Math.round(sideH * 0.45),
+                      top: -Math.round(sideH * 0.4),
                       left: 0,
-                      right: 1,
-                      height: Math.round(sideH * 0.45),
+                      right: 0,
+                      height: Math.round(sideH * 0.4),
                       background: side,
-                      borderRadius: '4px 4px 0 0',
-                      opacity: 0.7,
+                      borderRadius: '2px 2px 0 0',
                     }} />
                   )}
-                  {/* Left lip face for negative (recessed) */}
+                  {/* Left lip face — recessed */}
                   {sideH > 0 && v < 0 && (
                     <div style={{
                       position: 'absolute',
-                      top: -Math.round(sideH * 0.45) + 1,
-                      left: -Math.round(sideH * 0.45),
-                      bottom: 1,
-                      width: Math.round(sideH * 0.45),
+                      top: -Math.round(sideH * 0.4),
+                      left: -Math.round(sideH * 0.4),
+                      bottom: 0,
+                      width: Math.round(sideH * 0.4),
                       background: side,
-                      borderRadius: '4px 0 0 4px',
-                      opacity: 0.5,
+                      borderRadius: '2px 0 0 2px',
                     }} />
                   )}
-                  {/* Top face */}
+                  {/* Front face with multi-stop gradient */}
                   <div style={{
                     position: 'relative',
                     width: blockW,
                     height: blockH,
                     background: bg,
-                    borderRadius: 5,
+                    borderRadius: 2,
                     boxShadow: shadow,
                     border: `1px solid ${absV > 0.1
                       ? (v > 0
-                        ? (isDark ? 'rgba(59,130,246,0.25)' : 'rgba(30,64,175,0.15)')
-                        : (isDark ? 'rgba(239,68,68,0.25)' : 'rgba(185,28,28,0.15)'))
+                        ? (isDark ? 'rgba(100,160,255,0.35)' : 'rgba(30,64,175,0.2)')
+                        : (isDark ? 'rgba(255,100,100,0.35)' : 'rgba(185,28,28,0.2)'))
                       : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')}`,
                     zIndex: 1,
-                    // Inner highlight gradient for raised blocks
-                    ...(v > 0 && absV > 0.2 ? {
-                      backgroundImage: isDark
-                        ? 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%)'
-                        : 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%)',
-                    } : {}),
-                    // Inner shadow for recessed blocks
-                    ...(v < 0 && absV > 0.15 ? {
-                      backgroundImage: isDark
-                        ? 'linear-gradient(135deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(255,255,255,0.04) 100%)'
-                        : 'linear-gradient(135deg, rgba(0,0,0,0.08) 0%, transparent 40%, rgba(255,255,255,0.4) 100%)',
-                    } : {}),
-                  }} />
+                    overflow: 'hidden',
+                  }}>
+                    {/* Multi-stop gradient overlay */}
+                    {absV > 0.08 && (
+                      <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        backgroundImage: v > 0
+                          ? (isDark
+                            ? 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 8%, transparent 50%, rgba(0,0,0,0.08) 92%, rgba(0,0,0,0.15) 100%)'
+                            : 'linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.2) 8%, transparent 50%, rgba(0,0,0,0.04) 92%, rgba(0,0,0,0.1) 100%)')
+                          : (isDark
+                            ? 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.08) 15%, transparent 50%, rgba(255,255,255,0.03) 85%, rgba(255,255,255,0.06) 100%)'
+                            : 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.03) 15%, transparent 50%, rgba(255,255,255,0.2) 85%, rgba(255,255,255,0.35) 100%)'),
+                        borderRadius: 2,
+                        pointerEvents: 'none',
+                      }} />
+                    )}
+                    {/* Top highlight edge */}
+                    {v > 0 && absV > 0.15 && (
+                      <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 1,
+                        right: 1,
+                        height: 1.5,
+                        background: isDark ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.7)',
+                        borderRadius: '2px 2px 0 0',
+                        pointerEvents: 'none',
+                      }} />
+                    )}
+                  </div>
                 </div>
-                {/* Value label below */}
                 <span style={{
                   fontSize: '8px',
                   fontFamily: 'JetBrains Mono',
@@ -755,7 +805,6 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
           }}>+1</span>
         </div>
 
-        {/* Depth legend labels */}
         <div className="flex items-center gap-6 text-[9px]" style={{ fontFamily: 'Space Grotesk', color: 'var(--muted-foreground)' }}>
           <span style={{ color: isDark ? '#f87171' : '#991b1b' }}>▼ Recessed = Negative</span>
           <span>— Flat = No Correlation</span>
