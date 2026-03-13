@@ -425,7 +425,8 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                     className="flex items-center justify-center cursor-pointer"
                     style={{
                       width: cellSize,
-                      height: cellSize + 4,
+                      height: cellSize + eY + 2,
+                      paddingBottom: eY,
                       background: isHighlighted && !isDiagonal
                         ? (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)')
                         : 'transparent',
@@ -471,20 +472,22 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                           <stop offset="0%" stopColor={sideHex} stopOpacity={0.9} />
                           <stop offset="100%" stopColor={sideDarkHex} stopOpacity={0.95} />
                         </linearGradient>
-                        {/* Shadow blur filter */}
-                        <filter id={`${gid}_sh`} x="-30%" y="-15%" width="170%" height="150%">
-                          <feGaussianBlur in="SourceGraphic" stdDeviation={eScale > 0.3 ? 3 : 1.5} />
+                        {/* Shadow blur filter — clipped to only extend downward+right */}
+                        <filter id={`${gid}_sh`} x="0%" y="0%" width="160%" height="160%">
+                          <feGaussianBlur in="SourceGraphic" stdDeviation={eScale > 0.3 ? 2.5 : 1.5} />
                         </filter>
                       </defs>
 
                       {r >= 0 ? (
                         /* ═══ RAISED CELL (r >= 0) ═══ */
+                        /* Front face at (0, 0). Side faces extend right+down. */
+                        /* Shadow is offset further right+down and clipped to never go above front face. */
                         <>
-                          {/* Cast shadow — offset behind and below */}
+                          {/* Cast shadow — positioned below+right of front face, never above */}
                           {eScale > 0.05 && (
                             <rect
-                              x={eX + 2} y={eY + 2} width={S} height={S} rx={2}
-                              fill={isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.18)'}
+                              x={eX + 1} y={eY + 1} width={S} height={S}
+                              fill={isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.15)'}
                               filter={`url(#${gid}_sh)`}
                             />
                           )}
@@ -498,23 +501,18 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                             <path d={`M0,${S} L${eX},${S+eY} L${S+eX},${S+eY} L${S},${S} Z`}
                               fill={bottomHex} fillOpacity={0.7} />
                           )}
-                          {/* Front face */}
-                          <rect x={0} y={0} width={S} height={S} rx={2}
+                          {/* Front face — no rounded corners to avoid glimmer artifacts */}
+                          <rect x={0} y={0} width={S} height={S}
                             fill={`url(#${gid})`} />
-                          {/* Top face (lit surface) */}
-                          {eScale > 0.05 && (
-                            <path d={`M0,0 L${eX},${-eY+1} L${S+eX},${-eY+1} L${S},0 Z`}
-                              fill={highlightHex} fillOpacity={0.35} />
-                          )}
-                          {/* Top highlight line */}
+                          {/* Top highlight line — inset from edges to avoid corner artifacts */}
                           {absR > 0.1 && (
-                            <rect x={1} y={0} width={S-2} height={Math.min(2, S*0.06)} rx={1}
-                              fill={highlightHex} fillOpacity={0.55} />
+                            <rect x={3} y={0.5} width={S-6} height={1.5}
+                              fill={highlightHex} fillOpacity={0.5} />
                           )}
-                          {/* Left rim light */}
+                          {/* Left rim light — inset from top/bottom edges */}
                           {absR > 0.2 && (
-                            <rect x={0} y={2} width={Math.min(1.5, S*0.06)} height={S-4} rx={0.75}
-                              fill={highlightHex} fillOpacity={0.2} />
+                            <rect x={0.5} y={3} width={1} height={S-6}
+                              fill={highlightHex} fillOpacity={0.18} />
                           )}
                         </>
                       ) : (
@@ -525,8 +523,8 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                           {/* Inset shadow — dark overlay at top-left of the well */}
                           {eScale > 0.05 && (
                             <rect
-                              x={eX} y={eY} width={S} height={S} rx={2}
-                              fill={isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.1)'}
+                              x={eX - 1} y={eY - 1} width={S} height={S}
+                              fill={isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)'}
                               filter={`url(#${gid}_sh)`}
                             />
                           )}
@@ -540,18 +538,18 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                             <path d={`M0,0 L${eX},${eY} L${S+eX},${eY} L${S},0 Z`}
                               fill={`url(#${gid}_tb)`} />
                           )}
-                          {/* Front face — offset into the well */}
-                          <rect x={eX} y={eY} width={S} height={S} rx={2}
+                          {/* Front face — offset into the well, no rounded corners */}
+                          <rect x={eX} y={eY} width={S} height={S}
                             fill={`url(#${gid})`} />
-                          {/* Bottom highlight line — light catches bottom of recessed surface */}
+                          {/* Bottom highlight line — inset from edges */}
                           {absR > 0.1 && (
-                            <rect x={eX+1} y={eY+S-2} width={S-2} height={Math.min(2, S*0.06)} rx={1}
-                              fill={highlightHex} fillOpacity={0.4} />
+                            <rect x={eX+3} y={eY+S-2} width={S-6} height={1.5}
+                              fill={highlightHex} fillOpacity={0.35} />
                           )}
-                          {/* Right rim light — light catches right edge of recessed surface */}
+                          {/* Right rim light — inset from top/bottom edges */}
                           {absR > 0.2 && (
-                            <rect x={eX+S-1.5} y={eY+2} width={Math.min(1.5, S*0.06)} height={S-4} rx={0.75}
-                              fill={highlightHex} fillOpacity={0.15} />
+                            <rect x={eX+S-1.5} y={eY+3} width={1} height={S-6}
+                              fill={highlightHex} fillOpacity={0.12} />
                           )}
                         </>
                       )}
@@ -670,8 +668,8 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                       <stop offset="0%" stopColor={lSide} stopOpacity={0.9} />
                       <stop offset="100%" stopColor={lSideDark} stopOpacity={0.95} />
                     </linearGradient>
-                    <filter id={`${lgid}_sh`} x="-30%" y="-15%" width="170%" height="150%">
-                      <feGaussianBlur in="SourceGraphic" stdDeviation={eS > 0.3 ? 2.5 : 1} />
+                    <filter id={`${lgid}_sh`} x="0%" y="0%" width="160%" height="160%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation={eS > 0.3 ? 2 : 1} />
                     </filter>
                   </defs>
 
@@ -679,8 +677,8 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                     /* ═══ RAISED LEGEND SWATCH ═══ */
                     <>
                       {eS > 0.05 && (
-                        <rect x={leX+1} y={leY+1} width={LS} height={LS} rx={2}
-                          fill={isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.15)'}
+                        <rect x={leX+1} y={leY+1} width={LS} height={LS}
+                          fill={isDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.13)'}
                           filter={`url(#${lgid}_sh)`} />
                       )}
                       {eS > 0.05 && (
@@ -691,23 +689,19 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                         <path d={`M0,${LS} L${leX},${LS+leY} L${LS+leX},${LS+leY} L${LS},${LS} Z`}
                           fill={lBottom} fillOpacity={0.7} />
                       )}
-                      <rect x={0} y={0} width={LS} height={LS} rx={2}
+                      <rect x={0} y={0} width={LS} height={LS}
                         fill={`url(#${lgid})`} />
-                      {eS > 0.05 && (
-                        <path d={`M0,0 L${leX},${-leY+1} L${LS+leX},${-leY+1} L${LS},0 Z`}
-                          fill={lHighlight} fillOpacity={0.35} />
-                      )}
                       {absV > 0.1 && (
-                        <rect x={1} y={0} width={LS-2} height={1.5} rx={1}
-                          fill={lHighlight} fillOpacity={0.55} />
+                        <rect x={3} y={0.5} width={LS-6} height={1.5}
+                          fill={lHighlight} fillOpacity={0.45} />
                       )}
                     </>
                   ) : (
                     /* ═══ RECESSED LEGEND SWATCH ═══ */
                     <>
                       {eS > 0.05 && (
-                        <rect x={leX} y={leY} width={LS} height={LS} rx={2}
-                          fill={isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)'}
+                        <rect x={leX-1} y={leY-1} width={LS} height={LS}
+                          fill={isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.07)'}
                           filter={`url(#${lgid}_sh)`} />
                       )}
                       {eS > 0.05 && (
@@ -718,11 +712,11 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                         <path d={`M0,0 L${leX},${leY} L${LS+leX},${leY} L${LS},0 Z`}
                           fill={`url(#${lgid}_tb)`} />
                       )}
-                      <rect x={leX} y={leY} width={LS} height={LS} rx={2}
+                      <rect x={leX} y={leY} width={LS} height={LS}
                         fill={`url(#${lgid})`} />
                       {absV > 0.1 && (
-                        <rect x={leX+1} y={leY+LS-1.5} width={LS-2} height={1.5} rx={1}
-                          fill={lHighlight} fillOpacity={0.4} />
+                        <rect x={leX+3} y={leY+LS-2} width={LS-6} height={1.5}
+                          fill={lHighlight} fillOpacity={0.3} />
                       )}
                     </>
                   )}
