@@ -6,7 +6,7 @@
 **Stack**: React 19 + Tailwind CSS 4 + shadcn/ui + Recharts + Three.js + React Three Fiber + @react-three/drei + Framer Motion  
 **Default Theme**: Light mode (switchable to dark)  
 **Date**: March 13, 2026  
-**Next Priority**: 3D Radar Chart conversion (see Section 11.1)  
+**Next Priority**: Rebuild Correlation Matrix using Premium Pure CSS (see Section 10.8)  
 **Codebase**: 97 files, 16,384 total lines (8,816 custom code + 6,188 shadcn/ui library + 1,380 config/data)  
 
 ---
@@ -647,32 +647,27 @@ The Statistical Playground (`client/src/components/StatsPlayground.tsx`) is an e
 
 **Position Filter:** A secondary filter allows viewing correlations for specific positions (ALL, FW, MF, DF, GK), which can reveal position-specific patterns.
 
-### 10.8 COMPLETED: Three.js Correlation Matrix Rebuild
+### 10.8 ABORTED: Three.js Correlation Matrix Rebuild
 
-**Status: DONE** — The SVG-based pseudo-3D correlation matrix has been fully replaced with a React Three Fiber implementation using real 3D geometry and directional lighting.
+**Status: ABORTED / PENDING CSS REWRITE** — We attempted to replace the SVG-based pseudo-3D correlation matrix with a React Three Fiber implementation. While the 3D geometry worked, it fundamentally conflicted with the design requirement of a perfectly square, page-aligned grid.
 
-**What was built:**
+**What we learned (The Three.js vs. CSS Perspective Problem):**
+- With a real 3D engine, if you tilt the camera to see depth/side faces, the entire grid rotates visually relative to the page.
+- If you use a perfectly top-down orthographic camera to keep the grid square, height becomes invisible (you can't see side faces).
+- The existing bar charts in the dashboard achieve their beautiful 3D look via a "fake perspective" CSS trick — drawing a front face and then adding parallelogram side/top faces at fixed offsets. This allows the chart to sit flat on the page while the individual elements look 3D.
+- **Conclusion:** Three.js is the wrong tool for a top-down grid visualization where alignment is critical. Pure CSS is actually the superior technology for this specific effect.
 
-| Component | Details |
-|---|---|
-| **New file** | `client/src/components/CorrelationMatrix3D.tsx` (~650 lines) |
-| **Dependencies installed** | `three`, `@react-three/fiber`, `@react-three/drei`, `@types/three` |
-| **Geometry** | Each cell is a `BoxGeometry` with uniform width/depth. Positive correlations extrude upward (blue), negative correlations are recessed (red). Near-zero cells are thin flat slabs. Height scales with `|r|`. |
-| **Materials** | `MeshStandardMaterial` with roughness 0.72, metalness 0.08 — matches the industrial neumorphic feel. |
-| **Lighting** | `DirectionalLight` from top-left with shadow mapping + soft `AmbientLight` fill. Shadow bias tuned for clean edges. |
-| **Camera** | `OrthographicCamera` with near-top-down view (subtle forward tilt for depth). `CameraSetup` component uses `useThree` to set `lookAt` after mount. |
-| **Labels** | `@react-three/drei` `Html` component overlays row/column labels in screen space. Labels highlight on hover. |
-| **Legend** | Full 3D legend built with real box meshes at varying elevations, positioned to the right of the grid. Shows +1 (Raised, blue) through -1 (Recessed, red) with value labels. |
-| **Hover tooltip** | HTML overlay tooltip shows stat pair names and correlation value on cell hover. |
-| **Integration** | Old `CorrelationMatrix` function in `StatsPlayground.tsx` replaced with `CorrelationMatrixWrapper` that lifts data computation (Pearson correlation, stat mode toggle, position filter) and passes computed matrix to `<CorrelationMatrix3D>`. |
-| **Theme support** | `isDark` prop adjusts ambient light intensity, material colors, shadow plane opacity, and label colors. |
+**The New Plan: Premium Pure CSS Rebuild**
+The next session must rebuild the correlation matrix as a premium pure React/CSS component (no Three.js). The goal is rich, immersive, hyper-realistic detail using:
 
-**Architecture notes for future Three.js components:**
-- The `CameraSetup` pattern (using `useThree` hook to set `camera.lookAt` in a `useEffect`) is required for orthographic cameras that need to target a specific point.
-- `MeshStandardMaterial` with roughness ~0.7 and metalness ~0.1 gives the best industrial neumorphic look under directional lighting.
-- `@react-three/drei`'s `Html` component with `occlude={false}` and `zIndexRange={[10,0]}` works well for overlaying labels on 3D scenes.
-- Shadow map settings: `shadow-mapSize={[2048, 2048]}`, `shadow-bias={-0.001}` for clean shadow edges.
-- The grid uses `CELL_SIZE = 0.55` and `GAP = 0.06` constants for uniform spacing.
+1. **Multi-layered CSS shadows:** Stacked `box-shadow`s at different offsets and blur radii to create a realistic "floating tile" effect. Strong correlations get deep shadows; weak ones get tight shadows.
+2. **CSS gradient side faces:** Right and bottom edges rendered as `::before` and `::after` pseudo-elements with perspective-correct gradients. These scale in width with `|r|`.
+3. **Inset shadows for recessed cells:** Negative correlations use `inset` box-shadows to create a "pushed into the surface" well effect, with highlight edges on the top-left rim.
+4. **Interactive hover effects:** Cells lift further on hover (shadow deepens), a glow appears, and a rich tooltip shows the stat pair, correlation value, and a plain-English interpretation.
+5. **Smooth transitions:** All shadow/elevation changes animate with CSS transitions for a tactile feel.
+6. **Natural language labels:** Use full stat names (e.g., "Games Played" instead of "GP") to make it user-friendly.
+
+**Note:** The Three.js dependencies (`three`, `@react-three/fiber`, `@react-three/drei`) remain installed and should be kept for future components that *do* need real 3D rotation (like the Radar Chart or Travel Map).
 
 ---
 
@@ -682,7 +677,7 @@ The following items are organized by recommended session grouping to minimize fi
 
 ### 11.1 Session Priority: Three.js Integration & Visual Upgrades
 
-**Three.js Correlation Matrix Rebuild** — COMPLETED. See Section 10.8 for implementation details. Three.js is now installed and available as a shared dependency for all subsequent 3D features.
+**Premium CSS Correlation Matrix Rebuild** — HIGHEST PRIORITY. Rebuild the matrix using advanced CSS techniques (multi-layered shadows, gradient pseudo-elements, inset wells) to achieve a hyper-realistic 3D look while keeping the grid perfectly square with the page. See Section 10.8 for the detailed spec.
 
 **3D Radar Chart** — Once Three.js is installed, convert the current flat 2D radar chart (Recharts `RadarChart`) in the player detail card to a Three.js-powered 3D radar. The radar should rotate subtly on hover and use extruded polygon faces with team-colored fills.
 

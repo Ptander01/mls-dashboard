@@ -1,23 +1,21 @@
 /**
- * CorrelationMatrix3D — React Three Fiber replacement for the SVG-based
- * pseudo-3D correlation matrix.
+ * CorrelationMatrix3D — React Three Fiber 3D correlation matrix.
  *
  * Architecture:
- *   - Orthographic camera with a gentle top-down tilt for depth perception
- *   - One DirectionalLight from upper-left (matching bar chart light source)
- *   - Each cell is a real BoxGeometry with height driven by |r|
- *   - Positive correlations extrude upward (blue), negative downward (red)
- *   - MeshStandardMaterial with roughness ~0.7, metalness ~0.1 for matte industrial feel
- *   - Shadow mapping enabled on the directional light
+ *   - Orthographic camera, perfectly top-down — grid is square on screen
+ *   - Each cell is rendered as a flat colored plane (the "top face")
+ *   - Darker strips on the RIGHT and BOTTOM edges of each cell simulate
+ *     3D depth, exactly like the CSS-based 3D bar charts elsewhere in the
+ *     dashboard. Strip width scales with |r| to convey "height."
+ *   - Positive correlations (blue) show right+bottom strips (raised look)
+ *   - Negative correlations (red) show left+top strips (recessed look)
+ *   - Directional lighting adds subtle shading variation across top faces
  *   - HTML overlays via @react-three/drei for labels and hover tooltips
  *   - 3D Legend on the right side with raised/recessed indicators
- *
- * Props match the old CorrelationMatrix interface so StatsPlayground can
- * swap rendering layers without touching data computation.
  */
 
 import { useRef, useState, useMemo, useCallback, useEffect } from 'react';
-import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
+import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { OrthographicCamera, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -42,15 +40,15 @@ interface CorrelationMatrix3DProps {
 // COLOR UTILITIES
 // ═══════════════════════════════════════════
 
-/**
- * Map a correlation value r ∈ [-1, 1] to a THREE.Color.
- * Blue for positive, red for negative, neutral gray at zero.
- */
-function getCellColor(r: number, isDark: boolean): THREE.Color {
+function clamp(v: number): number {
+  return Math.max(0, Math.min(255, v));
+}
+
+function getCellColor(r: number, isDark: boolean): string {
   const absR = Math.min(Math.abs(r), 1);
 
   if (absR < 0.02) {
-    return new THREE.Color(isDark ? '#2a2a3e' : '#d8d8e0');
+    return isDark ? '#2a2a3e' : '#d8d8e0';
   }
 
   if (r > 0) {
@@ -58,49 +56,57 @@ function getCellColor(r: number, isDark: boolean): THREE.Color {
       const rv = Math.round(42 - absR * 20);
       const gv = Math.round(42 + absR * 80);
       const bv = Math.round(62 + absR * 180);
-      return new THREE.Color(`rgb(${clamp(rv)},${clamp(gv)},${clamp(bv)})`);
+      return `rgb(${clamp(rv)},${clamp(gv)},${clamp(bv)})`;
     } else {
       const rv = Math.round(210 - absR * 175);
       const gv = Math.round(215 - absR * 130);
       const bv = Math.round(235 - absR * 25);
-      return new THREE.Color(`rgb(${clamp(rv)},${clamp(gv)},${clamp(bv)})`);
+      return `rgb(${clamp(rv)},${clamp(gv)},${clamp(bv)})`;
     }
   } else {
     if (isDark) {
       const rv = Math.round(42 + absR * 190);
       const gv = Math.round(42 - absR * 15);
       const bv = Math.round(62 - absR * 20);
-      return new THREE.Color(`rgb(${clamp(rv)},${clamp(gv)},${clamp(bv)})`);
+      return `rgb(${clamp(rv)},${clamp(gv)},${clamp(bv)})`;
     } else {
       const rv = Math.round(235 - absR * 30);
       const gv = Math.round(215 - absR * 170);
       const bv = Math.round(215 - absR * 170);
-      return new THREE.Color(`rgb(${clamp(rv)},${clamp(gv)},${clamp(bv)})`);
+      return `rgb(${clamp(rv)},${clamp(gv)},${clamp(bv)})`;
     }
   }
 }
 
-function clamp(v: number): number {
-  return Math.max(0, Math.min(255, v));
+/** Darken a color by a factor (0 = black, 1 = unchanged) */
+function darkenColor(hex: string, factor: number): string {
+  const c = new THREE.Color(hex);
+  c.multiplyScalar(factor);
+  return `#${c.getHexString()}`;
+}
+
+/** Lighten a color by blending toward white */
+function lightenColor(hex: string, factor: number): string {
+  const c = new THREE.Color(hex);
+  const white = new THREE.Color(1, 1, 1);
+  c.lerp(white, factor);
+  return `#${c.getHexString()}`;
 }
 
 // ═══════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════
 
-const CELL_SIZE = 1;        // world units per cell
-const GAP = 0.08;           // gap between cells
-const CELL_DIM = CELL_SIZE - GAP; // actual box width/depth
-const BASE_HEIGHT = 0.06;   // minimum slab thickness for near-zero cells
-const MAX_HEIGHT = 0.55;    // maximum extrusion height for |r| = 1
-const DIAGONAL_HEIGHT = 0.10; // subtle height for diagonal cells
-const BASE_PLANE_Y = 0.08;  // Y position of the base plane surface — cells sit on top or sink below this
+const CELL_SIZE = 1;          // world units per cell (center-to-center)
+const CELL_DIM = 0.88;        // actual visible cell width/depth (leaves gap)
+const MAX_STRIP = 0.22;       // maximum side strip width for |r|=1
+const MIN_STRIP = 0.04;       // minimum strip for weak correlations
 
 // ═══════════════════════════════════════════
-// INDIVIDUAL CELL MESH
+// INDIVIDUAL CELL (top face + side strips)
 // ═══════════════════════════════════════════
 
-interface CellMeshProps {
+interface CellProps {
   row: number;
   col: number;
   r: number;
@@ -112,126 +118,129 @@ interface CellMeshProps {
   onClick: () => void;
 }
 
-function CellMesh({ row, col, r, isDark, isDiagonal, totalCells, hoveredCell, onHover, onClick }: CellMeshProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
-
+function Cell({ row, col, r, isDark, isDiagonal, totalCells, hoveredCell, onHover, onClick }: CellProps) {
   const absR = Math.min(Math.abs(r), 1);
   const isHovered = hoveredCell?.row === row && hoveredCell?.col === col;
   const isHighlighted = hoveredCell?.row === row || hoveredCell?.col === col;
 
-  const height = useMemo(() => {
-    if (isDiagonal) return DIAGONAL_HEIGHT;
-    if (absR < 0.05) return BASE_HEIGHT;
-    return BASE_HEIGHT + absR * (MAX_HEIGHT - BASE_HEIGHT);
-  }, [absR, isDiagonal]);
-
-  const color = useMemo(() => {
-    if (isDiagonal) return new THREE.Color(isDark ? '#3a3a50' : '#c8c8d0');
+  // Cell color
+  const colorStr = useMemo(() => {
+    if (isDiagonal) return isDark ? '#3a3a50' : '#c8c8d0';
     return getCellColor(r, isDark);
   }, [r, isDark, isDiagonal]);
+
+  const color = useMemo(() => new THREE.Color(colorStr), [colorStr]);
+
+  // Side strip width scales with |r|
+  const stripWidth = useMemo(() => {
+    if (isDiagonal || absR < 0.06) return 0;
+    return MIN_STRIP + absR * (MAX_STRIP - MIN_STRIP);
+  }, [absR, isDiagonal]);
+
+  // Side face colors — right is darker, bottom is even darker
+  const rightColor = useMemo(() => new THREE.Color(darkenColor(colorStr, 0.45)), [colorStr]);
+  const bottomColor = useMemo(() => new THREE.Color(darkenColor(colorStr, 0.30)), [colorStr]);
+
+  // For recessed (negative) cells: lighter top-left highlight strip
+  const topHighlightColor = useMemo(() => new THREE.Color(lightenColor(colorStr, 0.30)), [colorStr]);
+  const leftHighlightColor = useMemo(() => new THREE.Color(lightenColor(colorStr, 0.20)), [colorStr]);
 
   // Position: center of the grid is at origin
   const halfGrid = (totalCells - 1) * CELL_SIZE / 2;
   const x = col * CELL_SIZE - halfGrid;
   const z = row * CELL_SIZE - halfGrid;
 
-  // Y position: positive r extrudes upward from the base plane surface,
-  // negative r sinks downward below the base plane surface.
-  // The base plane surface is at y = BASE_PLANE_Y.
-  const yPos = useMemo(() => {
-    if (isDiagonal || absR < 0.05) {
-      // Flat cells sit with their top surface flush with the base plane
-      return BASE_PLANE_Y - height / 2;
-    }
-    if (r >= 0) {
-      // Positive: bottom of box sits on the base plane, box extrudes upward
-      return BASE_PLANE_Y + height / 2;
-    }
-    // Negative: top of box is flush with (or slightly below) the base plane,
-    // box extends downward creating a recessed "well"
-    return BASE_PLANE_Y - height / 2;
-  }, [r, absR, height, isDiagonal]);
+  const isRaised = r >= 0;
 
-  const roughness = 0.72;
-  const metalness = 0.08;
-
-  const emissiveIntensity = isHovered ? 0.3 : isHighlighted ? 0.08 : 0;
+  // Emissive for hover
+  const emissiveIntensity = isHovered ? 0.35 : isHighlighted ? 0.08 : 0;
   const emissiveColor = useMemo(() => {
     if (isHovered) return new THREE.Color(r >= 0 ? '#3b82f6' : '#ef4444');
     return color;
   }, [isHovered, r, color]);
 
-  return (
-    <mesh
-      ref={meshRef}
-      position={[x, yPos, z]}
-      castShadow
-      receiveShadow
-      onPointerOver={(e: ThreeEvent<PointerEvent>) => {
-        e.stopPropagation();
-        onHover({ row, col });
-        document.body.style.cursor = isDiagonal ? 'default' : 'pointer';
-      }}
-      onPointerOut={(e: ThreeEvent<PointerEvent>) => {
-        e.stopPropagation();
-        onHover(null);
-        document.body.style.cursor = 'default';
-      }}
-      onClick={(e: ThreeEvent<MouseEvent>) => {
-        e.stopPropagation();
-        if (!isDiagonal) onClick();
-      }}
-    >
-      <boxGeometry args={[CELL_DIM, height, CELL_DIM]} />
-      <meshStandardMaterial
-        color={color}
-        roughness={roughness}
-        metalness={metalness}
-        emissive={emissiveColor}
-        emissiveIntensity={emissiveIntensity}
-      />
-    </mesh>
-  );
-}
+  // Top face dimensions — shrink slightly to make room for side strips
+  const topW = stripWidth > 0 ? CELL_DIM - stripWidth : CELL_DIM;
+  const topD = stripWidth > 0 ? CELL_DIM - stripWidth : CELL_DIM;
 
-// ═══════════════════════════════════════════
-// BASE PLANE
-// ═══════════════════════════════════════════
+  // Offset the top face so strips appear on the correct edges
+  // Raised (positive): strips on RIGHT and BOTTOM → shift top face LEFT and UP
+  // Recessed (negative): strips on LEFT and TOP → shift top face RIGHT and DOWN
+  const topOffsetX = stripWidth > 0 ? (isRaised ? -stripWidth / 2 : stripWidth / 2) : 0;
+  const topOffsetZ = stripWidth > 0 ? (isRaised ? -stripWidth / 2 : stripWidth / 2) : 0;
 
-function BasePlane({ size, isDark }: { size: number; isDark: boolean }) {
-  // The base plane sits at BASE_PLANE_Y. We make it semi-transparent so
-  // recessed (negative) cells that extend below it are still visible as
-  // darker wells/shadows through the surface.
+  const halfDim = CELL_DIM / 2;
+
   return (
     <group>
-      {/* Main reference surface — semi-transparent so recessed wells show through */}
+      {/* Top face — the main colored square (thin box so top face is visible from above) */}
       <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, BASE_PLANE_Y, 0]}
-        receiveShadow
+        position={[x + topOffsetX, 0.01, z + topOffsetZ]}
+        onPointerOver={(e: ThreeEvent<PointerEvent>) => {
+          e.stopPropagation();
+          onHover({ row, col });
+          document.body.style.cursor = isDiagonal ? 'default' : 'pointer';
+        }}
+        onPointerOut={(e: ThreeEvent<PointerEvent>) => {
+          e.stopPropagation();
+          onHover(null);
+          document.body.style.cursor = 'default';
+        }}
+        onClick={(e: ThreeEvent<MouseEvent>) => {
+          e.stopPropagation();
+          if (!isDiagonal) onClick();
+        }}
       >
-        <planeGeometry args={[size + 2, size + 2]} />
+        <boxGeometry args={[topW, 0.02, topD]} />
         <meshStandardMaterial
-          color={isDark ? '#1a1a2e' : '#e4e4ec'}
-          roughness={0.9}
-          metalness={0.02}
-          transparent
-          opacity={0.55}
+          color={color}
+          roughness={0.72}
+          metalness={0.08}
+          emissive={emissiveColor}
+          emissiveIntensity={emissiveIntensity}
         />
       </mesh>
-      {/* Floor plane below the grid to catch shadows from recessed cells */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, BASE_PLANE_Y - MAX_HEIGHT - 0.05, 0]}
-        receiveShadow
-      >
-        <planeGeometry args={[size + 2, size + 2]} />
-        <meshStandardMaterial
-          color={isDark ? '#141428' : '#d0d0d8'}
-          roughness={0.95}
-          metalness={0.01}
-        />
-      </mesh>
+
+      {/* Side strips for RAISED cells (positive r): right + bottom edges */}
+      {stripWidth > 0 && isRaised && (
+        <>
+          {/* Right strip — darker */}
+          <mesh position={[x + halfDim - stripWidth / 2, 0, z + topOffsetZ]}>
+            <boxGeometry args={[stripWidth, 0.02, topD]} />
+            <meshBasicMaterial color={rightColor} />
+          </mesh>
+          {/* Bottom strip — even darker, extends full width including corner */}
+          <mesh position={[x, 0, z + halfDim - stripWidth / 2]}>
+            <boxGeometry args={[CELL_DIM, 0.02, stripWidth]} />
+            <meshBasicMaterial color={bottomColor} />
+          </mesh>
+        </>
+      )}
+
+      {/* Side strips for RECESSED cells (negative r): left + top edges (highlight) */}
+      {stripWidth > 0 && !isRaised && (
+        <>
+          {/* Left strip — lighter (as if light is hitting the inner wall) */}
+          <mesh position={[x - halfDim + stripWidth / 2, 0, z + topOffsetZ]}>
+            <boxGeometry args={[stripWidth, 0.02, topD]} />
+            <meshBasicMaterial color={leftHighlightColor} />
+          </mesh>
+          {/* Top strip — slightly lighter */}
+          <mesh position={[x, 0, z - halfDim + stripWidth / 2]}>
+            <boxGeometry args={[CELL_DIM, 0.02, stripWidth]} />
+            <meshBasicMaterial color={topHighlightColor} />
+          </mesh>
+          {/* Also add darker right + bottom to complete the recessed "well" look */}
+          <mesh position={[x + halfDim - stripWidth / 2, 0, z + topOffsetZ]}>
+            <boxGeometry args={[stripWidth, 0.02, topD]} />
+            <meshBasicMaterial color={bottomColor} />
+          </mesh>
+          <mesh position={[x, 0, z + halfDim - stripWidth / 2]}>
+            <boxGeometry args={[CELL_DIM, 0.02, stripWidth]} />
+            <meshBasicMaterial color={rightColor} />
+          </mesh>
+        </>
+      )}
     </group>
   );
 }
@@ -254,7 +263,7 @@ function ColumnLabels({ activeStats, hoveredCell, isDark }: LabelsProps) {
     <>
       {activeStats.map((stat, i) => {
         const x = i * CELL_SIZE - halfGrid;
-        const z = halfGrid + CELL_SIZE * 0.75;
+        const z = halfGrid + CELL_SIZE * 1.2;
         const isHighlighted = hoveredCell?.col === i;
 
         return (
@@ -279,7 +288,7 @@ function ColumnLabels({ activeStats, hoveredCell, isDark }: LabelsProps) {
               transformOrigin: 'center center',
               transition: 'color 0.15s, font-weight 0.15s',
             }}>
-              {stat.shortLabel}
+              {stat.label}
             </div>
           </Html>
         );
@@ -295,7 +304,7 @@ function RowLabels({ activeStats, hoveredCell, isDark }: LabelsProps) {
   return (
     <>
       {activeStats.map((stat, i) => {
-        const x = -halfGrid - CELL_SIZE * 0.75;
+        const x = -halfGrid - CELL_SIZE * 1.4;
         const z = i * CELL_SIZE - halfGrid;
         const isHighlighted = hoveredCell?.row === i;
 
@@ -320,7 +329,7 @@ function RowLabels({ activeStats, hoveredCell, isDark }: LabelsProps) {
               transition: 'color 0.15s, font-weight 0.15s',
               textAlign: 'right',
             }}>
-              {stat.shortLabel}
+              {stat.label}
             </div>
           </Html>
         );
@@ -350,13 +359,10 @@ function HoverTooltip({ hoveredCell, matrix, activeStats, isDark }: TooltipProps
   const halfGrid = (n - 1) * CELL_SIZE / 2;
   const x = col * CELL_SIZE - halfGrid;
   const z = row * CELL_SIZE - halfGrid;
-  const absR = Math.abs(r);
-  const height = absR < 0.05 ? BASE_HEIGHT : BASE_HEIGHT + absR * (MAX_HEIGHT - BASE_HEIGHT);
-  const yPos = r >= 0 ? BASE_PLANE_Y + height + 0.15 : BASE_PLANE_Y + 0.2;
 
   return (
     <Html
-      position={[x, yPos, z]}
+      position={[x, 0.5, z]}
       center
       style={{ pointerEvents: 'none', userSelect: 'none' }}
     >
@@ -404,15 +410,12 @@ interface Legend3DProps {
 }
 
 function Legend3D({ isDark, totalCells }: Legend3DProps) {
-  // Values from +1 (top, raised) to -1 (bottom, recessed)
   const legendValues = [1, 0.75, 0.5, 0.25, 0.1, 0, -0.1, -0.25, -0.5, -0.75, -1];
   const halfGrid = (totalCells - 1) * CELL_SIZE / 2;
-  const legendX = halfGrid + CELL_SIZE * 1.8;
-  // Center the legend vertically relative to the grid
-  const legendTotalHeight = (legendValues.length - 1) * CELL_SIZE * 0.75;
-  const legendStartZ = -legendTotalHeight / 2;
+  const legendX = halfGrid + CELL_SIZE * 2.8;
   const legendSpacing = CELL_SIZE * 0.75;
-  const legendCellDim = CELL_DIM * 0.65;
+  const legendStartZ = -((legendValues.length - 1) * legendSpacing) / 2;
+  const legendCellDim = CELL_DIM * 0.55;
 
   return (
     <>
@@ -440,22 +443,25 @@ function Legend3D({ isDark, totalCells }: Legend3DProps) {
       {legendValues.map((v, i) => {
         const absV = Math.abs(v);
         const z = legendStartZ + i * legendSpacing;
-        const height = absV < 0.05 ? BASE_HEIGHT : BASE_HEIGHT + absV * (MAX_HEIGHT - BASE_HEIGHT);
-        const yPos = v >= 0
-          ? BASE_PLANE_Y + height / 2
-          : (absV < 0.05 ? BASE_PLANE_Y - height / 2 : BASE_PLANE_Y - height / 2);
-        const color = v === 0
-          ? new THREE.Color(isDark ? '#3a3a50' : '#c8c8d0')
+        const colorStr = v === 0
+          ? (isDark ? '#3a3a50' : '#c8c8d0')
           : getCellColor(v, isDark);
+        const color = new THREE.Color(colorStr);
+        const isRaised = v >= 0;
+        const stripW = absV < 0.06 ? 0 : absV * MAX_STRIP;
+        const halfLeg = legendCellDim / 2;
+
+        // Top face dimensions
+        const topW = stripW > 0 ? legendCellDim - stripW : legendCellDim;
+        const topD = stripW > 0 ? legendCellDim - stripW : legendCellDim;
+        const topOffX = stripW > 0 ? (isRaised ? -stripW / 2 : stripW / 2) : 0;
+        const topOffZ = stripW > 0 ? (isRaised ? -stripW / 2 : stripW / 2) : 0;
 
         return (
           <group key={i}>
-            <mesh
-              position={[legendX, yPos, z]}
-              castShadow
-              receiveShadow
-            >
-              <boxGeometry args={[legendCellDim, height, legendCellDim]} />
+            {/* Top face */}
+            <mesh position={[legendX + topOffX, 0.01, z + topOffZ]}>
+              <boxGeometry args={[topW, 0.02, topD]} />
               <meshStandardMaterial
                 color={color}
                 roughness={0.72}
@@ -463,9 +469,47 @@ function Legend3D({ isDark, totalCells }: Legend3DProps) {
               />
             </mesh>
 
-            {/* Value label to the left of the swatch */}
+            {/* Side strips for raised */}
+            {stripW > 0 && isRaised && (
+              <>
+                <mesh position={[legendX + halfLeg - stripW / 2, 0, z + topOffZ]}>
+                  <boxGeometry args={[stripW, 0.02, topD]} />
+                  <meshBasicMaterial color={new THREE.Color(darkenColor(colorStr, 0.55))} />
+                </mesh>
+                <mesh position={[legendX, 0, z + halfLeg - stripW / 2]}>
+                  <boxGeometry args={[legendCellDim, 0.02, stripW]} />
+                  <meshBasicMaterial color={new THREE.Color(darkenColor(colorStr, 0.35))} />
+                </mesh>
+              </>
+            )}
+
+            {/* Side strips for recessed */}
+            {stripW > 0 && !isRaised && (
+              <>
+                {/* Light strips on left + top */}
+                <mesh position={[legendX - halfLeg + stripW / 2, 0, z + topOffZ]}>
+                  <boxGeometry args={[stripW, 0.02, topD]} />
+                  <meshBasicMaterial color={new THREE.Color(lightenColor(colorStr, 0.15))} />
+                </mesh>
+                <mesh position={[legendX, 0, z - halfLeg + stripW / 2]}>
+                  <boxGeometry args={[legendCellDim, 0.02, stripW]} />
+                  <meshBasicMaterial color={new THREE.Color(lightenColor(colorStr, 0.25))} />
+                </mesh>
+                {/* Dark strips on right + bottom */}
+                <mesh position={[legendX + halfLeg - stripW / 2, 0, z + topOffZ]}>
+                  <boxGeometry args={[stripW, 0.02, topD]} />
+                  <meshBasicMaterial color={new THREE.Color(darkenColor(colorStr, 0.35))} />
+                </mesh>
+                <mesh position={[legendX, 0, z + halfLeg - stripW / 2]}>
+                  <boxGeometry args={[legendCellDim, 0.02, stripW]} />
+                  <meshBasicMaterial color={new THREE.Color(darkenColor(colorStr, 0.55))} />
+                </mesh>
+              </>
+            )}
+
+            {/* Value label */}
             <Html
-              position={[legendX - legendCellDim * 1.0, 0.05, z]}
+              position={[legendX - legendCellDim * 1.4, 0.05, z]}
               center
               style={{ pointerEvents: 'none', userSelect: 'none' }}
             >
@@ -521,55 +565,40 @@ interface SceneProps {
   onCellClick: (xKey: string, yKey: string) => void;
 }
 
-function CameraRig({ gridWorldSize }: { gridWorldSize: number }) {
+function CameraRig() {
   const { camera } = useThree();
 
   useEffect(() => {
-    // Ensure camera looks at the center of the grid
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
-  }, [camera, gridWorldSize]);
+  }, [camera]);
 
   return null;
 }
 
 function Scene({ matrix, activeStats, isDark, hoveredCell, onHover, onCellClick }: SceneProps) {
   const n = activeStats.length;
-  const gridWorldSize = n * CELL_SIZE;
 
   return (
     <>
-      <CameraRig gridWorldSize={gridWorldSize} />
-      {/* Lighting — primary directional from upper-left */}
-      <ambientLight intensity={isDark ? 0.4 : 0.55} />
-      <directionalLight
-        position={[-gridWorldSize * 0.5, gridWorldSize * 1.5, -gridWorldSize * 0.6]}
-        intensity={isDark ? 1.5 : 1.8}
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-left={-gridWorldSize}
-        shadow-camera-right={gridWorldSize * 1.5}
-        shadow-camera-top={gridWorldSize}
-        shadow-camera-bottom={-gridWorldSize}
-        shadow-camera-near={0.1}
-        shadow-camera-far={gridWorldSize * 5}
-        shadow-bias={-0.001}
-        shadow-normalBias={0.02}
-      />
-      {/* Subtle fill light from opposite side */}
-      <directionalLight
-        position={[gridWorldSize * 0.4, gridWorldSize * 0.6, gridWorldSize * 0.3]}
-        intensity={isDark ? 0.15 : 0.22}
-      />
+      <CameraRig />
 
-      {/* Base plane */}
-      <BasePlane size={gridWorldSize} isDark={isDark} />
+      {/* Lighting — ambient + angled directional for subtle shading on faces */}
+      <ambientLight intensity={isDark ? 0.6 : 0.75} />
+      <directionalLight
+        position={[-8, 20, -5]}
+        intensity={isDark ? 0.8 : 1.0}
+      />
+      {/* Fill light from opposite side */}
+      <directionalLight
+        position={[6, 15, 4]}
+        intensity={isDark ? 0.15 : 0.2}
+      />
 
       {/* Matrix cells */}
       {matrix.map((row, ri) =>
         row.map((r, ci) => (
-          <CellMesh
+          <Cell
             key={`${ri}-${ci}`}
             row={ri}
             col={ci}
@@ -615,15 +644,9 @@ export default function CorrelationMatrix3D({
   const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
 
   const n = activeStats.length;
-  const gridWorldSize = n * CELL_SIZE;
 
-  // Container height scales with grid size — generous for large displays
-  const containerHeight = Math.max(560, n * 55 + 100);
-
-  // Camera: nearly top-down with a subtle forward tilt for depth perception
-  // Position: mostly above with a gentle tilt from the front-right
-  // This gives a "looking down at a table" feel with visible extrusion front faces
-  const camDist = gridWorldSize * 1.0;
+  // Container height scales with grid size
+  const containerHeight = Math.max(620, n * 58 + 120);
 
   return (
     <div
@@ -631,7 +654,6 @@ export default function CorrelationMatrix3D({
         width: '100%',
         height: containerHeight,
         position: 'relative',
-        borderRadius: '8px',
         overflow: 'hidden',
       }}
       onPointerLeave={() => {
@@ -640,7 +662,6 @@ export default function CorrelationMatrix3D({
       }}
     >
       <Canvas
-        shadows
         gl={{
           antialias: true,
           alpha: true,
@@ -651,10 +672,11 @@ export default function CorrelationMatrix3D({
           background: 'transparent',
         }}
       >
+        {/* Camera: PERFECTLY top-down. Plane geometry faces camera. */}
         <OrthographicCamera
           makeDefault
-          zoom={42}
-          position={[camDist * 0.02, camDist * 1.8, camDist * 0.35]}
+          zoom={38}
+          position={[0, 100, 0]}
           near={0.1}
           far={1000}
         />
