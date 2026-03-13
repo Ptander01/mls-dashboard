@@ -1,11 +1,12 @@
 # MLS Analytics Dashboard — Project Handoff Document
 
 **Project**: mls-dashboard  
-**Version**: `09222d2b` (latest checkpoint)  
+**Version**: `7cbd84e` (latest checkpoint)  
 **Path**: `/home/ubuntu/mls-dashboard`  
-**Stack**: React 19 + Tailwind CSS 4 + shadcn/ui + Recharts + Three.js + Framer Motion  
+**Stack**: React 19 + Tailwind CSS 4 + shadcn/ui + Recharts + Three.js (pending install) + React Three Fiber (pending install) + Framer Motion  
 **Default Theme**: Light mode (switchable to dark)  
 **Date**: March 13, 2026  
+**Next Priority**: Rebuild correlation matrix with React Three Fiber (see Section 10.8)  
 **Codebase**: 97 files, 16,384 total lines (8,816 custom code + 6,188 shadcn/ui library + 1,380 config/data)  
 
 ---
@@ -629,22 +630,50 @@ The Statistical Playground (`client/src/components/StatsPlayground.tsx`) is an e
 | **Raw Counts** | 15 raw stats (Age, GP, Starts, Minutes, Goals, Assists, Shots, SOT, Shot%, Tackles, Int, Fouls, YC, Crosses, Salary) | Shows volume-based correlations. All counting stats correlate positively with playing time, so the matrix is predominantly blue. |
 | **Per 90 Rates** | 10 rate-normalized stats (Age, Salary, Shot%, Goal Conversion%, G/90, A/90, Sh/90, Tkl/90, Int/90, Fls/90) | Normalizes for playing time, revealing negative correlations between offensive and defensive rate stats (e.g., Goals/90 vs Interceptions/90 = -0.310). Players with <200 minutes are filtered out. |
 
-**3D Depth Encoding:** Each cell is rendered as a pseudo-3D block with the following properties:
+**Current Implementation (SVG-based pseudo-3D):** Each cell is an inline `<svg>` element using the same technique as `Extruded3DBar` in `chartUtils.tsx`. The front face is a `<rect>` with a 5-stop linear gradient. Raised (positive) cells have right and bottom parallelogram side faces; recessed (negative) cells have left and top wall faces with an inverted gradient (darker top, lighter bottom). Extrusion scales from 0px to 4px based on `|r|`. Colors use solid opaque hex values derived via `lighten()` and `darken()` helpers. Shadows use `<feGaussianBlur>` filters clipped to only extend downward+right.
 
-| Property | Positive Correlation (blue) | Near-Zero (white) | Negative Correlation (red) |
+| Property | Positive Correlation (blue) | Near-Zero (gray) | Negative Correlation (red) |
 |---|---|---|---|
-| **translateY** | Up to -18px (raised) | 0px (flat) | Up to +18px (recessed) |
-| **Side faces** | Bottom + right faces (darker shade) | None | Top + left lip faces (darker shade) |
-| **Side face height** | 3px to 18px | 0px | 3px to 18px |
-| **Box shadow** | Strong drop shadow (up to 16px depth) | Subtle inset | Deep inset shadow |
-| **Inner gradient** | Top-left highlight (light source) | None | Top-left shadow + bottom-right highlight |
-| **Color** | Blue scale (rgba 59,130,246) | White/transparent | Red scale (rgba 239,68,68) |
+| **Side faces** | Right + bottom parallelograms | None | Left + top wall parallelograms |
+| **Front gradient** | Light top → dark bottom | Flat neutral | Dark top → light bottom (inverted) |
+| **Extrusion** | 0–4px right+down | 0px | 0–4px (front face offset into well) |
+| **Shadow** | Cast shadow below+right | None | Inset shadow at top-left |
+| **Highlight** | Top edge + left rim light | None | Bottom edge + right rim light |
+| **Color** | Blue scale (#c5d0f0 → #2355D2) | Gray (#c8c8d0 light / #3a3a50 dark) | Red scale (#e8c0c0 → #cd2d2d) |
 
-**3D Stepped Legend:** Below the matrix, a staircase legend physically demonstrates the correlation scale from -1 to +1. Each step is a 3D block whose height scales with |r| (14px at zero to 114px at the extremes), with Y-offset up to 18px, and full side face rendering. The legend uses the same color and shadow functions as the matrix cells.
+**Vertical Legend:** A vertical column of 11 uniform 28x28 swatches sits to the right of the matrix, running from +1 (blue, top) to -1 (red, bottom). Each swatch uses the identical SVG 3D technique as the matrix cells. Labels are positioned to the left of each swatch.
 
-**Interaction:** Hovering a cell scales it to 1.18x with enhanced translateY (1.4x multiplier) and adds a colored glow. Clicking a non-diagonal cell sets the scatter plot axes to the corresponding stat pair and scrolls to the scatter plot. Row and column labels highlight on hover.
+**Interaction:** Hovering a cell shows the r-value as a text overlay. Clicking a non-diagonal cell sets the scatter plot axes to the corresponding stat pair and scrolls to the scatter plot. Row and column labels highlight on hover.
 
 **Position Filter:** A secondary filter allows viewing correlations for specific positions (ALL, FW, MF, DF, GK), which can reveal position-specific patterns.
+
+### 10.8 NEXT PRIORITY: Three.js Rebuild of Correlation Matrix
+
+The current SVG-based pseudo-3D approach has reached its limits. While it matches the bar chart style reasonably well, the faked parallelogram faces, manual shadow positioning, and gradient tuning create persistent visual artifacts (corner glimmers, shadow bleed, baseline misalignment). The user has approved rebuilding the matrix using **React Three Fiber** (Three.js) for real 3D geometry and lighting.
+
+**Why Three.js:** Real box meshes with actual depth, a single directional light source that automatically creates correct shadows/highlights on every face, physically-based materials that respond to light naturally, and no manual shadow/gradient tuning. The same Three.js installation will be reused for the travel map globe, pitch map visualizations, and 3D radar chart.
+
+**Implementation Plan:**
+
+| Step | Details |
+|---|---|
+| **Install dependencies** | `three`, `@react-three/fiber`, `@react-three/drei`, `@types/three` |
+| **New component** | `client/src/components/CorrelationMatrix3D.tsx` — a React Three Fiber `<Canvas>` with an orthographic camera looking down at a grid of `<Box>` meshes |
+| **Geometry** | Each cell is a `BoxGeometry` with uniform width/depth but varying height based on `\|r\|`. Positive cells extrude upward (blue), negative cells extrude downward (red). Near-zero cells are flat thin slabs. |
+| **Materials** | `MeshStandardMaterial` with color mapped to the correlation value. The material's roughness and metalness should match the industrial neumorphic feel (roughness ~0.7, metalness ~0.1). |
+| **Lighting** | One `DirectionalLight` from top-left (matching the bar chart light source direction), plus a soft `AmbientLight` for fill. Enable shadow mapping on the directional light. |
+| **Camera** | `OrthographicCamera` with a slight isometric tilt (similar to the hexagon reference image). Consider allowing subtle mouse-driven camera rotation for interactivity. |
+| **Labels** | Use `@react-three/drei`'s `Html` component to overlay row/column labels and hover tooltips in screen space. |
+| **Legend** | Can remain SVG-based (it's small and works fine) or be rebuilt as a row of 3D boxes beside the main grid. |
+| **Integration** | Replace the SVG cell rendering in `StatsPlayground.tsx` with the new `<CorrelationMatrix3D>` component. Keep all the existing data computation (Pearson correlation, stat mode toggle, position filter) — only the rendering layer changes. |
+| **Theme support** | Pass `isDark` to adjust background color, ambient light intensity, and material colors. |
+
+**Key files to modify:**
+- `client/src/components/CorrelationMatrix3D.tsx` (NEW)
+- `client/src/components/StatsPlayground.tsx` (replace SVG rendering with Three.js component)
+- `package.json` (add Three.js dependencies)
+
+**Reference for 3D style:** The user wants the matrix to look like a physical surface with tiles at different elevations — similar to the hexagon tile reference image (uniform tile sizes, varying depth, directional lighting creating natural shadows). The bar charts in `chartUtils.tsx` (`Extruded3DBar`) define the light source direction and color treatment to match.
 
 ---
 
@@ -652,13 +681,17 @@ The Statistical Playground (`client/src/components/StatsPlayground.tsx`) is an e
 
 The following items are organized by recommended session grouping to minimize file conflicts when working across multiple Manus sessions. Each session should clone fresh from GitHub, complete its scope, and push before the next session begins.
 
-### 11.1 Session Priority: Visual & Animation Upgrades
+### 11.1 Session Priority: Three.js Integration & Visual Upgrades
 
-**3D Radar Chart** — Convert the current flat 2D radar chart (Recharts `RadarChart`) in the player detail card to a Three.js-powered 3D radar with the same Dark Forge neumorphic treatment as the Travel Map globe. The radar should rotate subtly on hover and use extruded polygon faces with team-colored fills.
+**Three.js Correlation Matrix Rebuild** (HIGHEST PRIORITY) — See Section 10.8 for full implementation plan. Install `three`, `@react-three/fiber`, `@react-three/drei`, `@types/three`. Build `CorrelationMatrix3D.tsx` using real 3D box meshes with directional lighting. Replace the SVG-based rendering in `StatsPlayground.tsx`. This establishes Three.js as a shared dependency for all subsequent 3D features.
+
+**3D Radar Chart** — Once Three.js is installed, convert the current flat 2D radar chart (Recharts `RadarChart`) in the player detail card to a Three.js-powered 3D radar. The radar should rotate subtly on hover and use extruded polygon faces with team-colored fills.
+
+**Future Three.js Features** — The user has confirmed Three.js will also be used for: travel map globe visualization, pitch map visualizations (player positioning heatmaps), and potentially other data viz components.
 
 **Animation Polish** — Audit all tab transitions, card expansions, and data loading states for consistent Framer Motion easing curves. Ensure all animations use the project's standard `[0.22, 1, 0.36, 1]` cubic-bezier. Add staggered entrance animations to summary stat cards and table rows on tab switch.
 
-**Files likely touched:** `PlayerStats.tsx` (radar section), possibly a new `Radar3D.tsx` component, Framer Motion configs.
+**Files likely touched:** `StatsPlayground.tsx`, new `CorrelationMatrix3D.tsx`, `PlayerStats.tsx` (radar section), possibly a new `Radar3D.tsx` component, `package.json`, Framer Motion configs.
 
 ### 11.2 Session Priority: Team Leaderboard (New Component)
 
