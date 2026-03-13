@@ -596,3 +596,24 @@ Headlines are fully reactive to the filter system. When a user:
 - Adjusts age/salary sliders → insights recalculate with the narrowed player pool
 
 All computations are wrapped in `useMemo` with appropriate dependency arrays for performance.
+
+### 10.6 Per-Card Inline Insights (March 13, 2026)
+
+In addition to the tab-wide headline and ANALYZE panel, each individual NeuCard section now has its own compact insight button in the card header. This creates a **layered insight architecture**: the tab-level headline provides the big-picture narrative, while per-card insights give contextual analysis specific to that card's data.
+
+| Component | File | Description |
+|---|---|---|
+| `CardInsightButton` | `client/src/components/CardInsight.tsx` | A compact lightbulb icon button that toggles a frosted-glass dropdown of 2-3 insights. Positioned inline with other header controls (maximize, toggles). |
+| `CardInsightInline` | `client/src/components/CardInsight.tsx` | An alternative inline variant that expands insights directly below the card header (not currently used, available for future cards). |
+
+The following cards in the Player Stats tab have per-card insight buttons:
+
+| Card | Insight Generator | Example Insights |
+|---|---|---|
+| **Player Comparison** (scatter plot) | `scatterCardInsights(players, xAxis, yAxis, r2)` | R² interpretation with plain-English strength label; position gap analysis (e.g., "FWs average 6.5 goals vs GKs at 0.0"); data coverage note. Updates when axes change. |
+| **Top Scorers** | `topScorersCardInsights(players)` | Scoring concentration across teams; position breakdown of top 10; salary efficiency comparison of top scorer vs most expensive scorer. |
+| **Player Radar** (selected player) | `playerRadarCardInsights(player, allPlayers)` | Position peer ranking (e.g., "Ranks #1 in goals among 105 FWs"); age group comparison; salary bracket peer comparison. Dynamically generated per selected player. |
+| **Player Database** | `playerTableCardInsights(players)` | Salary distribution (median, top earner, zero-salary count); position balance; age demographics (youngest, oldest, median). |
+
+The per-card insight generators are defined in `client/src/lib/insightEngine.ts` and follow the same memoization pattern as the tab-level functions.
+
