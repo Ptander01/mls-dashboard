@@ -17,6 +17,7 @@ import { BarChart3, Grid3X3, FlaskConical, Activity, ChevronDown, ChevronUp, X }
 import { useTheme } from '@/contexts/ThemeContext';
 import NeuCard from './NeuCard';
 import { NeuInsightContainer } from './NeuInsightContainer';
+import CorrelationMatrix3D from './CorrelationMatrix3D';
 import type { Player } from '@/lib/mlsData';
 
 // ═══════════════════════════════════════════
@@ -188,7 +189,7 @@ function lnGamma(x: number): number {
 // CORRELATION MATRIX COMPONENT
 // ═══════════════════════════════════════════
 
-interface CorrelationMatrixProps {
+interface CorrelationMatrixWrapperProps {
   players: Player[];
   isDark: boolean;
   positionFilter: string;
@@ -196,9 +197,7 @@ interface CorrelationMatrixProps {
   onCellClick: (xKey: string, yKey: string) => void;
 }
 
-function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellClick }: CorrelationMatrixProps) {
-  const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
-
+function CorrelationMatrixWrapper({ players, isDark, positionFilter, statMode, onCellClick }: CorrelationMatrixWrapperProps) {
   const filtered = useMemo(() => {
     let result = positionFilter === 'ALL' ? players : players.filter(p => p.position === positionFilter);
     // For rate stats, filter to players with meaningful minutes (>200)
@@ -253,75 +252,11 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
     return [...topPos, ...topNeg];
   }, [matrix, activeStats]);
 
-  const cellSize = 48;
-  const labelWidth = 56;
-  const matrixWidth = labelWidth + activeStats.length * cellSize;
-
-  // ─── 3D EXTRUSION CONSTANTS ───
-  // Matches the Extruded3DBar: 4px offset in both X and Y directions
-  // Light source: upper-left → shadows/side faces fall to bottom-right
-  const EXTRUDE = 4; // px offset for parallelogram faces
-
-  /**
-   * Solid opaque hex colors — crisp like the bar charts.
-   * Returns hex string so we can use lighten/darken on it.
-   * +1 = deep blue, 0 = neutral surface, -1 = deep red
-   */
-  function getCellHex(r: number): string {
-    const absR = Math.min(Math.abs(r), 1);
-    if (absR < 0.02) return isDark ? '#2a2a3e' : '#dddde5';
-    if (r > 0) {
-      if (isDark) {
-        const rv = Math.round(42 - absR * 20);
-        const gv = Math.round(42 + absR * 80);
-        const bv = Math.round(62 + absR * 180);
-        return '#' + [rv,gv,bv].map(c => Math.max(0,Math.min(255,c)).toString(16).padStart(2,'0')).join('');
-      } else {
-        const rv = Math.round(210 - absR * 175);
-        const gv = Math.round(215 - absR * 130);
-        const bv = Math.round(235 - absR * 25);
-        return '#' + [rv,gv,bv].map(c => Math.max(0,Math.min(255,c)).toString(16).padStart(2,'0')).join('');
-      }
-    } else {
-      if (isDark) {
-        const rv = Math.round(42 + absR * 190);
-        const gv = Math.round(42 - absR * 15);
-        const bv = Math.round(62 - absR * 20);
-        return '#' + [rv,gv,bv].map(c => Math.max(0,Math.min(255,c)).toString(16).padStart(2,'0')).join('');
-      } else {
-        const rv = Math.round(235 - absR * 30);
-        const gv = Math.round(215 - absR * 170);
-        const bv = Math.round(215 - absR * 170);
-        return '#' + [rv,gv,bv].map(c => Math.max(0,Math.min(255,c)).toString(16).padStart(2,'0')).join('');
-      }
-    }
-  }
-
-  /** Lighten a hex color by amount (0-1) */
-  function liten(hex: string, amt: number): string {
-    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-    return '#' + [r,g,b].map(c => Math.min(255, Math.round(c + (255-c)*amt)).toString(16).padStart(2,'0')).join('');
-  }
-  /** Darken a hex color by amount (0-1) */
-  function drken(hex: string, amt: number): string {
-    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-    return '#' + [r,g,b].map(c => Math.max(0, Math.round(c*(1-amt))).toString(16).padStart(2,'0')).join('');
-  }
-  /** Hex to rgba */
-  function hexA(hex: string, a: number): string {
-    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-    return `rgba(${r},${g},${b},${a})`;
-  }
-
-  /**
-   * Get extrusion depth multiplier based on |r|.
-   * Scales from 0 (no extrusion at r≈0) to 1 (full EXTRUDE at |r|=1).
-   */
-  function getExtrudeScale(r: number): number {
-    const absR = Math.min(Math.abs(r), 1);
-    if (absR < 0.05) return 0;
-    return absR;
-  }
+  // Normalize stat definitions for the 3D component interface
+  const normalizedStats = useMemo(() =>
+    activeStats.map(s => ({ key: s.key, label: s.label, shortLabel: s.shortLabel })),
+    [activeStats]
+  );
 
   return (
     <div>
@@ -345,401 +280,19 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
         </div>
       </div>
 
-      {/* Matrix + Vertical Legend side by side */}
-      <div className="flex gap-6">
-      {/* 3D Matrix grid */}
-      <div className="overflow-x-auto pb-6 flex-shrink-0" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <div style={{
-          minWidth: matrixWidth,
-          perspective: '1000px',
-        }}>
-          {/* Column labels */}
-          <div className="flex" style={{ marginLeft: labelWidth }}>
-            {activeStats.map((s, i) => (
-              <div key={i} className="text-center" style={{
-                width: cellSize,
-                fontSize: '8px',
-                fontFamily: 'JetBrains Mono',
-                color: hoveredCell?.col === i ? (isDark ? '#60a5fa' : '#1e40af') : 'var(--muted-foreground)',
-                fontWeight: hoveredCell?.col === i ? 700 : 400,
-                transform: 'rotate(-45deg)',
-                transformOrigin: 'center',
-                height: 48,
-                display: 'flex',
-                alignItems: 'flex-end',
-                justifyContent: 'center',
-                paddingBottom: 4,
-                transition: 'color 0.15s, font-weight 0.15s',
-              }}>
-                {s.shortLabel}
-              </div>
-            ))}
-          </div>
-
-          {/* Rows */}
-          {activeStats.map((rowStat, row) => (
-            <div key={row} className="flex items-center" style={{ height: cellSize + 4 }}>
-              {/* Row label */}
-              <div className="text-right pr-2 flex-shrink-0" style={{
-                width: labelWidth,
-                fontSize: '8px',
-                fontFamily: 'JetBrains Mono',
-                color: hoveredCell?.row === row ? (isDark ? '#60a5fa' : '#1e40af') : 'var(--muted-foreground)',
-                fontWeight: hoveredCell?.row === row ? 700 : 400,
-                transition: 'color 0.15s, font-weight 0.15s',
-              }}>
-                {rowStat.shortLabel}
-              </div>
-
-              {/* Cells */}
-              {activeStats.map((colStat, col) => {
-                const r = matrix[row][col];
-                const absR = Math.abs(r);
-                const isHovered = hoveredCell?.row === row && hoveredCell?.col === col;
-                const isHighlighted = hoveredCell?.row === row || hoveredCell?.col === col;
-                const isDiagonal = row === col;
-
-                // Uniform cell size — 3D comes from geometric faces, not size
-                const S = cellSize - 8; // inner square size
-                const baseHex = isDiagonal ? (isDark ? '#3a3a50' : '#c8c8d0') : getCellHex(r);
-                const eScale = isDiagonal ? 0.3 : getExtrudeScale(r);
-                const eX = Math.round(EXTRUDE * eScale); // right offset
-                const eY = Math.round(EXTRUDE * eScale); // down offset
-
-                // Colors derived from base — exactly like Extruded3DBar
-                const highlightHex = liten(baseHex, 0.4);
-                const sideHex = drken(baseHex, 0.35);
-                const sideDarkHex = drken(baseHex, 0.55);
-                const bottomHex = drken(baseHex, 0.5);
-
-                // SVG dimensions: front face + extrusion padding
-                const svgW = S + eX + 1;
-                const svgH = S + eY + 1;
-
-                // Unique gradient ID
-                const gid = `cm_${row}_${col}`;
-
-                return (
-                  <div
-                    key={col}
-                    className="flex items-center justify-center cursor-pointer"
-                    style={{
-                      width: cellSize,
-                      height: cellSize + eY + 2,
-                      paddingBottom: eY,
-                      background: isHighlighted && !isDiagonal
-                        ? (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)')
-                        : 'transparent',
-                      transition: 'background 0.15s',
-                    }}
-                    onMouseEnter={() => setHoveredCell({ row, col })}
-                    onMouseLeave={() => setHoveredCell(null)}
-                    onClick={() => { if (!isDiagonal) onCellClick(colStat.key, rowStat.key); }}
-                    title={`${rowStat.label} × ${colStat.label}: r = ${r.toFixed(3)}`}
-                  >
-                    {/* SVG-based 3D cell — Extruded3DBar technique */}
-                    {/* RAISED (r>=0): front face at origin, right+bottom side faces offset down-right, cast shadow behind */}
-                    {/* RECESSED (r<0): front face offset down-right, left+top side faces at origin edges, inset shadow on top-left */}
-                    <svg width={svgW} height={svgH} style={{ overflow: 'visible' }}>
-                      <defs>
-                        {/* Front face gradient — RAISED: lit from top / RECESSED: inverted (dark top, light bottom) */}
-                        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-                          {r >= 0 ? (
-                            <>
-                              <stop offset="0%" stopColor={highlightHex} stopOpacity={0.95} />
-                              <stop offset="8%" stopColor={liten(baseHex, 0.15)} stopOpacity={0.92} />
-                              <stop offset="50%" stopColor={baseHex} stopOpacity={0.88} />
-                              <stop offset="92%" stopColor={drken(baseHex, 0.15)} stopOpacity={0.88} />
-                              <stop offset="100%" stopColor={drken(baseHex, 0.5)} stopOpacity={0.92} />
-                            </>
-                          ) : (
-                            <>
-                              <stop offset="0%" stopColor={drken(baseHex, 0.5)} stopOpacity={0.95} />
-                              <stop offset="8%" stopColor={drken(baseHex, 0.25)} stopOpacity={0.92} />
-                              <stop offset="50%" stopColor={baseHex} stopOpacity={0.88} />
-                              <stop offset="92%" stopColor={liten(baseHex, 0.12)} stopOpacity={0.88} />
-                              <stop offset="100%" stopColor={highlightHex} stopOpacity={0.92} />
-                            </>
-                          )}
-                        </linearGradient>
-                        {/* Side face gradient */}
-                        <linearGradient id={`${gid}_s`} x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor={sideHex} stopOpacity={0.9} />
-                          <stop offset="100%" stopColor={sideDarkHex} stopOpacity={0.95} />
-                        </linearGradient>
-                        {/* Top/bottom side face gradient (vertical) */}
-                        <linearGradient id={`${gid}_tb`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={sideHex} stopOpacity={0.9} />
-                          <stop offset="100%" stopColor={sideDarkHex} stopOpacity={0.95} />
-                        </linearGradient>
-                        {/* Shadow blur filter — clipped to only extend downward+right */}
-                        <filter id={`${gid}_sh`} x="0%" y="0%" width="160%" height="160%">
-                          <feGaussianBlur in="SourceGraphic" stdDeviation={eScale > 0.3 ? 2.5 : 1.5} />
-                        </filter>
-                      </defs>
-
-                      {r >= 0 ? (
-                        /* ═══ RAISED CELL (r >= 0) ═══ */
-                        /* Front face at (0, 0). Side faces extend right+down. */
-                        /* Shadow is offset further right+down and clipped to never go above front face. */
-                        <>
-                          {/* Cast shadow — positioned below+right of front face, never above */}
-                          {eScale > 0.05 && (
-                            <rect
-                              x={eX + 1} y={eY + 1} width={S} height={S}
-                              fill={isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.15)'}
-                              filter={`url(#${gid}_sh)`}
-                            />
-                          )}
-                          {/* Right side face (parallelogram) */}
-                          {eScale > 0.05 && (
-                            <path d={`M${S},0 L${S+eX},${eY} L${S+eX},${S+eY} L${S},${S} Z`}
-                              fill={`url(#${gid}_s)`} />
-                          )}
-                          {/* Bottom face (parallelogram) */}
-                          {eScale > 0.05 && (
-                            <path d={`M0,${S} L${eX},${S+eY} L${S+eX},${S+eY} L${S},${S} Z`}
-                              fill={bottomHex} fillOpacity={0.7} />
-                          )}
-                          {/* Front face — no rounded corners to avoid glimmer artifacts */}
-                          <rect x={0} y={0} width={S} height={S}
-                            fill={`url(#${gid})`} />
-                          {/* Top highlight line — inset from edges to avoid corner artifacts */}
-                          {absR > 0.1 && (
-                            <rect x={3} y={0.5} width={S-6} height={1.5}
-                              fill={highlightHex} fillOpacity={0.5} />
-                          )}
-                          {/* Left rim light — inset from top/bottom edges */}
-                          {absR > 0.2 && (
-                            <rect x={0.5} y={3} width={1} height={S-6}
-                              fill={highlightHex} fillOpacity={0.18} />
-                          )}
-                        </>
-                      ) : (
-                        /* ═══ RECESSED CELL (r < 0) ═══ */
-                        /* Front face is pushed DOWN-RIGHT by (eX, eY). */
-                        /* Left wall and top wall are visible at the original edges. */
-                        <>
-                          {/* Inset shadow — dark overlay at top-left of the well */}
-                          {eScale > 0.05 && (
-                            <rect
-                              x={eX - 1} y={eY - 1} width={S} height={S}
-                              fill={isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)'}
-                              filter={`url(#${gid}_sh)`}
-                            />
-                          )}
-                          {/* LEFT WALL — parallelogram from top-left edge down to front face */}
-                          {eScale > 0.05 && (
-                            <path d={`M0,0 L${eX},${eY} L${eX},${S+eY} L0,${S} Z`}
-                              fill={`url(#${gid}_s)`} />
-                          )}
-                          {/* TOP WALL — parallelogram from top edge across to front face */}
-                          {eScale > 0.05 && (
-                            <path d={`M0,0 L${eX},${eY} L${S+eX},${eY} L${S},0 Z`}
-                              fill={`url(#${gid}_tb)`} />
-                          )}
-                          {/* Front face — offset into the well, no rounded corners */}
-                          <rect x={eX} y={eY} width={S} height={S}
-                            fill={`url(#${gid})`} />
-                          {/* Bottom highlight line — inset from edges */}
-                          {absR > 0.1 && (
-                            <rect x={eX+3} y={eY+S-2} width={S-6} height={1.5}
-                              fill={highlightHex} fillOpacity={0.35} />
-                          )}
-                          {/* Right rim light — inset from top/bottom edges */}
-                          {absR > 0.2 && (
-                            <rect x={eX+S-1.5} y={eY+3} width={1} height={S-6}
-                              fill={highlightHex} fillOpacity={0.12} />
-                          )}
-                        </>
-                      )}
-
-                      {/* Hover: show r value */}
-                      {isHovered && !isDiagonal && (
-                        <text
-                          x={S / 2}
-                          y={S / 2 + 3}
-                          textAnchor="middle"
-                          fontSize={7}
-                          fontFamily="JetBrains Mono"
-                          fontWeight={700}
-                          fill={absR > 0.5
-                            ? (isDark ? '#fff' : (r > 0 ? '#1e3a8a' : '#7f1d1d'))
-                            : (isDark ? '#aaa' : '#666')}
-                        >
-                          {r.toFixed(2)}
-                        </text>
-                      )}
-
-                      {/* Hover glow outline */}
-                      {isHovered && !isDiagonal && (
-                        <rect
-                          x={-0.5}
-                          y={-0.5}
-                          width={S + 1}
-                          height={S + 1}
-                          rx={2.5}
-                          fill="none"
-                          stroke={r >= 0 ? 'rgba(59,130,246,0.6)' : 'rgba(239,68,68,0.6)'}
-                          strokeWidth={1.5}
-                        />
-                      )}
-                    </svg>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ═══ VERTICAL LEGEND — uniform swatches, depth via elevation only ═══ */}
-      <div className="flex-shrink-0 flex flex-col items-center pt-12" style={{ width: 80 }}>
-        {/* +1 label at top */}
-        <span className="text-[10px] font-bold mb-2" style={{
-          fontFamily: 'JetBrains Mono',
-          color: isDark ? '#60a5fa' : '#1e3a8a',
-        }}>+1</span>
-        <span className="text-[8px] mb-1" style={{
-          fontFamily: 'Space Grotesk',
-          color: isDark ? '#60a5fa' : '#1e3a8a',
-        }}>▲ Raised</span>
-
-        {/* Vertical swatch stack: +1 at top, -1 at bottom — SVG-based 3D matching matrix cells */}
-        <div className="flex flex-col items-center gap-[3px]" style={{ padding: '4px 0' }}>
-          {([1, 0.75, 0.5, 0.25, 0.1, 0, -0.1, -0.25, -0.5, -0.75, -1] as const).map((v, i) => {
-            const absV = Math.abs(v);
-            const LS = 28; // legend swatch size
-            const baseH = v === 0 ? (isDark ? '#3a3a50' : '#c8c8d0') : getCellHex(v);
-            const eS = absV < 0.05 ? 0 : absV;
-            const leX = Math.round(EXTRUDE * eS);
-            const leY = Math.round(EXTRUDE * eS);
-            const lHighlight = liten(baseH, 0.4);
-            const lSide = drken(baseH, 0.35);
-            const lSideDark = drken(baseH, 0.55);
-            const lBottom = drken(baseH, 0.5);
-            const lsvgW = LS + leX + 1;
-            const lsvgH = LS + leY + 1;
-            const lgid = `lg_${i}`;
-
-            return (
-              <div key={i} className="flex items-center" style={{ height: LS + 6 }}>
-                {/* Value label */}
-                <span style={{
-                  width: 28,
-                  fontSize: '7px',
-                  fontFamily: 'JetBrains Mono',
-                  color: 'var(--muted-foreground)',
-                  textAlign: 'right',
-                  paddingRight: 4,
-                  opacity: absV < 0.05 ? 1 : 0.7,
-                  fontWeight: absV < 0.05 ? 600 : 400,
-                }}>
-                  {v === 0 ? '0' : v > 0 ? `+${v}` : `${v}`}
-                </span>
-
-                {/* SVG 3D swatch — raised/recessed matching matrix cells */}
-                <svg width={lsvgW} height={lsvgH} style={{ overflow: 'visible' }}>
-                  <defs>
-                    <linearGradient id={lgid} x1="0" y1="0" x2="0" y2="1">
-                      {v >= 0 ? (
-                        <>
-                          <stop offset="0%" stopColor={lHighlight} stopOpacity={0.95} />
-                          <stop offset="8%" stopColor={liten(baseH, 0.15)} stopOpacity={0.92} />
-                          <stop offset="50%" stopColor={baseH} stopOpacity={0.88} />
-                          <stop offset="92%" stopColor={drken(baseH, 0.15)} stopOpacity={0.88} />
-                          <stop offset="100%" stopColor={drken(baseH, 0.5)} stopOpacity={0.92} />
-                        </>
-                      ) : (
-                        <>
-                          <stop offset="0%" stopColor={drken(baseH, 0.5)} stopOpacity={0.95} />
-                          <stop offset="8%" stopColor={drken(baseH, 0.25)} stopOpacity={0.92} />
-                          <stop offset="50%" stopColor={baseH} stopOpacity={0.88} />
-                          <stop offset="92%" stopColor={liten(baseH, 0.12)} stopOpacity={0.88} />
-                          <stop offset="100%" stopColor={lHighlight} stopOpacity={0.92} />
-                        </>
-                      )}
-                    </linearGradient>
-                    <linearGradient id={`${lgid}_s`} x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor={lSide} stopOpacity={0.9} />
-                      <stop offset="100%" stopColor={lSideDark} stopOpacity={0.95} />
-                    </linearGradient>
-                    <linearGradient id={`${lgid}_tb`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={lSide} stopOpacity={0.9} />
-                      <stop offset="100%" stopColor={lSideDark} stopOpacity={0.95} />
-                    </linearGradient>
-                    <filter id={`${lgid}_sh`} x="0%" y="0%" width="160%" height="160%">
-                      <feGaussianBlur in="SourceGraphic" stdDeviation={eS > 0.3 ? 2 : 1} />
-                    </filter>
-                  </defs>
-
-                  {v >= 0 ? (
-                    /* ═══ RAISED LEGEND SWATCH ═══ */
-                    <>
-                      {eS > 0.05 && (
-                        <rect x={leX+1} y={leY+1} width={LS} height={LS}
-                          fill={isDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.13)'}
-                          filter={`url(#${lgid}_sh)`} />
-                      )}
-                      {eS > 0.05 && (
-                        <path d={`M${LS},0 L${LS+leX},${leY} L${LS+leX},${LS+leY} L${LS},${LS} Z`}
-                          fill={`url(#${lgid}_s)`} />
-                      )}
-                      {eS > 0.05 && (
-                        <path d={`M0,${LS} L${leX},${LS+leY} L${LS+leX},${LS+leY} L${LS},${LS} Z`}
-                          fill={lBottom} fillOpacity={0.7} />
-                      )}
-                      <rect x={0} y={0} width={LS} height={LS}
-                        fill={`url(#${lgid})`} />
-                      {absV > 0.1 && (
-                        <rect x={3} y={0.5} width={LS-6} height={1.5}
-                          fill={lHighlight} fillOpacity={0.45} />
-                      )}
-                    </>
-                  ) : (
-                    /* ═══ RECESSED LEGEND SWATCH ═══ */
-                    <>
-                      {eS > 0.05 && (
-                        <rect x={leX-1} y={leY-1} width={LS} height={LS}
-                          fill={isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.07)'}
-                          filter={`url(#${lgid}_sh)`} />
-                      )}
-                      {eS > 0.05 && (
-                        <path d={`M0,0 L${leX},${leY} L${leX},${LS+leY} L0,${LS} Z`}
-                          fill={`url(#${lgid}_s)`} />
-                      )}
-                      {eS > 0.05 && (
-                        <path d={`M0,0 L${leX},${leY} L${LS+leX},${leY} L${LS},0 Z`}
-                          fill={`url(#${lgid}_tb)`} />
-                      )}
-                      <rect x={leX} y={leY} width={LS} height={LS}
-                        fill={`url(#${lgid})`} />
-                      {absV > 0.1 && (
-                        <rect x={leX+3} y={leY+LS-2} width={LS-6} height={1.5}
-                          fill={lHighlight} fillOpacity={0.3} />
-                      )}
-                    </>
-                  )}
-                </svg>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* -1 label at bottom */}
-        <span className="text-[8px] mt-1" style={{
-          fontFamily: 'Space Grotesk',
-          color: isDark ? '#f87171' : '#991b1b',
-        }}>▼ Recessed</span>
-        <span className="text-[10px] font-bold mt-1" style={{
-          fontFamily: 'JetBrains Mono',
-          color: isDark ? '#f87171' : '#991b1b',
-        }}>−1</span>
-      </div>
-      </div> {/* end flex row */}
+      {/* Three.js 3D Correlation Matrix */}
+      <CorrelationMatrix3D
+        matrix={matrix}
+        activeStats={normalizedStats}
+        isDark={isDark}
+        onCellClick={onCellClick}
+      />
     </div>
   );
 }
+
+// [OLD SVG CODE REMOVED — See git history for the original SVG-based
+//  pseudo-3D implementation. All rendering now handled by CorrelationMatrix3D.tsx]
 
 // ═══════════════════════════════════════════
 // HYPOTHESIS TEST COMPONENT
@@ -1344,7 +897,7 @@ export default function StatsPlayground({ players, onAxisChange }: StatsPlaygrou
                       ))}
                     </div>
                   </div>
-                  <CorrelationMatrix
+                  <CorrelationMatrixWrapper
                     players={players}
                     isDark={isDark}
                     positionFilter={matrixPosFilter}

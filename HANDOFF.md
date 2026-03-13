@@ -3,10 +3,10 @@
 **Project**: mls-dashboard  
 **Version**: `7cbd84e` (latest checkpoint)  
 **Path**: `/home/ubuntu/mls-dashboard`  
-**Stack**: React 19 + Tailwind CSS 4 + shadcn/ui + Recharts + Three.js (pending install) + React Three Fiber (pending install) + Framer Motion  
+**Stack**: React 19 + Tailwind CSS 4 + shadcn/ui + Recharts + Three.js + React Three Fiber + @react-three/drei + Framer Motion  
 **Default Theme**: Light mode (switchable to dark)  
 **Date**: March 13, 2026  
-**Next Priority**: Rebuild correlation matrix with React Three Fiber (see Section 10.8)  
+**Next Priority**: 3D Radar Chart conversion (see Section 11.1)  
 **Codebase**: 97 files, 16,384 total lines (8,816 custom code + 6,188 shadcn/ui library + 1,380 config/data)  
 
 ---
@@ -647,33 +647,32 @@ The Statistical Playground (`client/src/components/StatsPlayground.tsx`) is an e
 
 **Position Filter:** A secondary filter allows viewing correlations for specific positions (ALL, FW, MF, DF, GK), which can reveal position-specific patterns.
 
-### 10.8 NEXT PRIORITY: Three.js Rebuild of Correlation Matrix
+### 10.8 COMPLETED: Three.js Correlation Matrix Rebuild
 
-The current SVG-based pseudo-3D approach has reached its limits. While it matches the bar chart style reasonably well, the faked parallelogram faces, manual shadow positioning, and gradient tuning create persistent visual artifacts (corner glimmers, shadow bleed, baseline misalignment). The user has approved rebuilding the matrix using **React Three Fiber** (Three.js) for real 3D geometry and lighting.
+**Status: DONE** — The SVG-based pseudo-3D correlation matrix has been fully replaced with a React Three Fiber implementation using real 3D geometry and directional lighting.
 
-**Why Three.js:** Real box meshes with actual depth, a single directional light source that automatically creates correct shadows/highlights on every face, physically-based materials that respond to light naturally, and no manual shadow/gradient tuning. The same Three.js installation will be reused for the travel map globe, pitch map visualizations, and 3D radar chart.
+**What was built:**
 
-**Implementation Plan:**
-
-| Step | Details |
+| Component | Details |
 |---|---|
-| **Install dependencies** | `three`, `@react-three/fiber`, `@react-three/drei`, `@types/three` |
-| **New component** | `client/src/components/CorrelationMatrix3D.tsx` — a React Three Fiber `<Canvas>` with an orthographic camera looking down at a grid of `<Box>` meshes |
-| **Geometry** | Each cell is a `BoxGeometry` with uniform width/depth but varying height based on `\|r\|`. Positive cells extrude upward (blue), negative cells extrude downward (red). Near-zero cells are flat thin slabs. |
-| **Materials** | `MeshStandardMaterial` with color mapped to the correlation value. The material's roughness and metalness should match the industrial neumorphic feel (roughness ~0.7, metalness ~0.1). |
-| **Lighting** | One `DirectionalLight` from top-left (matching the bar chart light source direction), plus a soft `AmbientLight` for fill. Enable shadow mapping on the directional light. |
-| **Camera** | `OrthographicCamera` with a slight isometric tilt (similar to the hexagon reference image). Consider allowing subtle mouse-driven camera rotation for interactivity. |
-| **Labels** | Use `@react-three/drei`'s `Html` component to overlay row/column labels and hover tooltips in screen space. |
-| **Legend** | Can remain SVG-based (it's small and works fine) or be rebuilt as a row of 3D boxes beside the main grid. |
-| **Integration** | Replace the SVG cell rendering in `StatsPlayground.tsx` with the new `<CorrelationMatrix3D>` component. Keep all the existing data computation (Pearson correlation, stat mode toggle, position filter) — only the rendering layer changes. |
-| **Theme support** | Pass `isDark` to adjust background color, ambient light intensity, and material colors. |
+| **New file** | `client/src/components/CorrelationMatrix3D.tsx` (~650 lines) |
+| **Dependencies installed** | `three`, `@react-three/fiber`, `@react-three/drei`, `@types/three` |
+| **Geometry** | Each cell is a `BoxGeometry` with uniform width/depth. Positive correlations extrude upward (blue), negative correlations are recessed (red). Near-zero cells are thin flat slabs. Height scales with `|r|`. |
+| **Materials** | `MeshStandardMaterial` with roughness 0.72, metalness 0.08 — matches the industrial neumorphic feel. |
+| **Lighting** | `DirectionalLight` from top-left with shadow mapping + soft `AmbientLight` fill. Shadow bias tuned for clean edges. |
+| **Camera** | `OrthographicCamera` with near-top-down view (subtle forward tilt for depth). `CameraSetup` component uses `useThree` to set `lookAt` after mount. |
+| **Labels** | `@react-three/drei` `Html` component overlays row/column labels in screen space. Labels highlight on hover. |
+| **Legend** | Full 3D legend built with real box meshes at varying elevations, positioned to the right of the grid. Shows +1 (Raised, blue) through -1 (Recessed, red) with value labels. |
+| **Hover tooltip** | HTML overlay tooltip shows stat pair names and correlation value on cell hover. |
+| **Integration** | Old `CorrelationMatrix` function in `StatsPlayground.tsx` replaced with `CorrelationMatrixWrapper` that lifts data computation (Pearson correlation, stat mode toggle, position filter) and passes computed matrix to `<CorrelationMatrix3D>`. |
+| **Theme support** | `isDark` prop adjusts ambient light intensity, material colors, shadow plane opacity, and label colors. |
 
-**Key files to modify:**
-- `client/src/components/CorrelationMatrix3D.tsx` (NEW)
-- `client/src/components/StatsPlayground.tsx` (replace SVG rendering with Three.js component)
-- `package.json` (add Three.js dependencies)
-
-**Reference for 3D style:** The user wants the matrix to look like a physical surface with tiles at different elevations — similar to the hexagon tile reference image (uniform tile sizes, varying depth, directional lighting creating natural shadows). The bar charts in `chartUtils.tsx` (`Extruded3DBar`) define the light source direction and color treatment to match.
+**Architecture notes for future Three.js components:**
+- The `CameraSetup` pattern (using `useThree` hook to set `camera.lookAt` in a `useEffect`) is required for orthographic cameras that need to target a specific point.
+- `MeshStandardMaterial` with roughness ~0.7 and metalness ~0.1 gives the best industrial neumorphic look under directional lighting.
+- `@react-three/drei`'s `Html` component with `occlude={false}` and `zIndexRange={[10,0]}` works well for overlaying labels on 3D scenes.
+- Shadow map settings: `shadow-mapSize={[2048, 2048]}`, `shadow-bias={-0.001}` for clean shadow edges.
+- The grid uses `CELL_SIZE = 0.55` and `GAP = 0.06` constants for uniform spacing.
 
 ---
 
@@ -683,7 +682,7 @@ The following items are organized by recommended session grouping to minimize fi
 
 ### 11.1 Session Priority: Three.js Integration & Visual Upgrades
 
-**Three.js Correlation Matrix Rebuild** (HIGHEST PRIORITY) — See Section 10.8 for full implementation plan. Install `three`, `@react-three/fiber`, `@react-three/drei`, `@types/three`. Build `CorrelationMatrix3D.tsx` using real 3D box meshes with directional lighting. Replace the SVG-based rendering in `StatsPlayground.tsx`. This establishes Three.js as a shared dependency for all subsequent 3D features.
+**Three.js Correlation Matrix Rebuild** — COMPLETED. See Section 10.8 for implementation details. Three.js is now installed and available as a shared dependency for all subsequent 3D features.
 
 **3D Radar Chart** — Once Three.js is installed, convert the current flat 2D radar chart (Recharts `RadarChart`) in the player detail card to a Three.js-powered 3D radar. The radar should rotate subtly on hover and use extruded polygon faces with team-colored fills.
 
