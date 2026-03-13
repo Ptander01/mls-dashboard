@@ -47,6 +47,29 @@ const NUMERIC_STATS: StatDef[] = [
   { key: 'salary', label: 'Salary', shortLabel: 'Sal' },
 ];
 
+/** Rate stats (per 90 minutes) — computed from raw stats, produces negative correlations */
+interface RateStatDef {
+  key: string;
+  label: string;
+  shortLabel: string;
+  compute: (p: Player) => number;
+}
+
+const RATE_STATS: RateStatDef[] = [
+  { key: 'age', label: 'Age', shortLabel: 'Age', compute: (p) => p.age },
+  { key: 'salary', label: 'Salary', shortLabel: 'Sal', compute: (p) => p.salary },
+  { key: 'shotAccuracy', label: 'Shot Accuracy', shortLabel: 'Sh%', compute: (p) => p.shotAccuracy },
+  { key: 'goalConversion', label: 'Goal Conversion', shortLabel: 'GC%', compute: (p) => p.shots > 0 ? (p.goals / p.shots) * 100 : 0 },
+  { key: 'goals90', label: 'Goals / 90', shortLabel: 'G/90', compute: (p) => p.minutes > 0 ? (p.goals / p.minutes) * 90 : 0 },
+  { key: 'assists90', label: 'Assists / 90', shortLabel: 'A/90', compute: (p) => p.minutes > 0 ? (p.assists / p.minutes) * 90 : 0 },
+  { key: 'shots90', label: 'Shots / 90', shortLabel: 'Sh/90', compute: (p) => p.minutes > 0 ? (p.shots / p.minutes) * 90 : 0 },
+  { key: 'tackles90', label: 'Tackles / 90', shortLabel: 'Tkl/90', compute: (p) => p.minutes > 0 ? (p.tackles / p.minutes) * 90 : 0 },
+  { key: 'interceptions90', label: 'Interceptions / 90', shortLabel: 'Int/90', compute: (p) => p.minutes > 0 ? (p.interceptions / p.minutes) * 90 : 0 },
+  { key: 'fouls90', label: 'Fouls / 90', shortLabel: 'Fls/90', compute: (p) => p.minutes > 0 ? (p.fouls / p.minutes) * 90 : 0 },
+];
+
+type StatMode = 'raw' | 'rate';
+
 const POSITIONS = ['FW', 'MF', 'DF', 'GK'] as const;
 
 // ═══════════════════════════════════════════
@@ -169,24 +192,37 @@ interface CorrelationMatrixProps {
   players: Player[];
   isDark: boolean;
   positionFilter: string;
+  statMode: StatMode;
   onCellClick: (xKey: string, yKey: string) => void;
 }
 
-function CorrelationMatrix({ players, isDark, positionFilter, onCellClick }: CorrelationMatrixProps) {
+function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellClick }: CorrelationMatrixProps) {
   const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
 
   const filtered = useMemo(() => {
-    if (positionFilter === 'ALL') return players;
-    return players.filter(p => p.position === positionFilter);
-  }, [players, positionFilter]);
+    let result = positionFilter === 'ALL' ? players : players.filter(p => p.position === positionFilter);
+    // For rate stats, filter to players with meaningful minutes (>200)
+    if (statMode === 'rate') result = result.filter(p => p.minutes > 200);
+    return result;
+  }, [players, positionFilter, statMode]);
+
+  // Active stat definitions based on mode
+  const activeStats = statMode === 'raw' ? NUMERIC_STATS : RATE_STATS;
 
   // Compute full correlation matrix
   const matrix = useMemo(() => {
-    const n = NUMERIC_STATS.length;
+    const n = activeStats.length;
     const result: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
-    const columns = NUMERIC_STATS.map(s =>
-      filtered.map(p => Number(p[s.key]) || 0)
-    );
+    let columns: number[][];
+    if (statMode === 'raw') {
+      columns = (activeStats as StatDef[]).map(s =>
+        filtered.map(p => Number(p[s.key]) || 0)
+      );
+    } else {
+      columns = (activeStats as RateStatDef[]).map(s =>
+        filtered.map(p => s.compute(p))
+      );
+    }
     for (let i = 0; i < n; i++) {
       for (let j = i; j < n; j++) {
         const r = i === j ? 1 : pearsonR(columns[i], columns[j]);
@@ -195,123 +231,159 @@ function CorrelationMatrix({ players, isDark, positionFilter, onCellClick }: Cor
       }
     }
     return result;
-  }, [filtered]);
+  }, [filtered, activeStats, statMode]);
 
-  // Find strongest correlations for the insight summary
+  // Find strongest AND most negative correlations for the insight summary
   const topCorrelations = useMemo(() => {
     const pairs: { stat1: string; stat2: string; r: number }[] = [];
-    const n = NUMERIC_STATS.length;
+    const n = activeStats.length;
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
         pairs.push({
-          stat1: NUMERIC_STATS[i].label,
-          stat2: NUMERIC_STATS[j].label,
+          stat1: activeStats[i].label,
+          stat2: activeStats[j].label,
           r: matrix[i][j],
         });
       }
     }
-    pairs.sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
-    return pairs.slice(0, 5);
-  }, [matrix]);
+    // Get top 3 positive and top 3 most negative
+    const sorted = [...pairs].sort((a, b) => b.r - a.r);
+    const topPos = sorted.slice(0, 3);
+    const topNeg = sorted.filter(p => p.r < -0.05).sort((a, b) => a.r - b.r).slice(0, 3);
+    return [...topPos, ...topNeg];
+  }, [matrix, activeStats]);
 
-  const cellSize = 42;
-  const labelWidth = 60;
-  const matrixWidth = labelWidth + NUMERIC_STATS.length * cellSize;
+  const cellSize = 48;
+  const labelWidth = 56;
+  const matrixWidth = labelWidth + activeStats.length * cellSize;
 
   /**
-   * Blue-white-red color scale:
-   * +1 = deep blue (#1e40af), 0 = white/neutral, -1 = deep red (#b91c1c)
-   * Interpolates through white at 0.
+   * Blue-white-red color scale with stronger saturation:
+   * +1 = deep blue (#1e3a8a), 0 = white/neutral, -1 = deep red (#991b1b)
    */
   function getCellColor(r: number): string {
     const absR = Math.min(Math.abs(r), 1);
     if (absR < 0.02) {
-      // Near zero — neutral
       return isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
     }
     if (r > 0) {
-      // Positive: white → blue
-      // Light mode: interpolate from #f0f4ff (near white) to #1e40af (deep blue)
-      // Dark mode: interpolate from rgba(30,64,175,0.1) to rgba(30,64,175,0.95)
       if (isDark) {
-        return `rgba(59, 130, 246, ${0.08 + absR * 0.82})`;
+        // Stronger blue in dark mode
+        return `rgba(59, 130, 246, ${0.1 + absR * 0.85})`;
       } else {
-        const r255 = Math.round(240 - absR * 210);
-        const g255 = Math.round(244 - absR * 180);
-        const b255 = Math.round(255 - absR * 80);
-        return `rgb(${r255}, ${g255}, ${b255})`;
+        // More saturated blue progression
+        const rv = Math.round(230 - absR * 200);
+        const gv = Math.round(238 - absR * 180);
+        const bv = Math.round(255 - absR * 55);
+        return `rgb(${rv}, ${gv}, ${bv})`;
       }
     } else {
-      // Negative: white → red
       if (isDark) {
-        return `rgba(239, 68, 68, ${0.08 + absR * 0.82})`;
+        return `rgba(239, 68, 68, ${0.1 + absR * 0.85})`;
       } else {
-        const r255 = Math.round(255 - absR * 70);
-        const g255 = Math.round(244 - absR * 216);
-        const b255 = Math.round(244 - absR * 216);
-        return `rgb(${r255}, ${g255}, ${b255})`;
+        const rv = Math.round(255 - absR * 50);
+        const gv = Math.round(240 - absR * 210);
+        const bv = Math.round(240 - absR * 210);
+        return `rgb(${rv}, ${gv}, ${bv})`;
       }
     }
   }
 
   /**
-   * 3D neumorphic shadow for each cell.
-   * Positive r → raised (extruded outward, light shadow top-left, dark shadow bottom-right)
-   * Negative r → recessed (inset shadows)
-   * Near zero → flat (minimal shadow)
-   * Shadow intensity scales with |r|.
+   * Darker shade for the "side face" of the 3D block.
+   */
+  function getCellSideColor(r: number): string {
+    const absR = Math.min(Math.abs(r), 1);
+    if (absR < 0.05) return 'transparent';
+    if (r > 0) {
+      if (isDark) {
+        return `rgba(30, 64, 175, ${0.3 + absR * 0.6})`;
+      } else {
+        const rv = Math.round(180 - absR * 150);
+        const gv = Math.round(190 - absR * 140);
+        const bv = Math.round(220 - absR * 50);
+        return `rgb(${rv}, ${gv}, ${bv})`;
+      }
+    } else {
+      if (isDark) {
+        return `rgba(185, 28, 28, ${0.3 + absR * 0.6})`;
+      } else {
+        const rv = Math.round(210 - absR * 50);
+        const gv = Math.round(160 - absR * 130);
+        const bv = Math.round(160 - absR * 130);
+        return `rgb(${rv}, ${gv}, ${bv})`;
+      }
+    }
+  }
+
+  /**
+   * Enhanced 3D shadow — dramatically deep.
+   * Positive r → raised with strong drop shadows
+   * Negative r → recessed with deep inset shadows
    */
   function getCellShadow(r: number, isHovered: boolean): string {
     const absR = Math.min(Math.abs(r), 1);
 
     if (absR < 0.05) {
-      // Near zero — flat, barely visible
       return isDark
-        ? 'inset 1px 1px 2px rgba(0,0,0,0.15), inset -1px -1px 2px rgba(255,255,255,0.02)'
-        : 'inset 1px 1px 2px rgba(0,0,0,0.04), inset -1px -1px 2px rgba(255,255,255,0.6)';
+        ? 'inset 2px 2px 4px rgba(0,0,0,0.35), inset -1px -1px 3px rgba(255,255,255,0.04)'
+        : 'inset 2px 2px 4px rgba(0,0,0,0.08), inset -1px -1px 3px rgba(255,255,255,0.8)';
     }
 
-    // Scale shadow depth: 1px at weak, up to 5px at strong
-    const depth = Math.round(1 + absR * 4);
-    const blur = depth * 2;
+    // Extreme depth scaling: 3px at weak → 16px at strong
+    const depth = Math.round(3 + absR * 13);
+    const blur = Math.round(depth * 2.2);
+    const spread = Math.round(absR * 4);
     const hoverGlow = isHovered
       ? (r > 0
-        ? ', 0 0 10px rgba(59,130,246,0.4)'
-        : ', 0 0 10px rgba(239,68,68,0.4)')
+        ? ', 0 0 20px rgba(59,130,246,0.6), 0 0 6px rgba(59,130,246,0.4)'
+        : ', 0 0 20px rgba(239,68,68,0.6), 0 0 6px rgba(239,68,68,0.4)')
       : '';
 
     if (r > 0) {
-      // RAISED — extruded outward
+      // RAISED — strong extrusion with visible drop shadow
       if (isDark) {
-        return `${depth}px ${depth}px ${blur}px rgba(0,0,0,0.5), -${depth}px -${depth}px ${blur}px rgba(255,255,255,0.05)${hoverGlow}`;
+        return `${depth}px ${depth}px ${blur}px ${spread}px rgba(0,0,0,0.7), -${Math.round(depth*0.35)}px -${Math.round(depth*0.35)}px ${Math.round(blur*0.5)}px rgba(255,255,255,0.07)${hoverGlow}`;
       } else {
-        return `${depth}px ${depth}px ${blur}px rgba(0,0,0,0.12), -${depth}px -${depth}px ${blur}px rgba(255,255,255,0.9)${hoverGlow}`;
+        return `${depth}px ${depth}px ${blur}px ${spread}px rgba(0,0,0,0.22), -${Math.round(depth*0.35)}px -${Math.round(depth*0.35)}px ${Math.round(blur*0.5)}px rgba(255,255,255,0.95)${hoverGlow}`;
       }
     } else {
-      // RECESSED — pushed inward
+      // RECESSED — deep inset with strong inner shadow
       if (isDark) {
-        return `inset ${depth}px ${depth}px ${blur}px rgba(0,0,0,0.6), inset -${depth}px -${depth}px ${blur}px rgba(255,255,255,0.04)${hoverGlow}`;
+        return `inset ${depth}px ${depth}px ${blur}px ${spread}px rgba(0,0,0,0.8), inset -${Math.round(depth*0.35)}px -${Math.round(depth*0.35)}px ${Math.round(blur*0.5)}px rgba(255,255,255,0.05)${hoverGlow}`;
       } else {
-        return `inset ${depth}px ${depth}px ${blur}px rgba(0,0,0,0.1), inset -${depth}px -${depth}px ${blur}px rgba(255,255,255,0.7)${hoverGlow}`;
+        return `inset ${depth}px ${depth}px ${blur}px ${spread}px rgba(0,0,0,0.18), inset -${Math.round(depth*0.35)}px -${Math.round(depth*0.35)}px ${Math.round(blur*0.5)}px rgba(255,255,255,0.85)${hoverGlow}`;
       }
     }
   }
 
   /**
-   * translateY for 3D depth effect.
-   * Positive r → lift up (negative translateY)
-   * Negative r → push down (positive translateY)
+   * translateY for 3D depth — extremely dramatic.
+   * Positive r → lift up to 18px (cells visibly pop out)
+   * Negative r → push down up to 18px (cells visibly sink in)
    */
   function getCellTranslateY(r: number): number {
     const absR = Math.min(Math.abs(r), 1);
     if (absR < 0.05) return 0;
-    const maxLift = 3; // max pixels of lift/depression
+    const maxLift = 18;
     return r > 0 ? -(absR * maxLift) : (absR * maxLift);
+  }
+
+  /**
+   * Side face height for the pseudo-3D block effect.
+   * Positive (raised) cells get bottom + right side faces.
+   * Negative (recessed) cells get top + left "lip" faces.
+   * Range: 3px to 18px for maximum drama.
+   */
+  function getSideHeight(r: number): number {
+    const absR = Math.min(Math.abs(r), 1);
+    if (absR < 0.08) return 0;
+    return Math.round(3 + absR * 15); // 3px to 18px side face
   }
 
   return (
     <div>
-      {/* Top correlations summary */}
+      {/* Top correlations summary — now includes negative correlations */}
       <div className="mb-4 px-1">
         <p className="text-[10px] text-muted-foreground mb-2" style={{ fontFamily: 'Space Grotesk' }}>
           Strongest correlations{positionFilter !== 'ALL' ? ` (${positionFilter}s only)` : ''} — click any cell to view scatter plot:
@@ -332,14 +404,14 @@ function CorrelationMatrix({ players, isDark, positionFilter, onCellClick }: Cor
       </div>
 
       {/* 3D Matrix grid */}
-      <div className="overflow-x-auto pb-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="overflow-x-auto pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div style={{
           minWidth: matrixWidth,
-          perspective: '1200px',
+          perspective: '1000px',
         }}>
           {/* Column labels */}
           <div className="flex" style={{ marginLeft: labelWidth }}>
-            {NUMERIC_STATS.map((s, i) => (
+            {activeStats.map((s, i) => (
               <div key={i} className="text-center" style={{
                 width: cellSize,
                 fontSize: '8px',
@@ -348,7 +420,7 @@ function CorrelationMatrix({ players, isDark, positionFilter, onCellClick }: Cor
                 fontWeight: hoveredCell?.col === i ? 700 : 400,
                 transform: 'rotate(-45deg)',
                 transformOrigin: 'center',
-                height: 44,
+                height: 48,
                 display: 'flex',
                 alignItems: 'flex-end',
                 justifyContent: 'center',
@@ -361,8 +433,8 @@ function CorrelationMatrix({ players, isDark, positionFilter, onCellClick }: Cor
           </div>
 
           {/* Rows */}
-          {NUMERIC_STATS.map((rowStat, row) => (
-            <div key={row} className="flex items-center" style={{ height: cellSize }}>
+          {activeStats.map((rowStat, row) => (
+            <div key={row} className="flex items-center" style={{ height: cellSize + 4 }}>
               {/* Row label */}
               <div className="text-right pr-2 flex-shrink-0" style={{
                 width: labelWidth,
@@ -376,28 +448,33 @@ function CorrelationMatrix({ players, isDark, positionFilter, onCellClick }: Cor
               </div>
 
               {/* Cells */}
-              {NUMERIC_STATS.map((colStat, col) => {
+              {activeStats.map((colStat, col) => {
                 const r = matrix[row][col];
                 const absR = Math.abs(r);
                 const isHovered = hoveredCell?.row === row && hoveredCell?.col === col;
                 const isHighlighted = hoveredCell?.row === row || hoveredCell?.col === col;
                 const isDiagonal = row === col;
 
-                // Cell inner size scales with |r| (minimum 6px, max fills cell)
+                // Cell inner size scales with |r| (minimum 8px, max fills cell)
                 const innerSize = isDiagonal
                   ? cellSize - 6
-                  : Math.max(6, absR * (cellSize - 8));
+                  : Math.max(8, absR * (cellSize - 6));
 
-                const translateY = isDiagonal ? -2 : getCellTranslateY(r);
+                const translateY = isDiagonal ? -3 : getCellTranslateY(r);
                 const shadow = isDiagonal
                   ? (isDark
-                    ? '3px 3px 6px rgba(0,0,0,0.4), -3px -3px 6px rgba(255,255,255,0.04)'
-                    : '3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.8)')
+                    ? '4px 4px 8px rgba(0,0,0,0.5), -2px -2px 6px rgba(255,255,255,0.05)'
+                    : '4px 4px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.85)')
                   : getCellShadow(r, isHovered);
 
                 const bgColor = isDiagonal
-                  ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')
+                  ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)')
                   : getCellColor(r);
+
+                const sideH = isDiagonal ? 3 : getSideHeight(r);
+                const sideColor = isDiagonal
+                  ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.1)')
+                  : getCellSideColor(r);
 
                 return (
                   <div
@@ -405,7 +482,7 @@ function CorrelationMatrix({ players, isDark, positionFilter, onCellClick }: Cor
                     className="flex items-center justify-center cursor-pointer"
                     style={{
                       width: cellSize,
-                      height: cellSize,
+                      height: cellSize + 4,
                       background: isHighlighted && !isDiagonal
                         ? (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)')
                         : 'transparent',
@@ -420,28 +497,122 @@ function CorrelationMatrix({ players, isDark, positionFilter, onCellClick }: Cor
                     }}
                     title={`${rowStat.label} × ${colStat.label}: r = ${r.toFixed(3)}`}
                   >
+                    {/* 3D block: top face + right side face + bottom side face */}
                     <motion.div
                       initial={false}
                       animate={{
+                        y: isHovered ? translateY * 1.4 : translateY,
+                        scale: isHovered ? 1.18 : 1,
+                      }}
+                      transition={{ type: 'spring', stiffness: 350, damping: 22 }}
+                      style={{
+                        position: 'relative',
                         width: innerSize,
                         height: innerSize,
-                        y: isHovered ? translateY * 1.5 : translateY,
-                        scale: isHovered ? 1.15 : 1,
                       }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                      style={{
+                    >
+                      {/* Bottom side face — visible for raised (positive) cells */}
+                      {sideH > 0 && r > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: -sideH,
+                          left: 1,
+                          right: 0,
+                          height: sideH,
+                          background: sideColor,
+                          borderRadius: '0 0 4px 4px',
+                          opacity: 0.9,
+                        }} />
+                      )}
+                      {/* Right side face — visible for raised (positive) cells */}
+                      {sideH > 0 && r > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: 1,
+                          right: -Math.round(sideH * 0.6),
+                          bottom: -sideH + 1,
+                          width: Math.round(sideH * 0.6),
+                          background: sideColor,
+                          borderRadius: '0 4px 4px 0',
+                          opacity: 0.7,
+                        }} />
+                      )}
+                      {/* Top lip face — visible for recessed (negative) cells */}
+                      {sideH > 0 && r < 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: -Math.round(sideH * 0.5),
+                          left: 0,
+                          right: 1,
+                          height: Math.round(sideH * 0.5),
+                          background: sideColor,
+                          borderRadius: '4px 4px 0 0',
+                          opacity: 0.7,
+                        }} />
+                      )}
+                      {/* Left lip face — visible for recessed (negative) cells */}
+                      {sideH > 0 && r < 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: -Math.round(sideH * 0.5) + 1,
+                          left: -Math.round(sideH * 0.5),
+                          bottom: 1,
+                          width: Math.round(sideH * 0.5),
+                          background: sideColor,
+                          borderRadius: '4px 0 0 4px',
+                          opacity: 0.5,
+                        }} />
+                      )}
+                      {/* Top face — the main visible cell */}
+                      <div style={{
+                        position: 'relative',
+                        width: '100%',
+                        height: '100%',
                         background: bgColor,
                         borderRadius: 4,
                         boxShadow: shadow,
                         border: isDiagonal
-                          ? `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`
-                          : absR > 0.3
+                          ? `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`
+                          : absR > 0.15
                             ? `1px solid ${r > 0
-                              ? (isDark ? 'rgba(59,130,246,0.2)' : 'rgba(30,64,175,0.12)')
-                              : (isDark ? 'rgba(239,68,68,0.2)' : 'rgba(185,28,28,0.12)')}`
-                            : '1px solid transparent',
-                      }}
-                    />
+                              ? (isDark ? 'rgba(59,130,246,0.25)' : 'rgba(30,64,175,0.15)')
+                              : (isDark ? 'rgba(239,68,68,0.25)' : 'rgba(185,28,28,0.15)')}`
+                            : `1px solid ${isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'}`,
+                        zIndex: 1,
+                        // Inner highlight for raised cells (light from top-left)
+                        ...(r > 0 && absR > 0.3 ? {
+                          backgroundImage: isDark
+                            ? 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%)'
+                            : 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%)',
+                        } : {}),
+                        // Inner shadow for recessed cells (dark from top-left, light from bottom-right)
+                        ...(r < 0 && absR > 0.15 ? {
+                          backgroundImage: isDark
+                            ? 'linear-gradient(135deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(255,255,255,0.04) 100%)'
+                            : 'linear-gradient(135deg, rgba(0,0,0,0.08) 0%, transparent 40%, rgba(255,255,255,0.4) 100%)',
+                        } : {}),
+                      }}>
+                        {/* Show r value on hover */}
+                        {isHovered && !isDiagonal && (
+                          <div style={{
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '7px',
+                            fontFamily: 'JetBrains Mono',
+                            fontWeight: 700,
+                            color: absR > 0.5
+                              ? (isDark ? '#fff' : (r > 0 ? '#1e3a8a' : '#7f1d1d'))
+                              : 'var(--muted-foreground)',
+                            textShadow: absR > 0.5 && isDark ? '0 1px 2px rgba(0,0,0,0.5)' : 'none',
+                          }}>
+                            {r.toFixed(2)}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
                   </div>
                 );
               })}
@@ -450,28 +621,145 @@ function CorrelationMatrix({ players, isDark, positionFilter, onCellClick }: Cor
         </div>
       </div>
 
-      {/* Legend — dual encoding: color + depth */}
-      <div className="flex flex-col items-center gap-2 mt-2">
-        {/* Color legend */}
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-semibold" style={{ fontFamily: 'JetBrains Mono', color: isDark ? '#f87171' : '#b91c1c' }}>−1</span>
-          <div className="flex gap-0.5">
-            {[-0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8].map((v, i) => (
+      {/* ═══ 3D STEPPED LEGEND ═══ */}
+      <div className="flex flex-col items-center gap-4 mt-6">
+        {/* 3D stepped blocks — a dramatic staircase from deep recession to high extrusion */}
+        <div className="flex items-end gap-[6px]" style={{ height: 160, padding: '0 12px' }}>
+          {/* Labels */}
+          <span className="text-[10px] font-bold self-center mr-2" style={{
+            fontFamily: 'JetBrains Mono',
+            color: isDark ? '#f87171' : '#991b1b',
+          }}>−1</span>
+
+          {/* Stepped blocks from -1 to +1 */}
+          {([-1, -0.75, -0.5, -0.25, -0.1, 0, 0.1, 0.25, 0.5, 0.75, 1] as const).map((v, i) => {
+            const absV = Math.abs(v);
+            // Height of each block scales with |v| — extremely tall for dramatic staircase
+            const blockH = v === 0 ? 14 : 14 + absV * 100;
+            const sideH = absV > 0.05 ? Math.round(3 + absV * 16) : 0;
+            const blockW = 34;
+            const bg = getCellColor(v);
+            const side = getCellSideColor(v);
+            const shadow = Math.abs(v) > 0.05 ? getCellShadow(v, false) : 'none';
+            // Extreme Y offset: recessed blocks sit much lower, raised blocks much higher
+            const yOffset = v < 0 ? absV * 18 : -(absV * 18);
+
+            return (
               <div key={i} style={{
-                width: 22, height: 12, borderRadius: 3,
-                background: getCellColor(v),
-                boxShadow: Math.abs(v) > 0.1 ? getCellShadow(v, false) : 'none',
-                transform: `translateY(${getCellTranslateY(v)}px)`,
-              }} />
-            ))}
-          </div>
-          <span className="text-[9px] font-semibold" style={{ fontFamily: 'JetBrains Mono', color: isDark ? '#60a5fa' : '#1e40af' }}>+1</span>
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                transform: `translateY(${yOffset}px)`,
+                transition: 'transform 0.3s ease',
+              }}>
+                {/* The 3D block */}
+                <div style={{ position: 'relative', width: blockW }}>
+                  {/* Right side face for positive (raised) */}
+                  {sideH > 0 && v > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 1,
+                      right: -Math.round(sideH * 0.55),
+                      bottom: -sideH + 1,
+                      width: Math.round(sideH * 0.55),
+                      background: side,
+                      borderRadius: '0 4px 4px 0',
+                      opacity: 0.7,
+                    }} />
+                  )}
+                  {/* Bottom side face for positive (raised) */}
+                  {sideH > 0 && v > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: -sideH,
+                      left: 1,
+                      right: 0,
+                      height: sideH,
+                      background: side,
+                      borderRadius: '0 0 4px 4px',
+                      opacity: 0.9,
+                    }} />
+                  )}
+                  {/* Top lip face for negative (recessed) */}
+                  {sideH > 0 && v < 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: -Math.round(sideH * 0.45),
+                      left: 0,
+                      right: 1,
+                      height: Math.round(sideH * 0.45),
+                      background: side,
+                      borderRadius: '4px 4px 0 0',
+                      opacity: 0.7,
+                    }} />
+                  )}
+                  {/* Left lip face for negative (recessed) */}
+                  {sideH > 0 && v < 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: -Math.round(sideH * 0.45) + 1,
+                      left: -Math.round(sideH * 0.45),
+                      bottom: 1,
+                      width: Math.round(sideH * 0.45),
+                      background: side,
+                      borderRadius: '4px 0 0 4px',
+                      opacity: 0.5,
+                    }} />
+                  )}
+                  {/* Top face */}
+                  <div style={{
+                    position: 'relative',
+                    width: blockW,
+                    height: blockH,
+                    background: bg,
+                    borderRadius: 5,
+                    boxShadow: shadow,
+                    border: `1px solid ${absV > 0.1
+                      ? (v > 0
+                        ? (isDark ? 'rgba(59,130,246,0.25)' : 'rgba(30,64,175,0.15)')
+                        : (isDark ? 'rgba(239,68,68,0.25)' : 'rgba(185,28,28,0.15)'))
+                      : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')}`,
+                    zIndex: 1,
+                    // Inner highlight gradient for raised blocks
+                    ...(v > 0 && absV > 0.2 ? {
+                      backgroundImage: isDark
+                        ? 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%)'
+                        : 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%)',
+                    } : {}),
+                    // Inner shadow for recessed blocks
+                    ...(v < 0 && absV > 0.15 ? {
+                      backgroundImage: isDark
+                        ? 'linear-gradient(135deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(255,255,255,0.04) 100%)'
+                        : 'linear-gradient(135deg, rgba(0,0,0,0.08) 0%, transparent 40%, rgba(255,255,255,0.4) 100%)',
+                    } : {}),
+                  }} />
+                </div>
+                {/* Value label below */}
+                <span style={{
+                  fontSize: '8px',
+                  fontFamily: 'JetBrains Mono',
+                  color: 'var(--muted-foreground)',
+                  marginTop: (v > 0 ? sideH : 0) + 6,
+                  opacity: absV < 0.05 ? 1 : 0.7,
+                  fontWeight: absV < 0.05 ? 600 : 400,
+                }}>
+                  {v === 0 ? '0' : v > 0 ? `+${v}` : `${v}`}
+                </span>
+              </div>
+            );
+          })}
+
+          <span className="text-[10px] font-bold self-center ml-2" style={{
+            fontFamily: 'JetBrains Mono',
+            color: isDark ? '#60a5fa' : '#1e3a8a',
+          }}>+1</span>
         </div>
-        {/* Depth legend */}
-        <div className="flex items-center gap-4 text-[8px]" style={{ fontFamily: 'Space Grotesk', color: 'var(--muted-foreground)' }}>
-          <span>▼ recessed = negative</span>
-          <span>— flat = no correlation</span>
-          <span>▲ raised = positive</span>
+
+        {/* Depth legend labels */}
+        <div className="flex items-center gap-6 text-[9px]" style={{ fontFamily: 'Space Grotesk', color: 'var(--muted-foreground)' }}>
+          <span style={{ color: isDark ? '#f87171' : '#991b1b' }}>▼ Recessed = Negative</span>
+          <span>— Flat = No Correlation</span>
+          <span style={{ color: isDark ? '#60a5fa' : '#1e3a8a' }}>▲ Raised = Positive</span>
         </div>
       </div>
     </div>
@@ -931,6 +1219,7 @@ export default function StatsPlayground({ players, onAxisChange }: StatsPlaygrou
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<'matrix' | 'tests' | 'distribution'>('matrix');
   const [matrixPosFilter, setMatrixPosFilter] = useState('ALL');
+  const [statMode, setStatMode] = useState<StatMode>('raw');
 
   const handleCellClick = useCallback((xKey: string, yKey: string) => {
     if (onAxisChange) {
@@ -1027,30 +1316,64 @@ export default function StatsPlayground({ players, onAxisChange }: StatsPlaygrou
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {/* Position filter for matrix */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>
-                      Filter:
-                    </span>
-                    {['ALL', ...POSITIONS].map(pos => (
-                      <button
-                        key={pos}
-                        onClick={() => setMatrixPosFilter(pos)}
-                        className="text-[9px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider transition-all"
-                        style={{
-                          fontFamily: 'Space Grotesk',
-                          background: matrixPosFilter === pos ? (isDark ? 'rgba(0,212,255,0.12)' : 'rgba(8,145,178,0.08)') : 'transparent',
-                          color: matrixPosFilter === pos ? 'var(--cyan)' : 'var(--muted-foreground)',
-                        }}
-                      >
-                        {pos}
-                      </button>
-                    ))}
+                  {/* Controls: stat mode toggle + position filter */}
+                  <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    {/* Stat mode toggle: Raw vs Rate */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>
+                        Mode:
+                      </span>
+                      {([{ id: 'raw', label: 'Raw Counts' }, { id: 'rate', label: 'Per 90 Rates' }] as const).map(mode => (
+                        <button
+                          key={mode.id}
+                          onClick={() => setStatMode(mode.id)}
+                          className="text-[9px] px-2.5 py-1 rounded-md font-semibold uppercase tracking-wider transition-all"
+                          style={{
+                            fontFamily: 'Space Grotesk',
+                            background: statMode === mode.id
+                              ? (isDark ? 'rgba(0,212,255,0.15)' : 'rgba(8,145,178,0.1)')
+                              : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'),
+                            color: statMode === mode.id ? 'var(--cyan)' : 'var(--muted-foreground)',
+                            border: statMode === mode.id
+                              ? `1px solid ${isDark ? 'rgba(0,212,255,0.3)' : 'rgba(8,145,178,0.2)'}` 
+                              : '1px solid transparent',
+                          }}
+                        >
+                          {mode.label}
+                        </button>
+                      ))}
+                      {statMode === 'rate' && (
+                        <span className="text-[8px] text-muted-foreground italic ml-1" style={{ fontFamily: 'JetBrains Mono' }}>
+                          min &gt; 200 only
+                        </span>
+                      )}
+                    </div>
+                    {/* Position filter */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>
+                        Position:
+                      </span>
+                      {['ALL', ...POSITIONS].map(pos => (
+                        <button
+                          key={pos}
+                          onClick={() => setMatrixPosFilter(pos)}
+                          className="text-[9px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider transition-all"
+                          style={{
+                            fontFamily: 'Space Grotesk',
+                            background: matrixPosFilter === pos ? (isDark ? 'rgba(0,212,255,0.12)' : 'rgba(8,145,178,0.08)') : 'transparent',
+                            color: matrixPosFilter === pos ? 'var(--cyan)' : 'var(--muted-foreground)',
+                          }}
+                        >
+                          {pos}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <CorrelationMatrix
                     players={players}
                     isDark={isDark}
                     positionFilter={matrixPosFilter}
+                    statMode={statMode}
                     onCellClick={handleCellClick}
                   />
                 </motion.div>

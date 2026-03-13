@@ -5,7 +5,7 @@
 **Path**: `/home/ubuntu/mls-dashboard`  
 **Stack**: React 19 + Tailwind CSS 4 + shadcn/ui + Recharts + Three.js + Framer Motion  
 **Default Theme**: Light mode (switchable to dark)  
-**Date**: March 12, 2026  
+**Date**: March 13, 2026  
 **Codebase**: 97 files, 16,384 total lines (8,816 custom code + 6,188 shadcn/ui library + 1,380 config/data)  
 
 ---
@@ -617,6 +617,34 @@ The following cards in the Player Stats tab have per-card insight buttons:
 
 The per-card insight generators are defined in `client/src/lib/insightEngine.ts` and follow the same memoization pattern as the tab-level functions.
 
+
+### 10.7 Statistical Playground — 3D Correlation Matrix (March 13, 2026)
+
+The Statistical Playground (`client/src/components/StatsPlayground.tsx`) is an expandable analysis panel at the bottom of the Player Stats tab. It contains three sections: a 3D Correlation Matrix, Hypothesis Tests, and Distribution Viewer. The correlation matrix is the flagship component, implementing a dual-encoded heatmap where correlation strength is communicated through both color and physical depth.
+
+**Stat Mode Toggle:** The matrix supports two modes via a toggle control:
+
+| Mode | Stats Shown | Purpose |
+|---|---|---|
+| **Raw Counts** | 15 raw stats (Age, GP, Starts, Minutes, Goals, Assists, Shots, SOT, Shot%, Tackles, Int, Fouls, YC, Crosses, Salary) | Shows volume-based correlations. All counting stats correlate positively with playing time, so the matrix is predominantly blue. |
+| **Per 90 Rates** | 10 rate-normalized stats (Age, Salary, Shot%, Goal Conversion%, G/90, A/90, Sh/90, Tkl/90, Int/90, Fls/90) | Normalizes for playing time, revealing negative correlations between offensive and defensive rate stats (e.g., Goals/90 vs Interceptions/90 = -0.310). Players with <200 minutes are filtered out. |
+
+**3D Depth Encoding:** Each cell is rendered as a pseudo-3D block with the following properties:
+
+| Property | Positive Correlation (blue) | Near-Zero (white) | Negative Correlation (red) |
+|---|---|---|---|
+| **translateY** | Up to -18px (raised) | 0px (flat) | Up to +18px (recessed) |
+| **Side faces** | Bottom + right faces (darker shade) | None | Top + left lip faces (darker shade) |
+| **Side face height** | 3px to 18px | 0px | 3px to 18px |
+| **Box shadow** | Strong drop shadow (up to 16px depth) | Subtle inset | Deep inset shadow |
+| **Inner gradient** | Top-left highlight (light source) | None | Top-left shadow + bottom-right highlight |
+| **Color** | Blue scale (rgba 59,130,246) | White/transparent | Red scale (rgba 239,68,68) |
+
+**3D Stepped Legend:** Below the matrix, a staircase legend physically demonstrates the correlation scale from -1 to +1. Each step is a 3D block whose height scales with |r| (14px at zero to 114px at the extremes), with Y-offset up to 18px, and full side face rendering. The legend uses the same color and shadow functions as the matrix cells.
+
+**Interaction:** Hovering a cell scales it to 1.18x with enhanced translateY (1.4x multiplier) and adds a colored glow. Clicking a non-diagonal cell sets the scatter plot axes to the corresponding stat pair and scrolls to the scatter plot. Row and column labels highlight on hover.
+
+**Position Filter:** A secondary filter allows viewing correlations for specific positions (ALL, FW, MF, DF, GK), which can reveal position-specific patterns.
 
 ---
 
