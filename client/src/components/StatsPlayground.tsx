@@ -1,0 +1,1088 @@
+/**
+ * StatsPlayground — Statistical analysis playground for the Player Stats tab.
+ *
+ * Three sections:
+ * 1. Correlation Matrix — 15x15 heatmap of all numeric stat pairs
+ * 2. Hypothesis Tests — t-tests comparing groups (position, age, salary bracket)
+ * 3. Distribution Viewer — Histogram for any selected stat
+ *
+ * Design: Uses the Dark Forge neumorphic system. The correlation matrix cells
+ * are sized by |r| and colored teal (positive) / coral (negative), inspired by
+ * the automotive correlation reference image the user shared.
+ */
+
+import { useState, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BarChart3, Grid3X3, FlaskConical, Activity, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import NeuCard from './NeuCard';
+import { NeuInsightContainer } from './NeuInsightContainer';
+import type { Player } from '@/lib/mlsData';
+
+// ═══════════════════════════════════════════
+// STAT DEFINITIONS
+// ═══════════════════════════════════════════
+
+interface StatDef {
+  key: keyof Player;
+  label: string;
+  shortLabel: string;
+}
+
+const NUMERIC_STATS: StatDef[] = [
+  { key: 'age', label: 'Age', shortLabel: 'Age' },
+  { key: 'games', label: 'Games Played', shortLabel: 'GP' },
+  { key: 'starts', label: 'Starts', shortLabel: 'Starts' },
+  { key: 'minutes', label: 'Minutes', shortLabel: 'Min' },
+  { key: 'goals', label: 'Goals', shortLabel: 'Goals' },
+  { key: 'assists', label: 'Assists', shortLabel: 'Ast' },
+  { key: 'shots', label: 'Shots', shortLabel: 'Shots' },
+  { key: 'shotsOnTarget', label: 'Shots on Target', shortLabel: 'SOT' },
+  { key: 'shotAccuracy', label: 'Shot Accuracy', shortLabel: 'Sh%' },
+  { key: 'tackles', label: 'Tackles', shortLabel: 'Tkl' },
+  { key: 'interceptions', label: 'Interceptions', shortLabel: 'Int' },
+  { key: 'fouls', label: 'Fouls', shortLabel: 'Fls' },
+  { key: 'yellowCards', label: 'Yellow Cards', shortLabel: 'YC' },
+  { key: 'crosses', label: 'Crosses', shortLabel: 'Crs' },
+  { key: 'salary', label: 'Salary', shortLabel: 'Sal' },
+];
+
+const POSITIONS = ['FW', 'MF', 'DF', 'GK'] as const;
+
+// ═══════════════════════════════════════════
+// STATISTICAL UTILITIES (pure functions)
+// ═══════════════════════════════════════════
+
+function pearsonR(xs: number[], ys: number[]): number {
+  const n = xs.length;
+  if (n < 3) return 0;
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += xs[i]; sumY += ys[i];
+    sumXY += xs[i] * ys[i];
+    sumX2 += xs[i] * xs[i];
+    sumY2 += ys[i] * ys[i];
+  }
+  const num = n * sumXY - sumX * sumY;
+  const den = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+  return den === 0 ? 0 : num / den;
+}
+
+function mean(arr: number[]): number {
+  return arr.length === 0 ? 0 : arr.reduce((s, v) => s + v, 0) / arr.length;
+}
+
+function stdDev(arr: number[]): number {
+  if (arr.length < 2) return 0;
+  const m = mean(arr);
+  return Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1));
+}
+
+/**
+ * Welch's t-test (two-sample, unequal variance)
+ * Returns { t, df, p } where p is two-tailed
+ */
+function welchTTest(a: number[], b: number[]): { t: number; df: number; p: number; meanA: number; meanB: number } {
+  const nA = a.length, nB = b.length;
+  const mA = mean(a), mB = mean(b);
+  const vA = stdDev(a) ** 2, vB = stdDev(b) ** 2;
+
+  if (nA < 2 || nB < 2) return { t: 0, df: 0, p: 1, meanA: mA, meanB: mB };
+
+  const seA = vA / nA, seB = vB / nB;
+  const t = (mA - mB) / Math.sqrt(seA + seB);
+  const df = (seA + seB) ** 2 / ((seA ** 2) / (nA - 1) + (seB ** 2) / (nB - 1));
+
+  // Approximate p-value using the t-distribution via regularized incomplete beta function
+  const p = tDistPValue(Math.abs(t), df);
+  return { t, df: Math.round(df), p, meanA: mA, meanB: mB };
+}
+
+/**
+ * Approximate two-tailed p-value from t-distribution
+ * Uses the relationship between t-distribution and regularized incomplete beta function
+ */
+function tDistPValue(t: number, df: number): number {
+  if (df <= 0) return 1;
+  const x = df / (df + t * t);
+  // Regularized incomplete beta function approximation
+  const p = regIncBeta(x, df / 2, 0.5);
+  return Math.min(1, Math.max(0, p));
+}
+
+/**
+ * Regularized incomplete beta function via continued fraction (Lentz's method)
+ * Good enough for p-value approximation
+ */
+function regIncBeta(x: number, a: number, b: number): number {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+
+  // Use series expansion for small x
+  const lnBeta = lnGamma(a) + lnGamma(b) - lnGamma(a + b);
+  const front = Math.exp(Math.log(x) * a + Math.log(1 - x) * b - lnBeta);
+
+  // Continued fraction
+  let f = 1, c = 1, d = 0;
+  for (let i = 0; i <= 200; i++) {
+    let m = Math.floor(i / 2);
+    let num: number;
+    if (i === 0) {
+      num = 1;
+    } else if (i % 2 === 0) {
+      num = (m * (b - m) * x) / ((a + 2 * m - 1) * (a + 2 * m));
+    } else {
+      num = -((a + m) * (a + b + m) * x) / ((a + 2 * m) * (a + 2 * m + 1));
+    }
+    d = 1 + num * d;
+    if (Math.abs(d) < 1e-30) d = 1e-30;
+    d = 1 / d;
+    c = 1 + num / c;
+    if (Math.abs(c) < 1e-30) c = 1e-30;
+    f *= c * d;
+    if (Math.abs(c * d - 1) < 1e-8) break;
+  }
+  return front * (f - 1) / a;
+}
+
+/** Lanczos approximation of ln(Gamma(x)) */
+function lnGamma(x: number): number {
+  const g = 7;
+  const coef = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  if (x < 0.5) {
+    return Math.log(Math.PI / Math.sin(Math.PI * x)) - lnGamma(1 - x);
+  }
+  x -= 1;
+  let a = coef[0];
+  for (let i = 1; i < g + 2; i++) a += coef[i] / (x + i);
+  const t = x + g + 0.5;
+  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+}
+
+// ═══════════════════════════════════════════
+// CORRELATION MATRIX COMPONENT
+// ═══════════════════════════════════════════
+
+interface CorrelationMatrixProps {
+  players: Player[];
+  isDark: boolean;
+  positionFilter: string;
+  onCellClick: (xKey: string, yKey: string) => void;
+}
+
+function CorrelationMatrix({ players, isDark, positionFilter, onCellClick }: CorrelationMatrixProps) {
+  const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
+
+  const filtered = useMemo(() => {
+    if (positionFilter === 'ALL') return players;
+    return players.filter(p => p.position === positionFilter);
+  }, [players, positionFilter]);
+
+  // Compute full correlation matrix
+  const matrix = useMemo(() => {
+    const n = NUMERIC_STATS.length;
+    const result: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
+    const columns = NUMERIC_STATS.map(s =>
+      filtered.map(p => Number(p[s.key]) || 0)
+    );
+    for (let i = 0; i < n; i++) {
+      for (let j = i; j < n; j++) {
+        const r = i === j ? 1 : pearsonR(columns[i], columns[j]);
+        result[i][j] = r;
+        result[j][i] = r;
+      }
+    }
+    return result;
+  }, [filtered]);
+
+  // Find strongest correlations for the insight summary
+  const topCorrelations = useMemo(() => {
+    const pairs: { stat1: string; stat2: string; r: number }[] = [];
+    const n = NUMERIC_STATS.length;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        pairs.push({
+          stat1: NUMERIC_STATS[i].label,
+          stat2: NUMERIC_STATS[j].label,
+          r: matrix[i][j],
+        });
+      }
+    }
+    pairs.sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
+    return pairs.slice(0, 5);
+  }, [matrix]);
+
+  const cellSize = 42;
+  const labelWidth = 60;
+  const matrixWidth = labelWidth + NUMERIC_STATS.length * cellSize;
+
+  /**
+   * Blue-white-red color scale:
+   * +1 = deep blue (#1e40af), 0 = white/neutral, -1 = deep red (#b91c1c)
+   * Interpolates through white at 0.
+   */
+  function getCellColor(r: number): string {
+    const absR = Math.min(Math.abs(r), 1);
+    if (absR < 0.02) {
+      // Near zero — neutral
+      return isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
+    }
+    if (r > 0) {
+      // Positive: white → blue
+      // Light mode: interpolate from #f0f4ff (near white) to #1e40af (deep blue)
+      // Dark mode: interpolate from rgba(30,64,175,0.1) to rgba(30,64,175,0.95)
+      if (isDark) {
+        return `rgba(59, 130, 246, ${0.08 + absR * 0.82})`;
+      } else {
+        const r255 = Math.round(240 - absR * 210);
+        const g255 = Math.round(244 - absR * 180);
+        const b255 = Math.round(255 - absR * 80);
+        return `rgb(${r255}, ${g255}, ${b255})`;
+      }
+    } else {
+      // Negative: white → red
+      if (isDark) {
+        return `rgba(239, 68, 68, ${0.08 + absR * 0.82})`;
+      } else {
+        const r255 = Math.round(255 - absR * 70);
+        const g255 = Math.round(244 - absR * 216);
+        const b255 = Math.round(244 - absR * 216);
+        return `rgb(${r255}, ${g255}, ${b255})`;
+      }
+    }
+  }
+
+  /**
+   * 3D neumorphic shadow for each cell.
+   * Positive r → raised (extruded outward, light shadow top-left, dark shadow bottom-right)
+   * Negative r → recessed (inset shadows)
+   * Near zero → flat (minimal shadow)
+   * Shadow intensity scales with |r|.
+   */
+  function getCellShadow(r: number, isHovered: boolean): string {
+    const absR = Math.min(Math.abs(r), 1);
+
+    if (absR < 0.05) {
+      // Near zero — flat, barely visible
+      return isDark
+        ? 'inset 1px 1px 2px rgba(0,0,0,0.15), inset -1px -1px 2px rgba(255,255,255,0.02)'
+        : 'inset 1px 1px 2px rgba(0,0,0,0.04), inset -1px -1px 2px rgba(255,255,255,0.6)';
+    }
+
+    // Scale shadow depth: 1px at weak, up to 5px at strong
+    const depth = Math.round(1 + absR * 4);
+    const blur = depth * 2;
+    const hoverGlow = isHovered
+      ? (r > 0
+        ? ', 0 0 10px rgba(59,130,246,0.4)'
+        : ', 0 0 10px rgba(239,68,68,0.4)')
+      : '';
+
+    if (r > 0) {
+      // RAISED — extruded outward
+      if (isDark) {
+        return `${depth}px ${depth}px ${blur}px rgba(0,0,0,0.5), -${depth}px -${depth}px ${blur}px rgba(255,255,255,0.05)${hoverGlow}`;
+      } else {
+        return `${depth}px ${depth}px ${blur}px rgba(0,0,0,0.12), -${depth}px -${depth}px ${blur}px rgba(255,255,255,0.9)${hoverGlow}`;
+      }
+    } else {
+      // RECESSED — pushed inward
+      if (isDark) {
+        return `inset ${depth}px ${depth}px ${blur}px rgba(0,0,0,0.6), inset -${depth}px -${depth}px ${blur}px rgba(255,255,255,0.04)${hoverGlow}`;
+      } else {
+        return `inset ${depth}px ${depth}px ${blur}px rgba(0,0,0,0.1), inset -${depth}px -${depth}px ${blur}px rgba(255,255,255,0.7)${hoverGlow}`;
+      }
+    }
+  }
+
+  /**
+   * translateY for 3D depth effect.
+   * Positive r → lift up (negative translateY)
+   * Negative r → push down (positive translateY)
+   */
+  function getCellTranslateY(r: number): number {
+    const absR = Math.min(Math.abs(r), 1);
+    if (absR < 0.05) return 0;
+    const maxLift = 3; // max pixels of lift/depression
+    return r > 0 ? -(absR * maxLift) : (absR * maxLift);
+  }
+
+  return (
+    <div>
+      {/* Top correlations summary */}
+      <div className="mb-4 px-1">
+        <p className="text-[10px] text-muted-foreground mb-2" style={{ fontFamily: 'Space Grotesk' }}>
+          Strongest correlations{positionFilter !== 'ALL' ? ` (${positionFilter}s only)` : ''} — click any cell to view scatter plot:
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {topCorrelations.map((c, i) => (
+            <span key={i} className="text-[10px] px-2 py-0.5 rounded-md" style={{
+              fontFamily: 'JetBrains Mono',
+              background: c.r >= 0
+                ? (isDark ? 'rgba(59,130,246,0.15)' : 'rgba(30,64,175,0.08)')
+                : (isDark ? 'rgba(239,68,68,0.15)' : 'rgba(185,28,28,0.08)'),
+              color: c.r >= 0 ? (isDark ? '#60a5fa' : '#1e40af') : (isDark ? '#f87171' : '#b91c1c'),
+            }}>
+              {c.stat1} × {c.stat2}: <strong>{c.r.toFixed(3)}</strong>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* 3D Matrix grid */}
+      <div className="overflow-x-auto pb-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div style={{
+          minWidth: matrixWidth,
+          perspective: '1200px',
+        }}>
+          {/* Column labels */}
+          <div className="flex" style={{ marginLeft: labelWidth }}>
+            {NUMERIC_STATS.map((s, i) => (
+              <div key={i} className="text-center" style={{
+                width: cellSize,
+                fontSize: '8px',
+                fontFamily: 'JetBrains Mono',
+                color: hoveredCell?.col === i ? (isDark ? '#60a5fa' : '#1e40af') : 'var(--muted-foreground)',
+                fontWeight: hoveredCell?.col === i ? 700 : 400,
+                transform: 'rotate(-45deg)',
+                transformOrigin: 'center',
+                height: 44,
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'center',
+                paddingBottom: 4,
+                transition: 'color 0.15s, font-weight 0.15s',
+              }}>
+                {s.shortLabel}
+              </div>
+            ))}
+          </div>
+
+          {/* Rows */}
+          {NUMERIC_STATS.map((rowStat, row) => (
+            <div key={row} className="flex items-center" style={{ height: cellSize }}>
+              {/* Row label */}
+              <div className="text-right pr-2 flex-shrink-0" style={{
+                width: labelWidth,
+                fontSize: '8px',
+                fontFamily: 'JetBrains Mono',
+                color: hoveredCell?.row === row ? (isDark ? '#60a5fa' : '#1e40af') : 'var(--muted-foreground)',
+                fontWeight: hoveredCell?.row === row ? 700 : 400,
+                transition: 'color 0.15s, font-weight 0.15s',
+              }}>
+                {rowStat.shortLabel}
+              </div>
+
+              {/* Cells */}
+              {NUMERIC_STATS.map((colStat, col) => {
+                const r = matrix[row][col];
+                const absR = Math.abs(r);
+                const isHovered = hoveredCell?.row === row && hoveredCell?.col === col;
+                const isHighlighted = hoveredCell?.row === row || hoveredCell?.col === col;
+                const isDiagonal = row === col;
+
+                // Cell inner size scales with |r| (minimum 6px, max fills cell)
+                const innerSize = isDiagonal
+                  ? cellSize - 6
+                  : Math.max(6, absR * (cellSize - 8));
+
+                const translateY = isDiagonal ? -2 : getCellTranslateY(r);
+                const shadow = isDiagonal
+                  ? (isDark
+                    ? '3px 3px 6px rgba(0,0,0,0.4), -3px -3px 6px rgba(255,255,255,0.04)'
+                    : '3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.8)')
+                  : getCellShadow(r, isHovered);
+
+                const bgColor = isDiagonal
+                  ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')
+                  : getCellColor(r);
+
+                return (
+                  <div
+                    key={col}
+                    className="flex items-center justify-center cursor-pointer"
+                    style={{
+                      width: cellSize,
+                      height: cellSize,
+                      background: isHighlighted && !isDiagonal
+                        ? (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)')
+                        : 'transparent',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={() => setHoveredCell({ row, col })}
+                    onMouseLeave={() => setHoveredCell(null)}
+                    onClick={() => {
+                      if (!isDiagonal) {
+                        onCellClick(colStat.key, rowStat.key);
+                      }
+                    }}
+                    title={`${rowStat.label} × ${colStat.label}: r = ${r.toFixed(3)}`}
+                  >
+                    <motion.div
+                      initial={false}
+                      animate={{
+                        width: innerSize,
+                        height: innerSize,
+                        y: isHovered ? translateY * 1.5 : translateY,
+                        scale: isHovered ? 1.15 : 1,
+                      }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                      style={{
+                        background: bgColor,
+                        borderRadius: 4,
+                        boxShadow: shadow,
+                        border: isDiagonal
+                          ? `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`
+                          : absR > 0.3
+                            ? `1px solid ${r > 0
+                              ? (isDark ? 'rgba(59,130,246,0.2)' : 'rgba(30,64,175,0.12)')
+                              : (isDark ? 'rgba(239,68,68,0.2)' : 'rgba(185,28,28,0.12)')}`
+                            : '1px solid transparent',
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Legend — dual encoding: color + depth */}
+      <div className="flex flex-col items-center gap-2 mt-2">
+        {/* Color legend */}
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] font-semibold" style={{ fontFamily: 'JetBrains Mono', color: isDark ? '#f87171' : '#b91c1c' }}>−1</span>
+          <div className="flex gap-0.5">
+            {[-0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8].map((v, i) => (
+              <div key={i} style={{
+                width: 22, height: 12, borderRadius: 3,
+                background: getCellColor(v),
+                boxShadow: Math.abs(v) > 0.1 ? getCellShadow(v, false) : 'none',
+                transform: `translateY(${getCellTranslateY(v)}px)`,
+              }} />
+            ))}
+          </div>
+          <span className="text-[9px] font-semibold" style={{ fontFamily: 'JetBrains Mono', color: isDark ? '#60a5fa' : '#1e40af' }}>+1</span>
+        </div>
+        {/* Depth legend */}
+        <div className="flex items-center gap-4 text-[8px]" style={{ fontFamily: 'Space Grotesk', color: 'var(--muted-foreground)' }}>
+          <span>▼ recessed = negative</span>
+          <span>— flat = no correlation</span>
+          <span>▲ raised = positive</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// HYPOTHESIS TEST COMPONENT
+// ═══════════════════════════════════════════
+
+interface HypothesisTestProps {
+  players: Player[];
+  isDark: boolean;
+}
+
+interface TestResult {
+  title: string;
+  groupA: string;
+  groupB: string;
+  stat: string;
+  meanA: number;
+  meanB: number;
+  t: number;
+  p: number;
+  significant: boolean;
+  interpretation: string;
+}
+
+function HypothesisTests({ players, isDark }: HypothesisTestProps) {
+  const [testStat, setTestStat] = useState<string>('goals');
+  const [groupBy, setGroupBy] = useState<'position' | 'age' | 'salary'>('position');
+
+  const results = useMemo((): TestResult[] => {
+    const statKey = testStat as keyof Player;
+    const tests: TestResult[] = [];
+
+    if (groupBy === 'position') {
+      // Compare each position pair
+      const groups: Record<string, number[]> = {};
+      POSITIONS.forEach(pos => {
+        groups[pos] = players.filter(p => p.position === pos).map(p => Number(p[statKey]) || 0);
+      });
+
+      for (let i = 0; i < POSITIONS.length; i++) {
+        for (let j = i + 1; j < POSITIONS.length; j++) {
+          const a = POSITIONS[i], b = POSITIONS[j];
+          if (groups[a].length < 3 || groups[b].length < 3) continue;
+          const result = welchTTest(groups[a], groups[b]);
+          const statLabel = NUMERIC_STATS.find(s => s.key === statKey)?.label || statKey;
+          tests.push({
+            title: `${a} vs ${b}`,
+            groupA: `${a} (n=${groups[a].length})`,
+            groupB: `${b} (n=${groups[b].length})`,
+            stat: statLabel,
+            meanA: result.meanA,
+            meanB: result.meanB,
+            t: result.t,
+            p: result.p,
+            significant: result.p < 0.05,
+            interpretation: result.p < 0.001
+              ? `Highly significant difference (p < 0.001). ${a}s average ${result.meanA.toFixed(1)} vs ${b}s at ${result.meanB.toFixed(1)}.`
+              : result.p < 0.05
+              ? `Significant difference (p = ${result.p.toFixed(4)}). ${result.meanA > result.meanB ? a : b}s average higher.`
+              : `No significant difference (p = ${result.p.toFixed(3)}). Means are ${result.meanA.toFixed(1)} vs ${result.meanB.toFixed(1)}.`,
+          });
+        }
+      }
+    } else if (groupBy === 'age') {
+      // Young (≤23) vs Prime (24-29) vs Veteran (30+)
+      const groups = {
+        'Young (≤23)': players.filter(p => p.age <= 23).map(p => Number(p[statKey]) || 0),
+        'Prime (24-29)': players.filter(p => p.age >= 24 && p.age <= 29).map(p => Number(p[statKey]) || 0),
+        'Veteran (30+)': players.filter(p => p.age >= 30).map(p => Number(p[statKey]) || 0),
+      };
+      const labels = Object.keys(groups) as (keyof typeof groups)[];
+      for (let i = 0; i < labels.length; i++) {
+        for (let j = i + 1; j < labels.length; j++) {
+          const a = labels[i], b = labels[j];
+          if (groups[a].length < 3 || groups[b].length < 3) continue;
+          const result = welchTTest(groups[a], groups[b]);
+          const statLabel = NUMERIC_STATS.find(s => s.key === statKey)?.label || statKey;
+          tests.push({
+            title: `${a} vs ${b}`,
+            groupA: `${a} (n=${groups[a].length})`,
+            groupB: `${b} (n=${groups[b].length})`,
+            stat: statLabel,
+            meanA: result.meanA,
+            meanB: result.meanB,
+            t: result.t,
+            p: result.p,
+            significant: result.p < 0.05,
+            interpretation: result.p < 0.001
+              ? `Highly significant. ${a} averages ${result.meanA.toFixed(1)} vs ${b} at ${result.meanB.toFixed(1)}.`
+              : result.p < 0.05
+              ? `Significant (p = ${result.p.toFixed(4)}). ${result.meanA > result.meanB ? a : b} averages higher.`
+              : `Not significant (p = ${result.p.toFixed(3)}). No meaningful difference between groups.`,
+          });
+        }
+      }
+    } else if (groupBy === 'salary') {
+      // Low (<$200K) vs Mid ($200K-$1M) vs High (>$1M)
+      const groups = {
+        'Low (<$200K)': players.filter(p => p.salary > 0 && p.salary < 200000).map(p => Number(p[statKey]) || 0),
+        'Mid ($200K-$1M)': players.filter(p => p.salary >= 200000 && p.salary < 1000000).map(p => Number(p[statKey]) || 0),
+        'High (>$1M)': players.filter(p => p.salary >= 1000000).map(p => Number(p[statKey]) || 0),
+      };
+      const labels = Object.keys(groups) as (keyof typeof groups)[];
+      for (let i = 0; i < labels.length; i++) {
+        for (let j = i + 1; j < labels.length; j++) {
+          const a = labels[i], b = labels[j];
+          if (groups[a].length < 3 || groups[b].length < 3) continue;
+          const result = welchTTest(groups[a], groups[b]);
+          const statLabel = NUMERIC_STATS.find(s => s.key === statKey)?.label || statKey;
+          tests.push({
+            title: `${a} vs ${b}`,
+            groupA: `${a} (n=${groups[a].length})`,
+            groupB: `${b} (n=${groups[b].length})`,
+            stat: statLabel,
+            meanA: result.meanA,
+            meanB: result.meanB,
+            t: result.t,
+            p: result.p,
+            significant: result.p < 0.05,
+            interpretation: result.p < 0.001
+              ? `Highly significant. ${a} averages ${result.meanA.toFixed(1)} vs ${b} at ${result.meanB.toFixed(1)}.`
+              : result.p < 0.05
+              ? `Significant (p = ${result.p.toFixed(4)}). ${result.meanA > result.meanB ? a : b} averages higher.`
+              : `Not significant (p = ${result.p.toFixed(3)}). Salary bracket doesn't predict this stat.`,
+          });
+        }
+      }
+    }
+
+    return tests;
+  }, [players, testStat, groupBy]);
+
+  const statLabel = NUMERIC_STATS.find(s => s.key === testStat)?.label || testStat;
+
+  return (
+    <div>
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>
+            Test:
+          </label>
+          <select
+            value={testStat}
+            onChange={e => setTestStat(e.target.value)}
+            className="text-[10px] font-semibold rounded-md px-2 py-1 neu-flat"
+            style={{
+              fontFamily: 'JetBrains Mono',
+              background: 'var(--neu-bg-flat)',
+              color: 'var(--foreground)',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+              outline: 'none',
+            }}
+          >
+            {NUMERIC_STATS.map(s => (
+              <option key={s.key} value={s.key}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>
+            Group by:
+          </label>
+          {(['position', 'age', 'salary'] as const).map(g => (
+            <button
+              key={g}
+              onClick={() => setGroupBy(g)}
+              className="text-[10px] px-2 py-1 rounded-md font-semibold uppercase tracking-wider transition-all"
+              style={{
+                fontFamily: 'Space Grotesk',
+                background: groupBy === g ? (isDark ? 'rgba(0,212,255,0.12)' : 'rgba(8,145,178,0.08)') : 'transparent',
+                color: groupBy === g ? 'var(--cyan)' : 'var(--muted-foreground)',
+                border: `1px solid ${groupBy === g ? (isDark ? 'rgba(0,212,255,0.25)' : 'rgba(8,145,178,0.25)') : 'transparent'}`,
+              }}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Results */}
+      <div className="space-y-2">
+        {results.map((test, i) => (
+          <motion.div
+            key={`${test.title}-${testStat}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="rounded-lg p-3"
+            style={{
+              background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+              border: `1px solid ${test.significant
+                ? (isDark ? 'rgba(0,212,255,0.15)' : 'rgba(8,145,178,0.12)')
+                : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)')}`,
+            }}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold" style={{ fontFamily: 'Space Grotesk', color: 'var(--foreground)' }}>
+                {test.title}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] px-1.5 py-0.5 rounded" style={{
+                  fontFamily: 'JetBrains Mono',
+                  background: test.significant
+                    ? (isDark ? 'rgba(0,212,255,0.15)' : 'rgba(8,145,178,0.1)')
+                    : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
+                  color: test.significant ? 'var(--cyan)' : 'var(--muted-foreground)',
+                }}>
+                  p = {test.p < 0.001 ? '<0.001' : test.p.toFixed(4)}
+                </span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded" style={{
+                  fontFamily: 'JetBrains Mono',
+                  background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                  color: 'var(--muted-foreground)',
+                }}>
+                  t = {test.t.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Visual comparison bar */}
+            <div className="flex items-center gap-2 my-2">
+              <span className="text-[9px] w-24 text-right" style={{ fontFamily: 'JetBrains Mono', color: 'var(--muted-foreground)' }}>
+                {test.groupA}
+              </span>
+              <div className="flex-1 h-4 rounded-full overflow-hidden" style={{
+                background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+              }}>
+                <div className="h-full rounded-full transition-all duration-500" style={{
+                  width: `${Math.min(100, Math.max(5, (test.meanA / Math.max(test.meanA, test.meanB, 1)) * 100))}%`,
+                  background: isDark ? 'rgba(0,180,220,0.5)' : 'rgba(8,145,178,0.4)',
+                }} />
+              </div>
+              <span className="text-[9px] w-12 text-right font-semibold" style={{
+                fontFamily: 'JetBrains Mono',
+                color: test.meanA >= test.meanB ? 'var(--cyan)' : 'var(--muted-foreground)',
+              }}>
+                {test.meanA >= 1000 ? `${(test.meanA / 1000).toFixed(0)}K` : test.meanA.toFixed(1)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] w-24 text-right" style={{ fontFamily: 'JetBrains Mono', color: 'var(--muted-foreground)' }}>
+                {test.groupB}
+              </span>
+              <div className="flex-1 h-4 rounded-full overflow-hidden" style={{
+                background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+              }}>
+                <div className="h-full rounded-full transition-all duration-500" style={{
+                  width: `${Math.min(100, Math.max(5, (test.meanB / Math.max(test.meanA, test.meanB, 1)) * 100))}%`,
+                  background: isDark ? 'rgba(220,100,80,0.5)' : 'rgba(200,80,60,0.4)',
+                }} />
+              </div>
+              <span className="text-[9px] w-12 text-right font-semibold" style={{
+                fontFamily: 'JetBrains Mono',
+                color: test.meanB >= test.meanA ? 'var(--coral)' : 'var(--muted-foreground)',
+              }}>
+                {test.meanB >= 1000 ? `${(test.meanB / 1000).toFixed(0)}K` : test.meanB.toFixed(1)}
+              </span>
+            </div>
+
+            <p className="text-[10px] mt-2" style={{
+              fontFamily: 'Space Grotesk',
+              color: test.significant ? 'var(--foreground)' : 'var(--muted-foreground)',
+            }}>
+              {test.interpretation}
+            </p>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// DISTRIBUTION VIEWER COMPONENT
+// ═══════════════════════════════════════════
+
+interface DistributionViewerProps {
+  players: Player[];
+  isDark: boolean;
+}
+
+function DistributionViewer({ players, isDark }: DistributionViewerProps) {
+  const [selectedStat, setSelectedStat] = useState<string>('goals');
+  const [posFilter, setPosFilter] = useState<string>('ALL');
+
+  const data = useMemo(() => {
+    const filtered = posFilter === 'ALL' ? players : players.filter(p => p.position === posFilter);
+    const values = filtered.map(p => Number(p[selectedStat as keyof Player]) || 0);
+    if (values.length < 5) return { bins: [], stats: { mean: 0, median: 0, std: 0, min: 0, max: 0, n: 0 } };
+
+    const sorted = [...values].sort((a, b) => a - b);
+    const min = sorted[0];
+    const max = sorted[sorted.length - 1];
+    const range = max - min;
+    const binCount = Math.min(25, Math.max(8, Math.ceil(Math.sqrt(values.length))));
+    const binWidth = range / binCount || 1;
+
+    const bins: { x: number; count: number; pct: number }[] = [];
+    for (let i = 0; i < binCount; i++) {
+      const lo = min + i * binWidth;
+      const hi = lo + binWidth;
+      const count = values.filter(v => i === binCount - 1 ? v >= lo && v <= hi : v >= lo && v < hi).length;
+      bins.push({ x: lo + binWidth / 2, count, pct: count / values.length * 100 });
+    }
+
+    const m = mean(values);
+    const med = sorted[Math.floor(sorted.length / 2)];
+    const std = stdDev(values);
+
+    return { bins, stats: { mean: m, median: med, std, min, max, n: values.length } };
+  }, [players, selectedStat, posFilter]);
+
+  const maxCount = Math.max(...data.bins.map(b => b.count), 1);
+  const statLabel = NUMERIC_STATS.find(s => s.key === selectedStat)?.label || selectedStat;
+
+  return (
+    <div>
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <select
+          value={selectedStat}
+          onChange={e => setSelectedStat(e.target.value)}
+          className="text-[10px] font-semibold rounded-md px-2 py-1"
+          style={{
+            fontFamily: 'JetBrains Mono',
+            background: 'var(--neu-bg-flat)',
+            color: 'var(--foreground)',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+            outline: 'none',
+          }}
+        >
+          {NUMERIC_STATS.map(s => (
+            <option key={s.key} value={s.key}>{s.label}</option>
+          ))}
+        </select>
+        <div className="flex gap-1">
+          {['ALL', ...POSITIONS].map(pos => (
+            <button
+              key={pos}
+              onClick={() => setPosFilter(pos)}
+              className="text-[9px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider transition-all"
+              style={{
+                fontFamily: 'Space Grotesk',
+                background: posFilter === pos ? (isDark ? 'rgba(0,212,255,0.12)' : 'rgba(8,145,178,0.08)') : 'transparent',
+                color: posFilter === pos ? 'var(--cyan)' : 'var(--muted-foreground)',
+              }}
+            >
+              {pos}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary stats */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
+        {[
+          { label: 'Mean', value: data.stats.mean },
+          { label: 'Median', value: data.stats.median },
+          { label: 'Std Dev', value: data.stats.std },
+          { label: 'Min', value: data.stats.min },
+          { label: 'Max', value: data.stats.max },
+          { label: 'N', value: data.stats.n },
+        ].map(s => (
+          <div key={s.label} className="text-center p-1.5 rounded-lg" style={{
+            background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+          }}>
+            <div className="text-[8px] uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>
+              {s.label}
+            </div>
+            <div className="text-xs font-semibold" style={{
+              fontFamily: 'JetBrains Mono',
+              color: s.label === 'N' ? 'var(--muted-foreground)' : 'var(--cyan)',
+            }}>
+              {s.label === 'N' ? s.value : (s.value >= 10000 ? `${(s.value / 1000).toFixed(0)}K` : s.value.toFixed(1))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Histogram */}
+      <div className="relative" style={{ height: 180 }}>
+        {/* Y axis label */}
+        <div className="absolute left-0 top-0 bottom-0 flex items-center">
+          <span className="text-[8px] text-muted-foreground -rotate-90" style={{ fontFamily: 'JetBrains Mono' }}>
+            Count
+          </span>
+        </div>
+
+        {/* Bars */}
+        <div className="flex items-end gap-[1px] h-full pl-4 pr-1">
+          {data.bins.map((bin, i) => {
+            const heightPct = (bin.count / maxCount) * 100;
+            const isMeanBin = Math.abs(bin.x - data.stats.mean) < (data.bins[1]?.x - data.bins[0]?.x || 1);
+            return (
+              <motion.div
+                key={i}
+                initial={{ height: 0 }}
+                animate={{ height: `${heightPct}%` }}
+                transition={{ delay: i * 0.02, duration: 0.3, ease: 'easeOut' }}
+                className="flex-1 rounded-t-sm relative group"
+                style={{
+                  background: isMeanBin
+                    ? (isDark ? 'rgba(0,212,255,0.5)' : 'rgba(8,145,178,0.45)')
+                    : (isDark ? 'rgba(0,180,220,0.3)' : 'rgba(8,145,178,0.25)'),
+                  minWidth: 4,
+                }}
+                title={`${bin.x.toFixed(1)}: ${bin.count} players (${bin.pct.toFixed(1)}%)`}
+              >
+                {/* Hover tooltip */}
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-[8px] px-1 py-0.5 rounded" style={{
+                  fontFamily: 'JetBrains Mono',
+                  background: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)',
+                  color: 'var(--foreground)',
+                }}>
+                  {bin.count}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* X axis */}
+        <div className="flex justify-between pl-4 pr-1 mt-1">
+          <span className="text-[8px] text-muted-foreground" style={{ fontFamily: 'JetBrains Mono' }}>
+            {data.stats.min >= 10000 ? `${(data.stats.min / 1000).toFixed(0)}K` : data.stats.min.toFixed(0)}
+          </span>
+          <span className="text-[8px] text-muted-foreground" style={{ fontFamily: 'JetBrains Mono' }}>
+            {statLabel}
+          </span>
+          <span className="text-[8px] text-muted-foreground" style={{ fontFamily: 'JetBrains Mono' }}>
+            {data.stats.max >= 10000 ? `${(data.stats.max / 1000).toFixed(0)}K` : data.stats.max.toFixed(0)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// MAIN STATS PLAYGROUND COMPONENT
+// ═══════════════════════════════════════════
+
+interface StatsPlaygroundProps {
+  players: Player[];
+  onAxisChange?: (xKey: string, yKey: string) => void;
+}
+
+export default function StatsPlayground({ players, onAxisChange }: StatsPlaygroundProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<'matrix' | 'tests' | 'distribution'>('matrix');
+  const [matrixPosFilter, setMatrixPosFilter] = useState('ALL');
+
+  const handleCellClick = useCallback((xKey: string, yKey: string) => {
+    if (onAxisChange) {
+      onAxisChange(xKey, yKey);
+      // Scroll to scatter plot
+      const el = document.querySelector('[data-chart="scatter"]');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [onAxisChange]);
+
+  return (
+    <NeuCard delay={0.45} className="p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <FlaskConical size={16} className="text-cyan" />
+          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
+            Statistical Playground
+          </h3>
+          <span className="text-[9px] px-1.5 py-0.5 rounded-md text-muted-foreground" style={{
+            fontFamily: 'JetBrains Mono',
+            background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+          }}>
+            {players.length} players
+          </span>
+        </div>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
+          style={{
+            fontFamily: 'Space Grotesk',
+            background: isOpen ? (isDark ? 'rgba(0,212,255,0.12)' : 'rgba(8,145,178,0.1)') : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
+            color: isOpen ? 'var(--cyan)' : 'var(--table-header-color)',
+            border: `1px solid ${isOpen ? (isDark ? 'rgba(0,212,255,0.3)' : 'rgba(8,145,178,0.3)') : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
+          }}
+        >
+          {isOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+          {isOpen ? 'Collapse' : 'Expand'}
+        </button>
+      </div>
+
+      <p className="text-[10px] text-muted-foreground mb-3" style={{ fontFamily: 'Space Grotesk' }}>
+        Explore correlations, run hypothesis tests, and examine stat distributions across the MLS player pool.
+      </p>
+
+      {/* Expandable content */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            {/* Section tabs */}
+            <div className="flex gap-1 mb-4 border-b" style={{
+              borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+            }}>
+              {[
+                { id: 'matrix' as const, icon: Grid3X3, label: 'Correlation Matrix' },
+                { id: 'tests' as const, icon: FlaskConical, label: 'Hypothesis Tests' },
+                { id: 'distribution' as const, icon: Activity, label: 'Distributions' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveSection(tab.id)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider transition-all relative"
+                  style={{
+                    fontFamily: 'Space Grotesk',
+                    color: activeSection === tab.id ? 'var(--cyan)' : 'var(--muted-foreground)',
+                  }}
+                >
+                  <tab.icon size={12} />
+                  {tab.label}
+                  {activeSection === tab.id && (
+                    <motion.div
+                      layoutId="statsTab"
+                      className="absolute bottom-0 left-0 right-0 h-[2px]"
+                      style={{ background: 'var(--cyan)' }}
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Section content */}
+            <AnimatePresence mode="wait">
+              {activeSection === 'matrix' && (
+                <motion.div
+                  key="matrix"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {/* Position filter for matrix */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>
+                      Filter:
+                    </span>
+                    {['ALL', ...POSITIONS].map(pos => (
+                      <button
+                        key={pos}
+                        onClick={() => setMatrixPosFilter(pos)}
+                        className="text-[9px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider transition-all"
+                        style={{
+                          fontFamily: 'Space Grotesk',
+                          background: matrixPosFilter === pos ? (isDark ? 'rgba(0,212,255,0.12)' : 'rgba(8,145,178,0.08)') : 'transparent',
+                          color: matrixPosFilter === pos ? 'var(--cyan)' : 'var(--muted-foreground)',
+                        }}
+                      >
+                        {pos}
+                      </button>
+                    ))}
+                  </div>
+                  <CorrelationMatrix
+                    players={players}
+                    isDark={isDark}
+                    positionFilter={matrixPosFilter}
+                    onCellClick={handleCellClick}
+                  />
+                </motion.div>
+              )}
+
+              {activeSection === 'tests' && (
+                <motion.div
+                  key="tests"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <HypothesisTests players={players} isDark={isDark} />
+                </motion.div>
+              )}
+
+              {activeSection === 'distribution' && (
+                <motion.div
+                  key="distribution"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <DistributionViewer players={players} isDark={isDark} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </NeuCard>
+  );
+}

@@ -15,6 +15,7 @@ import { ArrowUpDown, TrendingUp, Crosshair, Shield, Zap, Palette } from 'lucide
 import { InsightPanel, InsightHeadline } from '@/components/InsightPanel';
 import { playerStatsHeadline, playerStatsInsights, computeOutliers, scatterCardInsights, topScorersCardInsights, playerRadarCardInsights, playerTableCardInsights } from '@/lib/insightEngine';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
+import StatsPlayground from '@/components/StatsPlayground';
 
 type SortKey = 'name' | 'team' | 'position' | 'age' | 'games' | 'minutes' | 'goals' | 'assists' | 'shots' | 'shotsOnTarget' | 'shotAccuracy' | 'tackles' | 'interceptions' | 'fouls' | 'yellowCards' | 'redCards' | 'salary';
 
@@ -683,6 +684,12 @@ export default function PlayerStats() {
           </table>
         </div>
       </NeuCard>
+
+      {/* Statistical Playground */}
+      <StatsPlayground
+        players={filteredPlayers}
+        onAxisChange={(xKey, yKey) => { setScatterX(xKey); setScatterY(yKey); }}
+      />
 
       {/* Maximize Modals */}
       <ChartModal isOpen={maximized === 'scatter'} onClose={() => setMaximized(null)} title={`${yOpt.label} vs ${xOpt.label}`}>
