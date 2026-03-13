@@ -11,6 +11,8 @@ import {
 } from 'recharts';
 import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home, BarChart3, Percent } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { InsightPanel, InsightHeadline } from '@/components/InsightPanel';
+import { attendanceHeadline, attendanceInsights } from '@/lib/insightEngine';
 
 // ─── Stadium Capacities (expandable max for multi-use venues) ───
 const STADIUM_CAPACITY: Record<string, number> = {
@@ -165,6 +167,17 @@ export default function Attendance() {
       };
     }).sort((a, b) => b.delta - a.delta);
   }, [selectedTeam, isDark]);
+
+  /* Insight engine */
+  const headline = useMemo(() =>
+    attendanceHeadline(filteredMatches, filteredTeams),
+    [filteredMatches, filteredTeams]
+  );
+
+  const attInsights = useMemo(() =>
+    attendanceInsights(filteredMatches, filteredTeams),
+    [filteredMatches, filteredTeams]
+  );
 
   const selectedTeamObj = selectedTeam ? getTeam(selectedTeam) : null;
   const selectedHomeAvg = useMemo(() => {
@@ -436,12 +449,18 @@ export default function Attendance() {
 
   return (
     <div className="space-y-4 mt-4">
-      {/* Tab Description */}
+      {/* Tab Description / Insight Headline */}
       <div className="px-1">
-        <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
-          <span className="font-semibold text-foreground">Attendance</span> — Explore match-day attendance across all MLS venues. The bar chart ranks teams by average home attendance (toggle to fill rate to see stadium utilization). The dotted white line shows stadium capacity. The trend chart tracks weekly attendance patterns, and the drill-down panels reveal how specific away teams affect turnout.
-        </p>
+        <InsightHeadline
+          headline={headline}
+          isAnalyzing={false}
+          staticTitle={<><span className="font-semibold text-foreground">Attendance</span> — Explore match-day attendance across all MLS venues. The bar chart ranks teams by average home attendance (toggle to fill rate to see stadium utilization). The dotted white line shows stadium capacity. The trend chart tracks weekly attendance patterns, and the drill-down panels reveal how specific away teams affect turnout.</>}
+          isDark={isDark}
+        />
       </div>
+
+      {/* Insight Panel */}
+      <InsightPanel insights={attInsights} isDark={isDark} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

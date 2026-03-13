@@ -533,3 +533,66 @@ The complete set of theme-aware CSS variables is defined in `client/src/index.cs
 | `--neu-shadow-dark` | `rgba(0,0,0,0.5)` | `rgba(166,170,190,0.45)` | Dark shadow in neumorphic pair |
 | `--neu-shadow-light` | `rgba(60,60,80,0.12)` | `rgba(255,255,255,0.8)` | Light shadow in neumorphic pair |
 | `--glass-bg` | `rgba(20,20,40,0.55)` | `rgba(240,240,248,0.45)` | Glassmorphism background |
+
+
+---
+
+## 10. Insight Engine (Tier 1 — March 13, 2026)
+
+### 10.1 Overview
+
+The Insight Engine transforms the dashboard from a descriptive data explorer into a **data narrator**. Rather than leaving users to infer conclusions, every tab now surfaces computed, context-aware headlines and expandable insight cards that highlight the most significant findings in the current data view.
+
+The implementation follows three core patterns:
+
+| Pattern | Description |
+|---|---|
+| **Computed Headlines** | Every tab displays a dynamically generated sentence above the static description. The headline updates when filters or axes change, always surfacing the most interesting finding. |
+| **Analyze Button + Insight Cards** | A neumorphic "ANALYZE" toggle reveals a 2x2 grid of insight cards, each with an icon, bold headline, and supporting detail paragraph. Clicking again collapses the panel (button text changes to "EXPLORE"). |
+| **Outlier Annotations** | The Player Stats scatter plot auto-labels the top 2 overperformers and top 2 underperformers relative to the regression line, using cyan (over) and coral (under) text labels directly on the chart. |
+
+### 10.2 Architecture
+
+The system is implemented across three files with zero new dependencies:
+
+| File | Purpose |
+|---|---|
+| `client/src/lib/insightEngine.ts` | Pure TypeScript analysis module. Contains all headline generators, insight card computers, and outlier detection. Every function is memoizable and takes filtered data as input. |
+| `client/src/components/InsightPanel.tsx` | Two exported components: `InsightPanel` (the ANALYZE toggle + card grid with Framer Motion animations) and `InsightHeadline` (the animated headline that updates when data changes). |
+| Tab files (`PlayerStats.tsx`, `TeamBudget.tsx`, `Attendance.tsx`) | Each tab imports the relevant engine functions and UI components, wiring them into the existing layout between the tab description and summary cards. |
+
+### 10.3 Insight Engine Functions
+
+The `insightEngine.ts` module exports the following functions:
+
+**Player Stats Tab:**
+- `playerStatsHeadline(players, xAxis, yAxis)` — Generates a context-aware headline based on the current scatter plot axes. Has special-case narratives for Salary vs Goals (value), Shots vs Goals (efficiency), Age vs Goals (peak age), and Minutes vs Salary (availability premium). Falls back to R²-based generic headlines.
+- `playerStatsInsights(players)` — Returns up to 4 insight cards covering: best goal bargain (cost per goal), position efficiency gap, discipline outlier, and age vs output analysis.
+- `computeOutliers(scatterData, regression, count)` — Identifies the top N overperformers and underperformers by residual distance from the regression line, filtered by a 0.8 standard deviation significance threshold.
+
+**Team Budget Tab:**
+- `teamBudgetHeadline(teams, players)` — Computes ROI narrative (cost per goal by team), or spending gap narrative when ROI data is insufficient.
+- `teamBudgetInsights(teams, players)` — Returns up to 4 cards: DP efficiency analysis, conference spending gap, roster construction diversity (DP share variance), and salary-to-output mismatch.
+
+**Attendance Tab:**
+- `attendanceHeadline(matches, teams)` — Surfaces the highest-attendance team, league median comparison, and capacity fill rate failures.
+- `attendanceInsights(matches, teams)` — Returns up to 4 cards: gravitational pull (the "Messi effect"), fill rate analysis, attendance volatility (coefficient of variation), and weekend vs weekday effect.
+
+### 10.4 Design Integration
+
+The insight components follow the Dark Forge design system precisely:
+
+- **InsightPanel button**: Uses `neu-raised` / `neu-pressed` shadow pairs, `Space Grotesk` font, uppercase tracking, and the `Lightbulb` icon from Lucide.
+- **Insight cards**: Each card has a subtle accent-colored background tint (6% opacity), neumorphic inset/outset shadows, and a small icon badge in a recessed container. The four accent colors (`cyan`, `amber`, `emerald`, `coral`) are mapped from the existing CSS variable system.
+- **InsightHeadline**: Uses `Space Grotesk` at font-weight 500 for the computed headline, with `AnimatePresence` keyed to the headline string so it cross-fades when axes or filters change.
+- **Outlier labels**: Rendered as Recharts `ReferenceLine` labels with `Space Grotesk` at 9px, using cyan for overperformers and coral for underperformers. Only the player's last name is shown to avoid clutter.
+
+### 10.5 How Headlines Update
+
+Headlines are fully reactive to the filter system. When a user:
+- Changes the scatter plot X or Y axis → the Player Stats headline recomputes with axis-specific narratives
+- Filters to a single team → the Team Budget headline switches to a single-team summary
+- Filters by conference → all headlines recompute using only the filtered subset
+- Adjusts age/salary sliders → insights recalculate with the narrowed player pool
+
+All computations are wrapped in `useMemo` with appropriate dependency arrays for performance.

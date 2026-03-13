@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
 import { getTeam } from '@/lib/mlsData';
 import { mutedTeamColor, positionColor, Extruded3DDot, linearRegression } from '@/lib/chartUtils';
@@ -12,6 +12,8 @@ import {
   ReferenceLine
 } from 'recharts';
 import { ArrowUpDown, TrendingUp, Crosshair, Shield, Zap, Palette } from 'lucide-react';
+import { InsightPanel, InsightHeadline } from '@/components/InsightPanel';
+import { playerStatsHeadline, playerStatsInsights, computeOutliers } from '@/lib/insightEngine';
 
 type SortKey = 'name' | 'team' | 'position' | 'age' | 'games' | 'minutes' | 'goals' | 'assists' | 'shots' | 'shotsOnTarget' | 'shotAccuracy' | 'tackles' | 'interceptions' | 'fouls' | 'yellowCards' | 'redCards' | 'salary';
 
@@ -77,6 +79,19 @@ export default function PlayerStats() {
   /* Show/hide trend line */
   const [showTrendLine, setShowTrendLine] = useState(true);
 
+  /* Insight engine state */
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const headline = useMemo(() =>
+    playerStatsHeadline(filteredPlayers, scatterX, scatterY),
+    [filteredPlayers, scatterX, scatterY]
+  );
+
+  const insights = useMemo(() =>
+    playerStatsInsights(filteredPlayers),
+    [filteredPlayers]
+  );
+
   const sorted = useMemo(() => {
     return [...filteredPlayers].sort((a, b) => {
       let va: any, vb: any;
@@ -124,6 +139,12 @@ export default function PlayerStats() {
       .map(d => ({ x: d.xVal, y: d.yVal }));
     return linearRegression(pts);
   }, [scatterData]);
+
+  /* Outlier annotations for scatter plot */
+  const outliers = useMemo(() =>
+    computeOutliers(scatterData, regression, 2),
+    [scatterData, regression]
+  );
 
   /* Trend line endpoints — extend slightly beyond data range */
   const trendLineData = useMemo(() => {
@@ -416,12 +437,18 @@ export default function PlayerStats() {
 
   return (
     <div className="space-y-4 mt-4">
-      {/* Tab Description */}
+      {/* Tab Description / Insight Headline */}
       <div className="px-1">
-        <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
-          <span className="font-semibold text-foreground">Player Stats</span> — Compare individual player performance across the 2025 MLS season. Use the scatter plot to explore relationships between any two metrics (e.g., Shots vs Goals). Toggle between team and position coloring, and use the trend line to gauge correlation strength. Click any player row or dot to view their full performance radar.
-        </p>
+        <InsightHeadline
+          headline={headline}
+          isAnalyzing={isAnalyzing}
+          staticTitle={<><span className="font-semibold text-foreground">Player Stats</span> — Compare individual player performance across the 2025 MLS season. Use the scatter plot to explore relationships between any two metrics (e.g., Shots vs Goals). Toggle between team and position coloring, and use the trend line to gauge correlation strength. Click any player row or dot to view their full performance radar.</>}
+          isDark={isDark}
+        />
       </div>
+
+      {/* Insight Panel */}
+      <InsightPanel insights={insights} isDark={isDark} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -484,6 +511,7 @@ export default function PlayerStats() {
             colorMode={colorMode}
             showTrendLine={showTrendLine}
             regression={regression}
+            outliers={outliers}
             height={280}
           />
         </NeuCard>
@@ -643,6 +671,7 @@ export default function PlayerStats() {
           colorMode={colorMode}
           showTrendLine={showTrendLine}
           regression={regression}
+          outliers={outliers}
           height={600}
         />
       </ChartModal>
@@ -746,6 +775,7 @@ function ScatterChartWithTrend({
   colorMode,
   showTrendLine,
   regression,
+  outliers = [],
   height = 280,
 }: {
   scatterData: any[];
@@ -756,6 +786,7 @@ function ScatterChartWithTrend({
   colorMode: ColorMode;
   showTrendLine: boolean;
   regression: { slope: number; intercept: number; r2: number };
+  outliers?: { name: string; xVal: number; yVal: number; direction: 'over' | 'under' }[];
   height?: number;
 }) {
   /* Compute trend line reference line segment endpoints */
@@ -839,6 +870,33 @@ function ScatterChartWithTrend({
               return <Extruded3DDot {...props} fill={dotColor} />;
             }}
           />
+          {/* Outlier annotation labels */}
+          {outliers.map((outlier, i) => {
+            const overColor = isDark ? '#00d4ff' : '#0891b2';
+            const underColor = isDark ? '#ff6b6b' : '#dc2626';
+            const color = outlier.direction === 'over' ? overColor : underColor;
+            const yOffset = outlier.direction === 'over' ? -18 : 16;
+            return (
+              <ReferenceLine
+                key={`outlier-${i}`}
+                segment={[
+                  { x: outlier.xVal, y: outlier.yVal },
+                  { x: outlier.xVal, y: outlier.yVal },
+                ] as any}
+                ifOverflow="extendDomain"
+                stroke="transparent"
+                label={{
+                  value: outlier.name.split(' ').slice(-1)[0],
+                  position: outlier.direction === 'over' ? 'top' : 'bottom',
+                  fill: color,
+                  fontSize: 9,
+                  fontFamily: 'Space Grotesk, sans-serif',
+                  fontWeight: 600,
+                  offset: 8,
+                }}
+              />
+            );
+          })}
         </ScatterChart>
       </ResponsiveContainer>
     </div>
