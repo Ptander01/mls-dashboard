@@ -632,3 +632,256 @@ function getAxisLabel(key: string): string {
   };
   return labels[key] || key;
 }
+
+
+// ═══════════════════════════════════════════
+// PER-CARD INSIGHTS (Card-level analysis)
+// ═══════════════════════════════════════════
+
+import type { CardInsightItem } from '@/components/CardInsight';
+
+/**
+ * Insights for the scatter plot card based on current axes and regression
+ */
+export function scatterCardInsights(
+  players: Player[],
+  xAxis: string,
+  yAxis: string,
+  r2: number,
+): CardInsightItem[] {
+  const active = players.filter(p => p.minutes > 200);
+  if (active.length < 10) return [];
+
+  const items: CardInsightItem[] = [];
+  const xLabel = getAxisLabel(xAxis).toLowerCase();
+  const yLabel = getAxisLabel(yAxis).toLowerCase();
+
+  // R² interpretation
+  if (r2 >= 0.6) {
+    items.push({
+      text: `Strong predictive relationship (R² = ${r2.toFixed(2)}): ${xLabel} explains ${(r2 * 100).toFixed(0)}% of the variation in ${yLabel}. Points above the line outperform expectations.`,
+      accent: 'cyan',
+    });
+  } else if (r2 >= 0.3) {
+    items.push({
+      text: `Moderate relationship (R² = ${r2.toFixed(2)}): ${xLabel} partially predicts ${yLabel}, but other factors matter. Look for clusters and outliers.`,
+      accent: 'amber',
+    });
+  } else {
+    items.push({
+      text: `Weak correlation (R² = ${r2.toFixed(2)}): ${xLabel} and ${yLabel} are largely independent. Outliers here represent genuinely unusual players.`,
+      accent: 'coral',
+    });
+  }
+
+  // Position clustering insight
+  const byPos: Record<string, { xSum: number; ySum: number; count: number }> = {};
+  active.forEach(p => {
+    const x = (p as any)[xAxis] as number;
+    const y = (p as any)[yAxis] as number;
+    if (x == null || y == null || !isFinite(x) || !isFinite(y)) return;
+    if (!byPos[p.position]) byPos[p.position] = { xSum: 0, ySum: 0, count: 0 };
+    byPos[p.position].xSum += x;
+    byPos[p.position].ySum += y;
+    byPos[p.position].count++;
+  });
+  const posAvgs = Object.entries(byPos)
+    .filter(([, d]) => d.count >= 5)
+    .map(([pos, d]) => ({ pos, xAvg: d.xSum / d.count, yAvg: d.ySum / d.count, count: d.count }));
+
+  if (posAvgs.length >= 2) {
+    const sorted = [...posAvgs].sort((a, b) => b.yAvg - a.yAvg);
+    const top = sorted[0];
+    const bottom = sorted[sorted.length - 1];
+    if (top.yAvg > bottom.yAvg * 1.5) {
+      items.push({
+        text: `Position gap: ${top.pos}s average ${top.yAvg.toFixed(1)} ${yLabel} vs ${bottom.pos}s at ${bottom.yAvg.toFixed(1)} — toggle to position colors to see the clustering.`,
+        accent: 'emerald',
+      });
+    }
+  }
+
+  // Data density note
+  const totalPoints = active.filter(p => {
+    const x = (p as any)[xAxis];
+    const y = (p as any)[yAxis];
+    return x != null && y != null && isFinite(x) && isFinite(y);
+  }).length;
+  items.push({
+    text: `Showing ${totalPoints} players with 200+ minutes. ${active.length - totalPoints > 0 ? `${active.length - totalPoints} filtered out due to missing data.` : 'All active players included.'}`,
+    accent: 'cyan',
+  });
+
+  return items.slice(0, 3);
+}
+
+/**
+ * Insights for the Top Scorers leaderboard card
+ */
+export function topScorersCardInsights(players: Player[]): CardInsightItem[] {
+  const active = players.filter(p => p.minutes > 200);
+  if (active.length < 10) return [];
+
+  const items: CardInsightItem[] = [];
+  const topScorers = [...active].sort((a, b) => b.goals - a.goals).slice(0, 10);
+
+  // Team concentration
+  const teamCounts: Record<string, number> = {};
+  topScorers.forEach(p => {
+    const team = getTeam(p.team)?.short || p.team;
+    teamCounts[team] = (teamCounts[team] || 0) + 1;
+  });
+  const multiTeams = Object.entries(teamCounts).filter(([, c]) => c > 1);
+  if (multiTeams.length > 0) {
+    const [teamName, count] = multiTeams.sort((a, b) => b[1] - a[1])[0];
+    items.push({
+      text: `${teamName} places ${count} players in the top 10 — the most of any team. Concentrated firepower or balanced attack?`,
+      accent: 'cyan',
+    });
+  } else {
+    items.push({
+      text: `All 10 top scorers come from different teams — goal scoring is evenly distributed across the league.`,
+      accent: 'emerald',
+    });
+  }
+
+  // Position breakdown
+  const fwCount = topScorers.filter(p => p.position === 'FW').length;
+  const mfCount = topScorers.filter(p => p.position === 'MF').length;
+  if (mfCount >= 3) {
+    items.push({
+      text: `${mfCount} of the top 10 scorers are midfielders — suggesting MLS rewards attacking midfield play, not just strikers.`,
+      accent: 'amber',
+    });
+  } else if (fwCount >= 8) {
+    items.push({
+      text: `${fwCount} of 10 top scorers are forwards — traditional striker dominance in MLS goal scoring.`,
+      accent: 'amber',
+    });
+  }
+
+  // Value comparison: cheapest vs most expensive in top 10
+  const withSalary = topScorers.filter(p => p.salary > 0);
+  if (withSalary.length >= 5) {
+    const cheapest = [...withSalary].sort((a, b) => a.salary - b.salary)[0];
+    const priciest = [...withSalary].sort((a, b) => b.salary - a.salary)[0];
+    if (priciest.salary > cheapest.salary * 3) {
+      items.push({
+        text: `${cheapest.name} scores ${cheapest.goals} goals at ${fmtSalary(cheapest.salary)} — ${priciest.name} earns ${(priciest.salary / cheapest.salary).toFixed(0)}x more (${fmtSalary(priciest.salary)}) for ${priciest.goals} goals.`,
+        accent: 'emerald',
+      });
+    }
+  }
+
+  return items.slice(0, 3);
+}
+
+/**
+ * Insights for a selected player's radar card — contextual comparison
+ */
+export function playerRadarCardInsights(player: Player, allPlayers: Player[]): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+  const active = allPlayers.filter(p => p.minutes > 200);
+  if (active.length < 10) return [];
+
+  const team = getTeam(player.team)?.short || player.team;
+
+  // Compare to position peers
+  const posPeers = active.filter(p => p.position === player.position);
+  if (posPeers.length >= 5) {
+    const goalRank = posPeers.filter(p => p.goals > player.goals).length + 1;
+    const assistRank = posPeers.filter(p => p.assists > player.assists).length + 1;
+    const pctile = ((1 - goalRank / posPeers.length) * 100);
+    items.push({
+      text: `Among ${posPeers.length} ${player.position}s: ranks #${goalRank} in goals and #${assistRank} in assists (${pctile.toFixed(0)}th percentile for goals).`,
+      accent: pctile >= 75 ? 'cyan' : pctile >= 50 ? 'amber' : 'coral',
+    });
+  }
+
+  // Compare to age group
+  const agePeers = active.filter(p => Math.abs(p.age - player.age) <= 2);
+  if (agePeers.length >= 5) {
+    const ageAvgGoals = agePeers.reduce((s, p) => s + p.goals, 0) / agePeers.length;
+    const diff = player.goals - ageAvgGoals;
+    if (Math.abs(diff) > 1) {
+      items.push({
+        text: `${diff > 0 ? 'Outscores' : 'Trails'} age peers (${player.age - 2}–${player.age + 2}) by ${Math.abs(diff).toFixed(1)} goals. Age group average: ${ageAvgGoals.toFixed(1)} goals across ${agePeers.length} players.`,
+        accent: diff > 0 ? 'emerald' : 'coral',
+      });
+    }
+  }
+
+  // Salary context
+  if (player.salary > 0) {
+    const salaryPeers = active.filter(p => p.salary > 0 && p.salary >= player.salary * 0.5 && p.salary <= player.salary * 2);
+    if (salaryPeers.length >= 3) {
+      const peerAvgGoals = salaryPeers.reduce((s, p) => s + p.goals, 0) / salaryPeers.length;
+      const diff = player.goals - peerAvgGoals;
+      items.push({
+        text: `At ${fmtSalary(player.salary)}, ${diff >= 0 ? 'outproduces' : 'underperforms'} salary peers by ${Math.abs(diff).toFixed(1)} goals. ${salaryPeers.length} players in the ${fmtSalary(player.salary * 0.5)}–${fmtSalary(player.salary * 2)} bracket average ${peerAvgGoals.toFixed(1)} goals.`,
+        accent: diff >= 0 ? 'emerald' : 'amber',
+      });
+    }
+  }
+
+  // Minutes efficiency
+  if (player.minutes > 0 && player.goals > 0) {
+    const minsPerGoal = player.minutes / player.goals;
+    const allMinsPerGoal = active.filter(p => p.goals > 0).map(p => p.minutes / p.goals);
+    const leagueMedian = median(allMinsPerGoal);
+    if (leagueMedian > 0) {
+      const ratio = leagueMedian / minsPerGoal;
+      items.push({
+        text: `Scores every ${Math.round(minsPerGoal)} minutes — ${ratio >= 1 ? `${ratio.toFixed(1)}x faster` : `${(1/ratio).toFixed(1)}x slower`} than the league median of ${Math.round(leagueMedian)} minutes/goal.`,
+        accent: ratio >= 1.2 ? 'cyan' : ratio >= 0.8 ? 'amber' : 'coral',
+      });
+    }
+  }
+
+  return items.slice(0, 3);
+}
+
+/**
+ * Insights for the Player Database table card
+ */
+export function playerTableCardInsights(players: Player[]): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+  if (players.length < 10) return [];
+
+  // Salary distribution
+  const withSalary = players.filter(p => p.salary > 0);
+  if (withSalary.length >= 10) {
+    const salaries = withSalary.map(p => p.salary);
+    const med = median(salaries);
+    const top10Pct = salaries.sort((a, b) => b - a).slice(0, Math.ceil(salaries.length * 0.1));
+    const top10AvgSalary = top10Pct.reduce((s, v) => s + v, 0) / top10Pct.length;
+    items.push({
+      text: `Median salary: ${fmtSalary(med)}. The top 10% earn ${(top10AvgSalary / med).toFixed(1)}x the median (avg ${fmtSalary(top10AvgSalary)}). ${withSalary.filter(p => p.salary > 1_000_000).length} players earn $1M+.`,
+      accent: 'emerald',
+    });
+  }
+
+  // Position balance
+  const posCounts: Record<string, number> = {};
+  players.forEach(p => { posCounts[p.position] = (posCounts[p.position] || 0) + 1; });
+  const posEntries = Object.entries(posCounts).sort((a, b) => b[1] - a[1]);
+  if (posEntries.length >= 3) {
+    const breakdown = posEntries.map(([pos, count]) => `${pos}: ${count}`).join(', ');
+    items.push({
+      text: `Position breakdown: ${breakdown}. ${posEntries[0][0]}s make up ${((posEntries[0][1] / players.length) * 100).toFixed(0)}% of the filtered roster.`,
+      accent: 'amber',
+    });
+  }
+
+  // Age demographics
+  const ages = players.map(p => p.age);
+  const avgAge = ages.reduce((s, a) => s + a, 0) / ages.length;
+  const under23 = players.filter(p => p.age <= 23).length;
+  const over30 = players.filter(p => p.age >= 30).length;
+  items.push({
+    text: `Average age: ${avgAge.toFixed(1)}. ${under23} players are 23 or younger (${((under23 / players.length) * 100).toFixed(0)}%), ${over30} are 30+ (${((over30 / players.length) * 100).toFixed(0)}%).`,
+    accent: 'cyan',
+  });
+
+  return items.slice(0, 3);
+}

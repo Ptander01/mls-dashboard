@@ -13,7 +13,8 @@ import {
 } from 'recharts';
 import { ArrowUpDown, TrendingUp, Crosshair, Shield, Zap, Palette } from 'lucide-react';
 import { InsightPanel, InsightHeadline } from '@/components/InsightPanel';
-import { playerStatsHeadline, playerStatsInsights, computeOutliers } from '@/lib/insightEngine';
+import { playerStatsHeadline, playerStatsInsights, computeOutliers, scatterCardInsights, topScorersCardInsights, playerRadarCardInsights, playerTableCardInsights } from '@/lib/insightEngine';
+import { CardInsightButton, CardInsightInline } from '@/components/CardInsight';
 
 type SortKey = 'name' | 'team' | 'position' | 'age' | 'games' | 'minutes' | 'goals' | 'assists' | 'shots' | 'shotsOnTarget' | 'shotAccuracy' | 'tackles' | 'interceptions' | 'fouls' | 'yellowCards' | 'redCards' | 'salary';
 
@@ -92,6 +93,17 @@ export default function PlayerStats() {
     [filteredPlayers]
   );
 
+  /* Per-card insights (non-scatter) */
+  const scorersInsights = useMemo(() =>
+    topScorersCardInsights(filteredPlayers),
+    [filteredPlayers]
+  );
+
+  const tableInsights = useMemo(() =>
+    playerTableCardInsights(filteredPlayers),
+    [filteredPlayers]
+  );
+
   const sorted = useMemo(() => {
     return [...filteredPlayers].sort((a, b) => {
       let va: any, vb: any;
@@ -144,6 +156,12 @@ export default function PlayerStats() {
   const outliers = useMemo(() =>
     computeOutliers(scatterData, regression, 2),
     [scatterData, regression]
+  );
+
+  /* Per-card insights for scatter (depends on regression) */
+  const scatterInsights = useMemo(() =>
+    scatterCardInsights(filteredPlayers, scatterX, scatterY, regression?.r2 ?? 0),
+    [filteredPlayers, scatterX, scatterY, regression]
   );
 
   /* Trend line endpoints — extend slightly beyond data range */
@@ -495,6 +513,7 @@ export default function PlayerStats() {
               <AxisDropdown value={scatterY} onChange={setScatterY} label="Y" />
               <ColorModeToggle />
               <TrendLineToggle />
+              <CardInsightButton insights={scatterInsights} isDark={isDark} compact />
               <MaximizeButton onClick={() => setMaximized('scatter')} />
             </div>
           </div>
@@ -520,7 +539,10 @@ export default function PlayerStats() {
         <NeuCard delay={0.25} className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Top Scorers</h3>
-            <MaximizeButton onClick={() => setMaximized('scorers')} />
+            <div className="flex items-center gap-2">
+              <CardInsightButton insights={scorersInsights} isDark={isDark} compact />
+              <MaximizeButton onClick={() => setMaximized('scorers')} />
+            </div>
           </div>
           <div className="space-y-1.5">
             {topScorers.map((p, i) => (
@@ -551,6 +573,7 @@ export default function PlayerStats() {
               <p className="text-xs text-muted-foreground">{getTeam(selPlayer.team)?.short} · {selPlayer.position} · Age {selPlayer.age}</p>
             </div>
             <div className="flex items-center gap-2">
+              <CardInsightButton insights={selPlayer ? playerRadarCardInsights(selPlayer, filteredPlayers) : []} isDark={isDark} compact />
               <MaximizeButton onClick={() => setMaximized('radar')} />
               <button onClick={() => setSelectedPlayer(null)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
             </div>
@@ -597,6 +620,7 @@ export default function PlayerStats() {
           <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Player Database</h3>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground font-mono">{sorted.length} players</span>
+            <CardInsightButton insights={tableInsights} isDark={isDark} compact />
             <MaximizeButton onClick={() => setMaximized('table')} />
           </div>
         </div>
