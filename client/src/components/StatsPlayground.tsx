@@ -418,8 +418,10 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
         </div>
       </div>
 
+      {/* Matrix + Vertical Legend side by side */}
+      <div className="flex gap-6">
       {/* 3D Matrix grid */}
-      <div className="overflow-x-auto pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="overflow-x-auto pb-6 flex-shrink-0" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div style={{
           minWidth: matrixWidth,
           perspective: '1000px',
@@ -470,10 +472,8 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                 const isHighlighted = hoveredCell?.row === row || hoveredCell?.col === col;
                 const isDiagonal = row === col;
 
-                // Cell inner size scales with |r| (minimum 8px, max fills cell)
-                const innerSize = isDiagonal
-                  ? cellSize - 6
-                  : Math.max(8, absR * (cellSize - 6));
+                // All cells are uniform size — only elevation and color vary
+                const innerSize = cellSize - 8;
 
                 const translateY = isDiagonal ? -3 : getCellTranslateY(r);
                 const shadow = isDiagonal
@@ -516,8 +516,7 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                     <motion.div
                       initial={false}
                       animate={{
-                        y: isHovered ? translateY * 1.3 : translateY,
-                        scale: isHovered ? 1.12 : 1,
+                        y: isHovered ? translateY * 1.4 : translateY,
                       }}
                       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                       style={{
@@ -663,86 +662,107 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
         </div>
       </div>
 
-      {/* ═══ 3D STEPPED LEGEND — crisp industrial style ═══ */}
-      <div className="flex flex-col items-center gap-4 mt-6">
-        <div className="flex items-end gap-[5px]" style={{ height: 140, padding: '0 12px' }}>
-          <span className="text-[10px] font-bold self-center mr-2" style={{
-            fontFamily: 'JetBrains Mono',
-            color: isDark ? '#f87171' : '#991b1b',
-          }}>−1</span>
+      {/* ═══ VERTICAL LEGEND — uniform swatches, depth via elevation only ═══ */}
+      <div className="flex-shrink-0 flex flex-col items-center pt-12" style={{ width: 80 }}>
+        {/* +1 label at top */}
+        <span className="text-[10px] font-bold mb-2" style={{
+          fontFamily: 'JetBrains Mono',
+          color: isDark ? '#60a5fa' : '#1e3a8a',
+        }}>+1</span>
+        <span className="text-[8px] mb-1" style={{
+          fontFamily: 'Space Grotesk',
+          color: isDark ? '#60a5fa' : '#1e3a8a',
+        }}>▲ Raised</span>
 
-          {([-1, -0.75, -0.5, -0.25, -0.1, 0, 0.1, 0.25, 0.5, 0.75, 1] as const).map((v, i) => {
+        {/* Vertical swatch stack: +1 at top, -1 at bottom */}
+        <div className="flex flex-col items-center gap-[3px]" style={{ padding: '4px 0' }}>
+          {([1, 0.75, 0.5, 0.25, 0.1, 0, -0.1, -0.25, -0.5, -0.75, -1] as const).map((v, i) => {
             const absV = Math.abs(v);
-            const blockH = v === 0 ? 14 : 14 + absV * 80;
-            const sideH = absV > 0.05 ? Math.round(2 + absV * 8) : 0;
-            const blockW = 30;
+            const swatchSize = 28;
             const bg = getCellColor(v);
             const side = getCellSideColor(v);
             const shadow = Math.abs(v) > 0.05 ? getCellShadow(v, false) : 'none';
-            const yOffset = v < 0 ? absV * 10 : -(absV * 10);
+            const sideH = absV > 0.05 ? Math.round(2 + absV * 6) : 0;
+            // Horizontal offset: positive = shift left (raised toward viewer), negative = shift right (recessed)
+            const xOffset = v > 0 ? -(absV * 6) : (absV * 6);
 
             return (
-              <div key={i} style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                transform: `translateY(${yOffset}px)`,
-                transition: 'transform 0.3s ease',
-              }}>
-                <div style={{ position: 'relative', width: blockW }}>
-                  {/* Right side face — hard-edged */}
+              <div key={i} className="flex items-center" style={{ height: swatchSize + 2 }}>
+                {/* Value label */}
+                <span style={{
+                  width: 24,
+                  fontSize: '7px',
+                  fontFamily: 'JetBrains Mono',
+                  color: 'var(--muted-foreground)',
+                  textAlign: 'right',
+                  paddingRight: 4,
+                  opacity: absV < 0.05 ? 1 : 0.7,
+                  fontWeight: absV < 0.05 ? 600 : 400,
+                }}>
+                  {v === 0 ? '0' : v > 0 ? `+${v}` : `${v}`}
+                </span>
+
+                {/* 3D swatch block */}
+                <div style={{
+                  position: 'relative',
+                  width: swatchSize,
+                  height: swatchSize,
+                  transform: `translateX(${xOffset}px)`,
+                  transition: 'transform 0.3s ease',
+                }}>
+                  {/* Bottom side face — raised cells */}
                   {sideH > 0 && v > 0 && (
                     <div style={{
                       position: 'absolute',
-                      top: 0,
-                      right: -Math.round(sideH * 0.5),
-                      bottom: -sideH,
-                      width: Math.round(sideH * 0.5),
-                      background: side,
-                      borderRadius: '0 2px 2px 0',
-                    }} />
-                  )}
-                  {/* Bottom side face — hard-edged */}
-                  {sideH > 0 && v > 0 && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: -sideH,
-                      left: 0,
-                      right: 0,
-                      height: sideH,
-                      background: side,
-                      borderRadius: '0 0 2px 2px',
-                    }} />
-                  )}
-                  {/* Top lip face — recessed */}
-                  {sideH > 0 && v < 0 && (
-                    <div style={{
-                      position: 'absolute',
-                      top: -Math.round(sideH * 0.4),
+                      bottom: -Math.round(sideH * 0.4),
                       left: 0,
                       right: 0,
                       height: Math.round(sideH * 0.4),
                       background: side,
-                      borderRadius: '2px 2px 0 0',
+                      borderRadius: '0 0 2px 2px',
                     }} />
                   )}
-                  {/* Left lip face — recessed */}
+                  {/* Right side face — raised cells */}
+                  {sideH > 0 && v > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      right: -Math.round(sideH * 0.4),
+                      bottom: -Math.round(sideH * 0.4),
+                      width: Math.round(sideH * 0.4),
+                      background: side,
+                      borderRadius: '0 2px 2px 0',
+                    }} />
+                  )}
+                  {/* Top lip face — recessed cells */}
                   {sideH > 0 && v < 0 && (
                     <div style={{
                       position: 'absolute',
-                      top: -Math.round(sideH * 0.4),
-                      left: -Math.round(sideH * 0.4),
+                      top: -Math.round(sideH * 0.3),
+                      left: 0,
+                      right: 0,
+                      height: Math.round(sideH * 0.3),
+                      background: side,
+                      borderRadius: '2px 2px 0 0',
+                    }} />
+                  )}
+                  {/* Left lip face — recessed cells */}
+                  {sideH > 0 && v < 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: -Math.round(sideH * 0.3),
+                      left: -Math.round(sideH * 0.3),
                       bottom: 0,
-                      width: Math.round(sideH * 0.4),
+                      width: Math.round(sideH * 0.3),
                       background: side,
                       borderRadius: '2px 0 0 2px',
                     }} />
                   )}
-                  {/* Front face with multi-stop gradient */}
+                  {/* Front face */}
                   <div style={{
                     position: 'relative',
-                    width: blockW,
-                    height: blockH,
+                    width: swatchSize,
+                    height: swatchSize,
                     background: bg,
                     borderRadius: 2,
                     boxShadow: shadow,
@@ -770,7 +790,7 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                         pointerEvents: 'none',
                       }} />
                     )}
-                    {/* Top highlight edge */}
+                    {/* Top highlight edge for raised */}
                     {v > 0 && absV > 0.15 && (
                       <div style={{
                         position: 'absolute',
@@ -785,32 +805,22 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                     )}
                   </div>
                 </div>
-                <span style={{
-                  fontSize: '8px',
-                  fontFamily: 'JetBrains Mono',
-                  color: 'var(--muted-foreground)',
-                  marginTop: (v > 0 ? sideH : 0) + 6,
-                  opacity: absV < 0.05 ? 1 : 0.7,
-                  fontWeight: absV < 0.05 ? 600 : 400,
-                }}>
-                  {v === 0 ? '0' : v > 0 ? `+${v}` : `${v}`}
-                </span>
               </div>
             );
           })}
-
-          <span className="text-[10px] font-bold self-center ml-2" style={{
-            fontFamily: 'JetBrains Mono',
-            color: isDark ? '#60a5fa' : '#1e3a8a',
-          }}>+1</span>
         </div>
 
-        <div className="flex items-center gap-6 text-[9px]" style={{ fontFamily: 'Space Grotesk', color: 'var(--muted-foreground)' }}>
-          <span style={{ color: isDark ? '#f87171' : '#991b1b' }}>▼ Recessed = Negative</span>
-          <span>— Flat = No Correlation</span>
-          <span style={{ color: isDark ? '#60a5fa' : '#1e3a8a' }}>▲ Raised = Positive</span>
-        </div>
+        {/* -1 label at bottom */}
+        <span className="text-[8px] mt-1" style={{
+          fontFamily: 'Space Grotesk',
+          color: isDark ? '#f87171' : '#991b1b',
+        }}>▼ Recessed</span>
+        <span className="text-[10px] font-bold mt-1" style={{
+          fontFamily: 'JetBrains Mono',
+          color: isDark ? '#f87171' : '#991b1b',
+        }}>−1</span>
       </div>
+      </div> {/* end flex row */}
     </div>
   );
 }
