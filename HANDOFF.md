@@ -617,3 +617,58 @@ The following cards in the Player Stats tab have per-card insight buttons:
 
 The per-card insight generators are defined in `client/src/lib/insightEngine.ts` and follow the same memoization pattern as the tab-level functions.
 
+
+---
+
+## 11. Pending Work — Future Session Queue
+
+The following items are organized by recommended session grouping to minimize file conflicts when working across multiple Manus sessions. Each session should clone fresh from GitHub, complete its scope, and push before the next session begins.
+
+### 11.1 Session Priority: Visual & Animation Upgrades
+
+**3D Radar Chart** — Convert the current flat 2D radar chart (Recharts `RadarChart`) in the player detail card to a Three.js-powered 3D radar with the same Dark Forge neumorphic treatment as the Travel Map globe. The radar should rotate subtly on hover and use extruded polygon faces with team-colored fills.
+
+**Animation Polish** — Audit all tab transitions, card expansions, and data loading states for consistent Framer Motion easing curves. Ensure all animations use the project's standard `[0.22, 1, 0.36, 1]` cubic-bezier. Add staggered entrance animations to summary stat cards and table rows on tab switch.
+
+**Files likely touched:** `PlayerStats.tsx` (radar section), possibly a new `Radar3D.tsx` component, Framer Motion configs.
+
+### 11.2 Session Priority: Team Leaderboard (New Component)
+
+**Animated Team Leaderboard** — A new tab or section that shows team rankings with animated bar chart race behavior. Key requirements:
+- Timeline scrubber to animate ranking changes over the season (week-by-week)
+- Toggle to split into East/West conference view or show all 30 teams combined
+- Bars should use team colors and smoothly reorder as rankings change
+- Follow the Dark Forge neumorphic container treatment
+
+**Files likely touched:** New `TeamLeaderboard.tsx` component, `Home.tsx` (if adding a new tab), `mlsData.ts` (if weekly standings data is needed).
+
+### 11.3 Session Priority: Attendance Pane Fixes
+
+**Capacity Chart Overhang** — The capacity fill chart's bars overhang the x-axis boundary. Needs clipping or domain adjustment.
+
+**3D Braille Effect on Capacity Line** — The capacity fill line chart should have the same 3D extruded dot/braille treatment as other chart elements in the design system.
+
+**Attendance Drill-Down** — The attendance/week line graph needs three view modes:
+1. All teams side-by-side (small multiples or overlaid lines)
+2. League average only (single smoothed line)
+3. League total (aggregate sum per week)
+
+**Files likely touched:** `Attendance.tsx`, possibly `chartUtils.tsx`.
+
+### 11.4 Session Priority: Maximize Modal Fixes
+
+**Charts Struggle in Maximize View** — Several tabs have charts that render tiny, compressed, or fail to resize properly when the maximize (expand) button is clicked. This is a recurring issue across tabs. Root cause is likely that the chart components don't re-measure their container dimensions after the modal animation completes. Fix should involve a resize observer or delayed re-render after the modal transition.
+
+**Files likely touched:** `NeuCard.tsx` (modal system), individual tab files that use the maximize feature.
+
+### 11.5 Layout: Ultrawide Display Optimization
+
+The dashboard currently uses a constrained max-width that wastes significant horizontal space on ultrawide monitors (e.g., 32" 4K). The user's preference is to take better advantage of large displays while remaining reasonable on standard screens. The approach should be:
+- Increase the main container max-width or switch to a fluid width with reduced side margins
+- Use responsive breakpoints so standard monitors (1080p, 1440p) still look balanced
+- Mobile responsiveness is not a priority but should not be actively broken
+
+**Files likely touched:** `Home.tsx` or the main layout wrapper, possibly `index.css` for responsive breakpoints.
+
+---
+

@@ -216,7 +216,7 @@ export default function Home() {
         }}
       >
         <div
-          className="max-w-[1600px] mx-auto neu-raised rounded-xl px-3 py-2 flex items-center"
+          className="max-w-[2400px] mx-auto neu-raised rounded-xl px-3 py-2 flex items-center"
           style={{
             boxShadow: isDark
               ? '4px 4px 12px rgba(0,0,0,0.5), -2px -2px 8px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.04)'
@@ -279,7 +279,7 @@ export default function Home() {
       </nav>
 
       {/* Content Area */}
-      <main className="px-4 pb-8 max-w-[1600px] mx-auto">
+      <main className="px-4 xl:px-6 2xl:px-8 pb-8 max-w-[2400px] mx-auto">
         <div
           key={activeTab}
           style={{
