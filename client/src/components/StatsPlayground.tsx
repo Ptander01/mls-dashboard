@@ -436,19 +436,38 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                     onClick={() => { if (!isDiagonal) onCellClick(colStat.key, rowStat.key); }}
                     title={`${rowStat.label} × ${colStat.label}: r = ${r.toFixed(3)}`}
                   >
-                    {/* SVG-based 3D cell — exact same technique as Extruded3DBar */}
+                    {/* SVG-based 3D cell — Extruded3DBar technique */}
+                    {/* RAISED (r>=0): front face at origin, right+bottom side faces offset down-right, cast shadow behind */}
+                    {/* RECESSED (r<0): front face offset down-right, left+top side faces at origin edges, inset shadow on top-left */}
                     <svg width={svgW} height={svgH} style={{ overflow: 'visible' }}>
                       <defs>
-                        {/* Front face gradient — lit from top (5-stop like bar charts) */}
+                        {/* Front face gradient — RAISED: lit from top / RECESSED: inverted (dark top, light bottom) */}
                         <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={highlightHex} stopOpacity={0.95} />
-                          <stop offset="8%" stopColor={liten(baseHex, 0.15)} stopOpacity={0.92} />
-                          <stop offset="50%" stopColor={baseHex} stopOpacity={0.88} />
-                          <stop offset="92%" stopColor={drken(baseHex, 0.15)} stopOpacity={0.88} />
-                          <stop offset="100%" stopColor={drken(baseHex, 0.5)} stopOpacity={0.92} />
+                          {r >= 0 ? (
+                            <>
+                              <stop offset="0%" stopColor={highlightHex} stopOpacity={0.95} />
+                              <stop offset="8%" stopColor={liten(baseHex, 0.15)} stopOpacity={0.92} />
+                              <stop offset="50%" stopColor={baseHex} stopOpacity={0.88} />
+                              <stop offset="92%" stopColor={drken(baseHex, 0.15)} stopOpacity={0.88} />
+                              <stop offset="100%" stopColor={drken(baseHex, 0.5)} stopOpacity={0.92} />
+                            </>
+                          ) : (
+                            <>
+                              <stop offset="0%" stopColor={drken(baseHex, 0.5)} stopOpacity={0.95} />
+                              <stop offset="8%" stopColor={drken(baseHex, 0.25)} stopOpacity={0.92} />
+                              <stop offset="50%" stopColor={baseHex} stopOpacity={0.88} />
+                              <stop offset="92%" stopColor={liten(baseHex, 0.12)} stopOpacity={0.88} />
+                              <stop offset="100%" stopColor={highlightHex} stopOpacity={0.92} />
+                            </>
+                          )}
                         </linearGradient>
-                        {/* Right side face gradient — darker, showing depth */}
+                        {/* Side face gradient */}
                         <linearGradient id={`${gid}_s`} x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor={sideHex} stopOpacity={0.9} />
+                          <stop offset="100%" stopColor={sideDarkHex} stopOpacity={0.95} />
+                        </linearGradient>
+                        {/* Top/bottom side face gradient (vertical) */}
+                        <linearGradient id={`${gid}_tb`} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor={sideHex} stopOpacity={0.9} />
                           <stop offset="100%" stopColor={sideDarkHex} stopOpacity={0.95} />
                         </linearGradient>
@@ -458,90 +477,83 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                         </filter>
                       </defs>
 
-                      {/* === CAST SHADOW === */}
-                      {eScale > 0.05 && r >= 0 && (
-                        <rect
-                          x={eX + 2}
-                          y={eY + 2}
-                          width={S}
-                          height={S}
-                          rx={2}
-                          fill={isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.18)'}
-                          filter={`url(#${gid}_sh)`}
-                        />
-                      )}
-                      {/* Recessed cells: inset shadow effect via darker rect behind */}
-                      {eScale > 0.05 && r < 0 && (
-                        <rect
-                          x={-1}
-                          y={-1}
-                          width={S + eX + 2}
-                          height={S + eY + 2}
-                          rx={3}
-                          fill={isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.06)'}
-                        />
-                      )}
-
-                      {/* === RIGHT SIDE FACE (parallelogram) === */}
-                      {eScale > 0.05 && (
-                        <path
-                          d={`M${S},0 L${S+eX},${eY} L${S+eX},${S+eY} L${S},${S} Z`}
-                          fill={`url(#${gid}_s)`}
-                        />
-                      )}
-
-                      {/* === BOTTOM FACE (parallelogram) === */}
-                      {eScale > 0.05 && (
-                        <path
-                          d={`M0,${S} L${eX},${S+eY} L${S+eX},${S+eY} L${S},${S} Z`}
-                          fill={bottomHex}
-                          fillOpacity={0.7}
-                        />
-                      )}
-
-                      {/* === FRONT FACE (main visible surface) === */}
-                      <rect
-                        x={0}
-                        y={0}
-                        width={S}
-                        height={S}
-                        rx={2}
-                        fill={`url(#${gid})`}
-                      />
-
-                      {/* === TOP FACE (lit surface on top) === */}
-                      {eScale > 0.05 && r >= 0 && (
-                        <path
-                          d={`M0,0 L${eX},${-eY+1} L${S+eX},${-eY+1} L${S},0 Z`}
-                          fill={highlightHex}
-                          fillOpacity={0.35}
-                        />
-                      )}
-
-                      {/* Top highlight line — bright edge */}
-                      {absR > 0.1 && (
-                        <rect
-                          x={1}
-                          y={0}
-                          width={S - 2}
-                          height={Math.min(2, S * 0.06)}
-                          rx={1}
-                          fill={highlightHex}
-                          fillOpacity={r >= 0 ? 0.55 : 0.15}
-                        />
-                      )}
-
-                      {/* Left rim light */}
-                      {absR > 0.2 && r >= 0 && (
-                        <rect
-                          x={0}
-                          y={2}
-                          width={Math.min(1.5, S * 0.06)}
-                          height={S - 4}
-                          rx={0.75}
-                          fill={highlightHex}
-                          fillOpacity={0.2}
-                        />
+                      {r >= 0 ? (
+                        /* ═══ RAISED CELL (r >= 0) ═══ */
+                        <>
+                          {/* Cast shadow — offset behind and below */}
+                          {eScale > 0.05 && (
+                            <rect
+                              x={eX + 2} y={eY + 2} width={S} height={S} rx={2}
+                              fill={isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.18)'}
+                              filter={`url(#${gid}_sh)`}
+                            />
+                          )}
+                          {/* Right side face (parallelogram) */}
+                          {eScale > 0.05 && (
+                            <path d={`M${S},0 L${S+eX},${eY} L${S+eX},${S+eY} L${S},${S} Z`}
+                              fill={`url(#${gid}_s)`} />
+                          )}
+                          {/* Bottom face (parallelogram) */}
+                          {eScale > 0.05 && (
+                            <path d={`M0,${S} L${eX},${S+eY} L${S+eX},${S+eY} L${S},${S} Z`}
+                              fill={bottomHex} fillOpacity={0.7} />
+                          )}
+                          {/* Front face */}
+                          <rect x={0} y={0} width={S} height={S} rx={2}
+                            fill={`url(#${gid})`} />
+                          {/* Top face (lit surface) */}
+                          {eScale > 0.05 && (
+                            <path d={`M0,0 L${eX},${-eY+1} L${S+eX},${-eY+1} L${S},0 Z`}
+                              fill={highlightHex} fillOpacity={0.35} />
+                          )}
+                          {/* Top highlight line */}
+                          {absR > 0.1 && (
+                            <rect x={1} y={0} width={S-2} height={Math.min(2, S*0.06)} rx={1}
+                              fill={highlightHex} fillOpacity={0.55} />
+                          )}
+                          {/* Left rim light */}
+                          {absR > 0.2 && (
+                            <rect x={0} y={2} width={Math.min(1.5, S*0.06)} height={S-4} rx={0.75}
+                              fill={highlightHex} fillOpacity={0.2} />
+                          )}
+                        </>
+                      ) : (
+                        /* ═══ RECESSED CELL (r < 0) ═══ */
+                        /* Front face is pushed DOWN-RIGHT by (eX, eY). */
+                        /* Left wall and top wall are visible at the original edges. */
+                        <>
+                          {/* Inset shadow — dark overlay at top-left of the well */}
+                          {eScale > 0.05 && (
+                            <rect
+                              x={eX} y={eY} width={S} height={S} rx={2}
+                              fill={isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.1)'}
+                              filter={`url(#${gid}_sh)`}
+                            />
+                          )}
+                          {/* LEFT WALL — parallelogram from top-left edge down to front face */}
+                          {eScale > 0.05 && (
+                            <path d={`M0,0 L${eX},${eY} L${eX},${S+eY} L0,${S} Z`}
+                              fill={`url(#${gid}_s)`} />
+                          )}
+                          {/* TOP WALL — parallelogram from top edge across to front face */}
+                          {eScale > 0.05 && (
+                            <path d={`M0,0 L${eX},${eY} L${S+eX},${eY} L${S},0 Z`}
+                              fill={`url(#${gid}_tb)`} />
+                          )}
+                          {/* Front face — offset into the well */}
+                          <rect x={eX} y={eY} width={S} height={S} rx={2}
+                            fill={`url(#${gid})`} />
+                          {/* Bottom highlight line — light catches bottom of recessed surface */}
+                          {absR > 0.1 && (
+                            <rect x={eX+1} y={eY+S-2} width={S-2} height={Math.min(2, S*0.06)} rx={1}
+                              fill={highlightHex} fillOpacity={0.4} />
+                          )}
+                          {/* Right rim light — light catches right edge of recessed surface */}
+                          {absR > 0.2 && (
+                            <rect x={eX+S-1.5} y={eY+2} width={Math.min(1.5, S*0.06)} height={S-4} rx={0.75}
+                              fill={highlightHex} fillOpacity={0.15} />
+                          )}
+                        </>
                       )}
 
                       {/* Hover: show r value */}
@@ -628,17 +640,33 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                   {v === 0 ? '0' : v > 0 ? `+${v}` : `${v}`}
                 </span>
 
-                {/* SVG 3D swatch — same technique as matrix cells */}
+                {/* SVG 3D swatch — raised/recessed matching matrix cells */}
                 <svg width={lsvgW} height={lsvgH} style={{ overflow: 'visible' }}>
                   <defs>
                     <linearGradient id={lgid} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={lHighlight} stopOpacity={0.95} />
-                      <stop offset="8%" stopColor={liten(baseH, 0.15)} stopOpacity={0.92} />
-                      <stop offset="50%" stopColor={baseH} stopOpacity={0.88} />
-                      <stop offset="92%" stopColor={drken(baseH, 0.15)} stopOpacity={0.88} />
-                      <stop offset="100%" stopColor={drken(baseH, 0.5)} stopOpacity={0.92} />
+                      {v >= 0 ? (
+                        <>
+                          <stop offset="0%" stopColor={lHighlight} stopOpacity={0.95} />
+                          <stop offset="8%" stopColor={liten(baseH, 0.15)} stopOpacity={0.92} />
+                          <stop offset="50%" stopColor={baseH} stopOpacity={0.88} />
+                          <stop offset="92%" stopColor={drken(baseH, 0.15)} stopOpacity={0.88} />
+                          <stop offset="100%" stopColor={drken(baseH, 0.5)} stopOpacity={0.92} />
+                        </>
+                      ) : (
+                        <>
+                          <stop offset="0%" stopColor={drken(baseH, 0.5)} stopOpacity={0.95} />
+                          <stop offset="8%" stopColor={drken(baseH, 0.25)} stopOpacity={0.92} />
+                          <stop offset="50%" stopColor={baseH} stopOpacity={0.88} />
+                          <stop offset="92%" stopColor={liten(baseH, 0.12)} stopOpacity={0.88} />
+                          <stop offset="100%" stopColor={lHighlight} stopOpacity={0.92} />
+                        </>
+                      )}
                     </linearGradient>
                     <linearGradient id={`${lgid}_s`} x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor={lSide} stopOpacity={0.9} />
+                      <stop offset="100%" stopColor={lSideDark} stopOpacity={0.95} />
+                    </linearGradient>
+                    <linearGradient id={`${lgid}_tb`} x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={lSide} stopOpacity={0.9} />
                       <stop offset="100%" stopColor={lSideDark} stopOpacity={0.95} />
                     </linearGradient>
@@ -647,42 +675,56 @@ function CorrelationMatrix({ players, isDark, positionFilter, statMode, onCellCl
                     </filter>
                   </defs>
 
-                  {/* Cast shadow */}
-                  {eS > 0.05 && v >= 0 && (
-                    <rect x={leX+1} y={leY+1} width={LS} height={LS} rx={2}
-                      fill={isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.15)'}
-                      filter={`url(#${lgid}_sh)`} />
-                  )}
-                  {eS > 0.05 && v < 0 && (
-                    <rect x={-1} y={-1} width={LS+leX+2} height={LS+leY+2} rx={3}
-                      fill={isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)'} />
-                  )}
-
-                  {/* Right side face */}
-                  {eS > 0.05 && (
-                    <path d={`M${LS},0 L${LS+leX},${leY} L${LS+leX},${LS+leY} L${LS},${LS} Z`}
-                      fill={`url(#${lgid}_s)`} />
-                  )}
-                  {/* Bottom face */}
-                  {eS > 0.05 && (
-                    <path d={`M0,${LS} L${leX},${LS+leY} L${LS+leX},${LS+leY} L${LS},${LS} Z`}
-                      fill={lBottom} fillOpacity={0.7} />
-                  )}
-
-                  {/* Front face */}
-                  <rect x={0} y={0} width={LS} height={LS} rx={2}
-                    fill={`url(#${lgid})`} />
-
-                  {/* Top face */}
-                  {eS > 0.05 && v >= 0 && (
-                    <path d={`M0,0 L${leX},${-leY+1} L${LS+leX},${-leY+1} L${LS},0 Z`}
-                      fill={lHighlight} fillOpacity={0.35} />
-                  )}
-
-                  {/* Top highlight line */}
-                  {absV > 0.1 && (
-                    <rect x={1} y={0} width={LS-2} height={1.5} rx={1}
-                      fill={lHighlight} fillOpacity={v >= 0 ? 0.55 : 0.15} />
+                  {v >= 0 ? (
+                    /* ═══ RAISED LEGEND SWATCH ═══ */
+                    <>
+                      {eS > 0.05 && (
+                        <rect x={leX+1} y={leY+1} width={LS} height={LS} rx={2}
+                          fill={isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.15)'}
+                          filter={`url(#${lgid}_sh)`} />
+                      )}
+                      {eS > 0.05 && (
+                        <path d={`M${LS},0 L${LS+leX},${leY} L${LS+leX},${LS+leY} L${LS},${LS} Z`}
+                          fill={`url(#${lgid}_s)`} />
+                      )}
+                      {eS > 0.05 && (
+                        <path d={`M0,${LS} L${leX},${LS+leY} L${LS+leX},${LS+leY} L${LS},${LS} Z`}
+                          fill={lBottom} fillOpacity={0.7} />
+                      )}
+                      <rect x={0} y={0} width={LS} height={LS} rx={2}
+                        fill={`url(#${lgid})`} />
+                      {eS > 0.05 && (
+                        <path d={`M0,0 L${leX},${-leY+1} L${LS+leX},${-leY+1} L${LS},0 Z`}
+                          fill={lHighlight} fillOpacity={0.35} />
+                      )}
+                      {absV > 0.1 && (
+                        <rect x={1} y={0} width={LS-2} height={1.5} rx={1}
+                          fill={lHighlight} fillOpacity={0.55} />
+                      )}
+                    </>
+                  ) : (
+                    /* ═══ RECESSED LEGEND SWATCH ═══ */
+                    <>
+                      {eS > 0.05 && (
+                        <rect x={leX} y={leY} width={LS} height={LS} rx={2}
+                          fill={isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)'}
+                          filter={`url(#${lgid}_sh)`} />
+                      )}
+                      {eS > 0.05 && (
+                        <path d={`M0,0 L${leX},${leY} L${leX},${LS+leY} L0,${LS} Z`}
+                          fill={`url(#${lgid}_s)`} />
+                      )}
+                      {eS > 0.05 && (
+                        <path d={`M0,0 L${leX},${leY} L${LS+leX},${leY} L${LS},0 Z`}
+                          fill={`url(#${lgid}_tb)`} />
+                      )}
+                      <rect x={leX} y={leY} width={LS} height={LS} rx={2}
+                        fill={`url(#${lgid})`} />
+                      {absV > 0.1 && (
+                        <rect x={leX+1} y={leY+LS-1.5} width={LS-2} height={1.5} rx={1}
+                          fill={lHighlight} fillOpacity={0.4} />
+                      )}
+                    </>
                   )}
                 </svg>
               </div>
