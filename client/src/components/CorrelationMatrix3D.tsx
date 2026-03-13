@@ -94,6 +94,7 @@ const CELL_DIM = CELL_SIZE - GAP; // actual box width/depth
 const BASE_HEIGHT = 0.06;   // minimum slab thickness for near-zero cells
 const MAX_HEIGHT = 0.55;    // maximum extrusion height for |r| = 1
 const DIAGONAL_HEIGHT = 0.10; // subtle height for diagonal cells
+const BASE_PLANE_Y = 0.08;  // Y position of the base plane surface — cells sit on top or sink below this
 
 // ═══════════════════════════════════════════
 // INDIVIDUAL CELL MESH
@@ -134,11 +135,21 @@ function CellMesh({ row, col, r, isDark, isDiagonal, totalCells, hoveredCell, on
   const x = col * CELL_SIZE - halfGrid;
   const z = row * CELL_SIZE - halfGrid;
 
-  // Y position: positive r extrudes up, negative r sinks below base
+  // Y position: positive r extrudes upward from the base plane surface,
+  // negative r sinks downward below the base plane surface.
+  // The base plane surface is at y = BASE_PLANE_Y.
   const yPos = useMemo(() => {
-    if (isDiagonal || absR < 0.05) return height / 2;
-    if (r >= 0) return height / 2;
-    return -height / 2 + BASE_HEIGHT;
+    if (isDiagonal || absR < 0.05) {
+      // Flat cells sit with their top surface flush with the base plane
+      return BASE_PLANE_Y - height / 2;
+    }
+    if (r >= 0) {
+      // Positive: bottom of box sits on the base plane, box extrudes upward
+      return BASE_PLANE_Y + height / 2;
+    }
+    // Negative: top of box is flush with (or slightly below) the base plane,
+    // box extends downward creating a recessed "well"
+    return BASE_PLANE_Y - height / 2;
   }, [r, absR, height, isDiagonal]);
 
   const roughness = 0.72;
@@ -188,19 +199,40 @@ function CellMesh({ row, col, r, isDark, isDiagonal, totalCells, hoveredCell, on
 // ═══════════════════════════════════════════
 
 function BasePlane({ size, isDark }: { size: number; isDark: boolean }) {
+  // The base plane sits at BASE_PLANE_Y. We make it semi-transparent so
+  // recessed (negative) cells that extend below it are still visible as
+  // darker wells/shadows through the surface.
   return (
-    <mesh
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, -0.01, 0]}
-      receiveShadow
-    >
-      <planeGeometry args={[size + 2, size + 2]} />
-      <meshStandardMaterial
-        color={isDark ? '#1a1a2e' : '#e4e4ec'}
-        roughness={0.9}
-        metalness={0.02}
-      />
-    </mesh>
+    <group>
+      {/* Main reference surface — semi-transparent so recessed wells show through */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, BASE_PLANE_Y, 0]}
+        receiveShadow
+      >
+        <planeGeometry args={[size + 2, size + 2]} />
+        <meshStandardMaterial
+          color={isDark ? '#1a1a2e' : '#e4e4ec'}
+          roughness={0.9}
+          metalness={0.02}
+          transparent
+          opacity={0.55}
+        />
+      </mesh>
+      {/* Floor plane below the grid to catch shadows from recessed cells */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, BASE_PLANE_Y - MAX_HEIGHT - 0.05, 0]}
+        receiveShadow
+      >
+        <planeGeometry args={[size + 2, size + 2]} />
+        <meshStandardMaterial
+          color={isDark ? '#141428' : '#d0d0d8'}
+          roughness={0.95}
+          metalness={0.01}
+        />
+      </mesh>
+    </group>
   );
 }
 
@@ -320,7 +352,7 @@ function HoverTooltip({ hoveredCell, matrix, activeStats, isDark }: TooltipProps
   const z = row * CELL_SIZE - halfGrid;
   const absR = Math.abs(r);
   const height = absR < 0.05 ? BASE_HEIGHT : BASE_HEIGHT + absR * (MAX_HEIGHT - BASE_HEIGHT);
-  const yPos = r >= 0 ? height + 0.15 : 0.3;
+  const yPos = r >= 0 ? BASE_PLANE_Y + height + 0.15 : BASE_PLANE_Y + 0.2;
 
   return (
     <Html
@@ -409,7 +441,9 @@ function Legend3D({ isDark, totalCells }: Legend3DProps) {
         const absV = Math.abs(v);
         const z = legendStartZ + i * legendSpacing;
         const height = absV < 0.05 ? BASE_HEIGHT : BASE_HEIGHT + absV * (MAX_HEIGHT - BASE_HEIGHT);
-        const yPos = v >= 0 ? height / 2 : (absV < 0.05 ? height / 2 : -height / 2 + BASE_HEIGHT);
+        const yPos = v >= 0
+          ? BASE_PLANE_Y + height / 2
+          : (absV < 0.05 ? BASE_PLANE_Y - height / 2 : BASE_PLANE_Y - height / 2);
         const color = v === 0
           ? new THREE.Color(isDark ? '#3a3a50' : '#c8c8d0')
           : getCellColor(v, isDark);
