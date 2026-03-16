@@ -69,10 +69,6 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
       onClick={onClose}
       style={{
         isolation: 'isolate',
-        width: '100vw',
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
       }}
     >
       {/* Backdrop — covers everything */}
@@ -88,61 +84,73 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
         }}
       />
 
-      {/* Scrollable content area */}
+      {/* Centered modal container — uses inset padding to keep card within viewport */}
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          overflowY: 'auto',
+          position: 'absolute',
+          top: '2rem',
+          left: '2rem',
+          right: '2rem',
+          bottom: '2rem',
           display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'flex-start',
-          padding: '2rem 1rem',
+          flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
-        {/* Modal card */}
+        {/* Modal card — fills the available space */}
         <div
           ref={modalCardRef}
           className="rounded-2xl"
           style={{
             position: 'relative',
-            width: '95vw',
-            maxWidth: '95vw',
+            width: '100%',
+            maxHeight: '100%',
+            display: 'flex',
+            flexDirection: 'column',
             overflow: 'hidden',
             animation: 'modal-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             background: 'var(--neu-bg-raised)',
             boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
           }}
         >
-          {/* Header */}
+          {/* Header — always visible at top */}
           <div
             className="border-b border-white/5"
             style={{
-              position: 'sticky',
-              top: 0,
-              zIndex: 10,
+              flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '1rem 1.5rem',
+              padding: '0.75rem 1.25rem',
               background: 'var(--card-bg, var(--background))',
             }}
           >
-            <h2 className="text-lg font-semibold text-foreground" style={{ fontFamily: 'Space Grotesk' }}>
+            <h2 className="text-base font-semibold text-foreground" style={{ fontFamily: 'Space Grotesk' }}>
               {title}
             </h2>
             <button
               onClick={(e) => { e.stopPropagation(); onClose(); }}
-              className="p-2 rounded-lg neu-raised hover:text-cyan transition-colors"
+              className="p-2 rounded-lg hover:text-cyan transition-colors"
+              style={{
+                background: 'var(--neu-bg-raised)',
+                boxShadow: '2px 2px 6px var(--neu-shadow-dark), -2px -2px 6px var(--neu-shadow-light)',
+              }}
             >
               <X size={18} />
             </button>
           </div>
 
-          {/* Content — key forces remount after animation to ensure proper sizing */}
-          <div style={{ padding: '1.5rem' }} key={animationDone ? 'ready' : 'animating'}>
+          {/* Content — scrollable, fills remaining space */}
+          <div
+            style={{
+              flex: 1,
+              overflow: 'auto',
+              padding: '1.25rem',
+              minHeight: 0,
+            }}
+            key={animationDone ? 'ready' : 'animating'}
+          >
             {children}
           </div>
         </div>
