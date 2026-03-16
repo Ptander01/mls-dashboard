@@ -1,13 +1,13 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useFilters, type PotteryFocus } from '@/contexts/FilterContext';
 import { TEAMS, MATCHES, getTeam } from '@/lib/mlsData';
-import { mutedTeamColor, Extruded3DBar, Extruded3DHorizontalBar, Extruded3DBarWithCeiling } from '@/lib/chartUtils';
+import { mutedTeamColor, Extruded3DBar, Extruded3DHorizontalBar, Extruded3DBarWithCeiling, Extruded3DBarFillRate } from '@/lib/chartUtils';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area, Line, Cell, ReferenceLine
+  AreaChart, Area, Line, LineChart, Cell, ReferenceLine
 } from 'recharts';
 import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home, BarChart3, Percent, Eye, X, Layers } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -206,8 +206,29 @@ export default function Attendance() {
   // CHART COMPONENTS
   // ═══════════════════════════════════════════
 
-  const HomeBarContent = ({ height = 320 }: { height?: number }) => {
+  // Track whether the bar chart has already rendered once to suppress re-animation
+  const barChartRendered = useRef(false);
+  useEffect(() => {
+    // After first render, mark as rendered so subsequent updates skip animation
+    const timer = setTimeout(() => { barChartRendered.current = true; }, 700);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleBarClick = useCallback((d: any) => {
+    if (selectedTeam === d.id) {
+      // Clicking the same bar again clears the selection
+      setSelectedTeam(null);
+      setTrendTeamOverride('');
+    } else {
+      setSelectedTeam(d.id);
+      setTrendTeamOverride(d.id);
+    }
+  }, [selectedTeam]);
+
+  const HomeBarContent = ({ height = 400 }: { height?: number }) => {
     const dataKey = showFillRate ? 'fillPct' : 'avg';
+    // When a team is selected, deemphasize all OTHER bars to white/light gray
+    const deemphasizedFill = isDark ? '#2a2a2a' : '#e8e8e8';
     return (
       <div style={{ height }}>
         <ResponsiveContainer>
@@ -235,21 +256,23 @@ export default function Attendance() {
                 </div>
               );
             }} />
-            {showFillRate && (
-              <ReferenceLine y={100} stroke={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.25)'} strokeDasharray="6 3" strokeWidth={2} strokeOpacity={1}
-                style={{ filter: isDark ? 'drop-shadow(0 1px 2px rgba(255,255,255,0.3)) drop-shadow(0 -1px 0 rgba(255,255,255,0.15))' : 'drop-shadow(0 1px 2px rgba(0,0,0,0.15)) drop-shadow(0 -1px 0 rgba(255,255,255,0.5))' }}
-                label={{ value: '100% Capacity', position: 'right', fill: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)', fontSize: 9, fontFamily: 'JetBrains Mono' }} />
-            )}
             <Bar dataKey={dataKey} radius={[4, 4, 0, 0]} cursor="pointer"
-              onClick={(d: any) => { setSelectedTeam(d.id); setTrendTeamOverride(d.id); }}
+              onClick={(d: any) => handleBarClick(d)}
+              isAnimationActive={!barChartRendered.current}
               animationDuration={600} animationEasing="ease-in-out"
-              shape={showFillRate ? (props: any) => <Extruded3DBar {...props} /> : (props: any) => <Extruded3DBarWithCeiling {...props} />}
+              shape={showFillRate ? (props: any) => <Extruded3DBarFillRate {...props} /> : (props: any) => <Extruded3DBarWithCeiling {...props} />}
             >
-              {homeAvgData.map((d, i) => (
-                <Cell key={i} fill={d.color}
-                  stroke={selectedTeam === d.id ? (isDark ? '#ffffff' : '#333333') : 'none'}
-                  strokeWidth={selectedTeam === d.id ? 2 : 0} />
-              ))}
+              {homeAvgData.map((d, i) => {
+                const isSelected = selectedTeam === d.id;
+                const isDeemphasized = selectedTeam !== null && !isSelected;
+                return (
+                  <Cell key={i}
+                    fill={isDeemphasized ? deemphasizedFill : d.color}
+                    stroke={isSelected ? (isDark ? '#ffffff' : '#333333') : 'none'}
+                    strokeWidth={isSelected ? 2 : 0}
+                  />
+                );
+              })}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -258,17 +281,22 @@ export default function Attendance() {
   };
 
   const WeeklyContent = ({ height = 220 }: { height?: number }) => {
-    const areaColor = effectiveTrendTeam ? trendColor : (isDark ? '#3A6A7A' : '#4A7A8A');
+    const lineColor = effectiveTrendTeam ? trendColor : (isDark ? '#3A6A7A' : '#4A7A8A');
     return (
       <div style={{ height }}>
         <ResponsiveContainer>
-          <AreaChart data={weeklyData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+          <LineChart data={weeklyData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
             <defs>
-              <linearGradient id="attGrad3d" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={areaColor} stopOpacity={isDark ? 0.4 : 0.3} />
-                <stop offset="50%" stopColor={areaColor} stopOpacity={isDark ? 0.15 : 0.1} />
-                <stop offset="100%" stopColor={areaColor} stopOpacity={0.02} />
-              </linearGradient>
+              <filter id="trendLineShadow3d" x="-20%" y="-20%" width="140%" height="160%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+                <feOffset in="blur" dx="0" dy="5" result="offsetBlur" />
+                <feFlood floodColor="rgba(0,0,0,0.5)" result="color" />
+                <feComposite in="color" in2="offsetBlur" operator="in" result="shadow" />
+                <feMerge>
+                  <feMergeNode in="shadow" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
             <XAxis dataKey="week" stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
@@ -284,15 +312,17 @@ export default function Attendance() {
                   position: 'right', fill: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)', fontSize: 9, fontFamily: 'JetBrains Mono'
                 }} />
             )}
-            <Area type="monotone" dataKey="avg" stroke={areaColor} fill="url(#attGrad3d)" strokeWidth={2.5}
+            <Line type="monotone" dataKey="avg" stroke={lineColor} strokeWidth={3}
               name={effectiveTrendTeam ? `${trendTeamObj?.short} Home Attendance` : 'Avg Attendance'}
               animationDuration={500}
-              style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' }}
+              dot={{ r: 3, fill: lineColor, stroke: isDark ? '#1a1a1a' : '#ffffff', strokeWidth: 1.5 }}
+              activeDot={{ r: 5, fill: lineColor, stroke: isDark ? '#ffffff' : '#333333', strokeWidth: 2 }}
+              style={{ filter: 'url(#trendLineShadow3d)' }}
             />
             {!effectiveTrendTeam && (
               <Line type="monotone" dataKey="max" stroke={isDark ? '#8B7B2A' : '#9A8A3A'} strokeWidth={1} strokeDasharray="4 4" dot={false} name="Max" />
             )}
-          </AreaChart>
+          </LineChart>
         </ResponsiveContainer>
       </div>
     );

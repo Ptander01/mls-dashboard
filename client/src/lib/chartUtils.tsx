@@ -274,7 +274,7 @@ export function Extruded3DBar(props: any) {
       <path
         d={`M${x},${y} L${x + extrudeX},${y - extrudeY + 1} L${x + width + extrudeX},${y - extrudeY + 1} L${x + width},${y} Z`}
         fill={highlightColor}
-        fillOpacity={0.35}
+        fillOpacity={0.18}
       />
 
       {/* Top highlight line — bright edge where light catches */}
@@ -298,6 +298,165 @@ export function Extruded3DBar(props: any) {
         fill={highlightColor}
         fillOpacity={0.2}
       />
+    </g>
+  );
+}
+
+/**
+ * 3D Extruded Bar for Fill Rate mode — Same offset as Extruded3DBarWithCeiling
+ * so the bottom face sits ON the X axis, plus braille dots at 100% capacity line.
+ */
+export function Extruded3DBarFillRate(props: any) {
+  const { x, y, width, height: h, fill, payload } = props;
+  if (!h || h <= 0 || !width || width <= 0) return null;
+
+  const baseColor = fill || '#4A4A5A';
+  const id = `barfr3d_${gradientCounter++}`;
+  const highlightColor = lighten(baseColor, 0.4);
+  const shadowColor = darken(baseColor, 0.5);
+  const sideColor = darken(baseColor, 0.35);
+
+  const extrudeX = 3;
+  const extrudeY = 3;
+
+  // Offset bar upward so the 3D bottom face rests ON the X axis line
+  const adjustedY = y - extrudeY;
+  const adjustedH = h;
+
+  // Calculate 100% capacity line position
+  const fillPct = payload?.fillPct || 0;
+  const barScale = fillPct > 0 ? adjustedH / fillPct : 0;
+  const adjustedYAxis = adjustedY + adjustedH;
+  const capY100 = barScale > 0 ? adjustedYAxis - (100 * barScale) : 0;
+
+  return (
+    <g>
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={highlightColor} stopOpacity={0.95} />
+          <stop offset="8%" stopColor={lighten(baseColor, 0.15)} stopOpacity={0.92} />
+          <stop offset="50%" stopColor={baseColor} stopOpacity={0.88} />
+          <stop offset="92%" stopColor={darken(baseColor, 0.15)} stopOpacity={0.88} />
+          <stop offset="100%" stopColor={shadowColor} stopOpacity={0.92} />
+        </linearGradient>
+        <filter id={`${id}_shadow`} x="-30%" y="-15%" width="170%" height="150%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="4" />
+        </filter>
+        {/* Braille dot shadow filter */}
+        <filter id={`${id}_dotShadow`} x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
+        </filter>
+        {/* Braille dot lighting gradient */}
+        <radialGradient id={`${id}_dotGrad`} cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity={0.95} />
+          <stop offset="40%" stopColor="#e8e4dc" stopOpacity={0.85} />
+          <stop offset="75%" stopColor="#b8b4ac" stopOpacity={0.7} />
+          <stop offset="100%" stopColor="#888480" stopOpacity={0.6} />
+        </radialGradient>
+      </defs>
+
+      {/* Cast shadow */}
+      <rect
+        x={x + SHADOW.offsetX}
+        y={adjustedY + SHADOW.offsetY}
+        width={width + 2}
+        height={adjustedH + 2}
+        rx={3}
+        fill="rgba(0,0,0,0.5)"
+        filter={`url(#${id}_shadow)`}
+      />
+      {/* Ambient ground shadow */}
+      <rect
+        x={x + 2}
+        y={adjustedY + adjustedH - 2}
+        width={width}
+        height={6}
+        rx={3}
+        fill="rgba(0,0,0,0.2)"
+        filter={`url(#${id}_shadow)`}
+      />
+
+      {/* Right side face */}
+      <path
+        d={`M${x + width},${adjustedY} L${x + width + extrudeX},${adjustedY + extrudeY} L${x + width + extrudeX},${adjustedY + adjustedH + extrudeY} L${x + width},${adjustedY + adjustedH} Z`}
+        fill={sideColor}
+        fillOpacity={0.7}
+      />
+
+      {/* Bottom face */}
+      <path
+        d={`M${x},${adjustedY + adjustedH} L${x + extrudeX},${adjustedY + adjustedH + extrudeY} L${x + width + extrudeX},${adjustedY + adjustedH + extrudeY} L${x + width},${adjustedY + adjustedH} Z`}
+        fill={darken(baseColor, 0.5)}
+        fillOpacity={0.6}
+      />
+
+      {/* Front face */}
+      <rect x={x} y={adjustedY} width={width} height={adjustedH} rx={2} ry={2} fill={`url(#${id})`} />
+
+      {/* Top face — reduced opacity to minimize shadow artifact */}
+      <path
+        d={`M${x},${adjustedY} L${x + extrudeX},${adjustedY - extrudeY + 1} L${x + width + extrudeX},${adjustedY - extrudeY + 1} L${x + width},${adjustedY} Z`}
+        fill={highlightColor}
+        fillOpacity={0.18}
+      />
+
+      {/* Top highlight */}
+      <rect x={x + 1} y={adjustedY} width={width - 2} height={Math.min(2.5, adjustedH * 0.06)} rx={1.5}
+        fill={highlightColor} fillOpacity={0.55} />
+
+      {/* Left highlight edge */}
+      <rect
+        x={x}
+        y={adjustedY + 2}
+        width={Math.min(1.5, width * 0.08)}
+        height={adjustedH - 4}
+        rx={0.75}
+        fill={highlightColor}
+        fillOpacity={0.2}
+      />
+
+      {/* 100% Capacity braille dots */}
+      {barScale > 0 && (() => {
+        const dotRadius = 2.2;
+        const dotSpacing = 7;
+        const lineStart = x - 3;
+        const lineEnd = x + width + 3;
+        const lineLen = lineEnd - lineStart;
+        const dotCount = Math.max(2, Math.floor(lineLen / dotSpacing));
+        const actualSpacing = lineLen / dotCount;
+        const dots = [];
+        for (let di = 0; di <= dotCount; di++) {
+          const dotX = lineStart + di * actualSpacing;
+          dots.push(
+            <React.Fragment key={`dot_${di}`}>
+              {/* Cast shadow */}
+              <ellipse
+                cx={dotX + 1.5}
+                cy={capY100 + 2}
+                rx={dotRadius + 0.8}
+                ry={dotRadius * 0.5 + 0.5}
+                fill="rgba(0,0,0,0.35)"
+                filter={`url(#${id}_dotShadow)`}
+              />
+              {/* 3D dot */}
+              <circle
+                cx={dotX}
+                cy={capY100}
+                r={dotRadius}
+                fill={`url(#${id}_dotGrad)`}
+              />
+              {/* Specular highlight */}
+              <circle
+                cx={dotX - dotRadius * 0.3}
+                cy={capY100 - dotRadius * 0.3}
+                r={dotRadius * 0.35}
+                fill="rgba(255,255,255,0.7)"
+              />
+            </React.Fragment>
+          );
+        }
+        return <>{dots}</>;
+      })()}
     </g>
   );
 }
@@ -807,11 +966,11 @@ export function Extruded3DBarWithCeiling(props: any) {
       {/* Front face */}
       <rect x={x} y={adjustedY} width={width} height={adjustedH} rx={2} ry={2} fill={`url(#${id})`} />
 
-      {/* Top face */}
+      {/* Top face — reduced opacity to minimize shadow artifact */}
       <path
         d={`M${x},${adjustedY} L${x + extrudeX},${adjustedY - extrudeY + 1} L${x + width + extrudeX},${adjustedY - extrudeY + 1} L${x + width},${adjustedY} Z`}
         fill={highlightColor}
-        fillOpacity={0.3}
+        fillOpacity={0.18}
       />
 
       {/* Top highlight */}
