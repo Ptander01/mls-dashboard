@@ -124,22 +124,26 @@ export default function TeamBudget() {
   );
 
   return (
-    <div className="space-y-4 mt-4">
-      {/* Tab Description / Insight Headline */}
-      <div className="px-1">
+    <div className="space-y-6 mt-4">
+      {/* Tab Header Card — elevated command center */}
+      <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
         <InsightHeadline
           headline={headline}
           isAnalyzing={isAnalyzing}
           staticTitle={<><span className="font-semibold text-foreground">Team Budget</span> — Analyze how each MLS club allocates its salary budget across Designated Players, TAM, and regular contracts. Click a bar to drill into that team's positional salary breakdown and top earners. Use this to identify which teams invest heavily in attack vs. defense and spot potential value signings.</>}
           isDark={isDark}
         />
-      </div>
+        <InsightPanel insights={insights} isDark={isDark} onToggle={setIsAnalyzing} />
+      </NeuCard>
 
-      {/* Insight Panel */}
-      <InsightPanel insights={insights} isDark={isDark} onToggle={setIsAnalyzing} />
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* League-Wide Totals */}
+      <div>
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <div className="w-1 h-4 rounded-full bg-amber" style={{ boxShadow: '0 0 6px var(--amber)' }} />
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>League-Wide Totals</h2>
+          <span className="text-[10px] text-muted-foreground/60 ml-1">Aggregate salary allocation across all clubs</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <NeuCard delay={0.05} glow="amber" className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <DollarSign size={14} className="text-amber" />
@@ -168,12 +172,16 @@ export default function TeamBudget() {
           </div>
           <AnimatedCounter value={filteredTeams.length} className="text-2xl text-purple-400" />
         </NeuCard>
+        </div>
       </div>
 
       {/* Budget Breakdown */}
       <NeuCard delay={0.15} className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Team Salary Breakdown ($ Millions)</h3>
+          <div>
+            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Team Salary Breakdown ($ Millions)</h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Stacked bar chart — click a team to drill into their positional salary split</p>
+          </div>
           <div className="flex items-center gap-1">
             <CardInsightToggle isOpen={showBudgetBarInsights} onToggle={() => setShowBudgetBarInsights(v => !v)} isDark={isDark} />
             <MaximizeButton onClick={() => setMaximized('budget')} />
@@ -202,11 +210,14 @@ export default function TeamBudget() {
         </div>
       </NeuCard>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Salary Pie */}
         <NeuCard delay={0.25} className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Team Salary by Position</h3>
+            <div>
+              <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Team Salary by Position</h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Positional salary split — select a team to see how they invest by role</p>
+            </div>
             <div className="flex items-center gap-1">
               <CardInsightToggle isOpen={showPieInsights} onToggle={() => setShowPieInsights(v => !v)} isDark={isDark} />
               <MaximizeButton onClick={() => setMaximized('salary')} />
@@ -242,9 +253,12 @@ export default function TeamBudget() {
         {/* Top Earners */}
         <NeuCard delay={0.35} className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-              {selTeam ? `${selTeam.short} — Top Earners` : 'Top Earners (select team)'}
-            </h3>
+            <div>
+              <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
+                {selTeam ? `${selTeam.short} — Top Earners` : 'Top Earners (select team)'}
+              </h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Highest-paid players on the selected roster</p>
+            </div>
             <div className="flex items-center gap-1">
               <CardInsightToggle isOpen={showEarnersInsights} onToggle={() => setShowEarnersInsights(v => !v)} isDark={isDark} />
               {selTeam && <button onClick={() => setSelectedTeam(null)} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>}

@@ -1004,16 +1004,22 @@ export default function TravelMap() {
   }, []);
 
   return (
-    <div className="space-y-4 mt-4">
-      {/* Tab Description */}
-      <div className="px-1">
+    <div className="space-y-6 mt-4">
+      {/* Tab Header Card — elevated command center */}
+      <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
         <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
           <span className="font-semibold text-foreground">Travel Map</span> — Visualize the travel burden across MLS clubs. The interactive map shows each team's location and travel routes. Select a team to see their away schedule, total miles traveled, and longest trips. Conference-heavy schedules mean Western teams often face significantly more travel than Eastern counterparts.
         </p>
-      </div>
+      </NeuCard>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* League-Wide Totals */}
+      <div>
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <div className="w-1 h-4 rounded-full bg-cyan" style={{ boxShadow: '0 0 6px var(--cyan)' }} />
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>League-Wide Totals</h2>
+          <span className="text-[10px] text-muted-foreground/60 ml-1">Aggregate travel distances across all teams</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <NeuCard delay={0.05} glow="cyan" className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Route size={14} className="text-cyan" />
@@ -1042,14 +1048,18 @@ export default function TravelMap() {
           </div>
           <AnimatedCounter value={weekMatches.length} className="text-2xl text-purple-400" />
         </NeuCard>
+        </div>
       </div>
 
       {/* 3D Map */}
       <NeuCard delay={0.15} className="p-4 overflow-hidden">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-            League Travel Map — Matchweek {currentWeek}
-          </h3>
+          <div>
+            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
+              League Travel Map — Matchweek {currentWeek}
+            </h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Interactive 3D map — drag to orbit, scroll to zoom, click a team to trace their routes</p>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={resetCamera}

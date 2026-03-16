@@ -283,13 +283,13 @@ export default function PitchMatch() {
   );
 
   return (
-    <div className="space-y-4 mt-4">
-      {/* Tab Description */}
-      <div className="px-1">
+    <div className="space-y-6 mt-4">
+      {/* Tab Header Card — elevated command center */}
+      <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
         <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
           <span className="font-semibold text-foreground">Pitch Match</span> — Dive into tactical match data on a virtual pitch. The heatmap shows player positioning intensity, the shot map plots every attempt with xG-scaled markers (goals highlighted), and the passing network reveals team shape and key link-up play. Select a team to see their tactical fingerprint.
         </p>
-      </div>
+      </NeuCard>
 
       {/* View Selector */}
       <div className="flex items-center gap-3">
@@ -311,7 +311,7 @@ export default function PitchMatch() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         {/* Team/Player Selector */}
         <NeuCard delay={0.05} className="p-4 lg:col-span-1">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Select Team</h4>

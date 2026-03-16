@@ -461,22 +461,26 @@ export default function PlayerStats() {
   );
 
   return (
-    <div className="space-y-4 mt-4">
-      {/* Tab Description / Insight Headline */}
-      <div className="px-1">
+    <div className="space-y-6 mt-4">
+      {/* Tab Header Card — elevated command center */}
+      <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
         <InsightHeadline
           headline={headline}
           isAnalyzing={isAnalyzing}
           staticTitle={<><span className="font-semibold text-foreground">Player Stats</span> — Compare individual player performance across the 2025 MLS season. Use the scatter plot to explore relationships between any two metrics (e.g., Shots vs Goals). Toggle between team and position coloring, and use the trend line to gauge correlation strength. Click any player row or dot to view their full performance radar.</>}
           isDark={isDark}
         />
-      </div>
+        <InsightPanel insights={insights} isDark={isDark} onToggle={setIsAnalyzing} />
+      </NeuCard>
 
-      {/* Insight Panel */}
-      <InsightPanel insights={insights} isDark={isDark} onToggle={setIsAnalyzing} />
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* League-Wide Totals */}
+      <div>
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <div className="w-1 h-4 rounded-full bg-cyan" style={{ boxShadow: '0 0 6px var(--cyan)' }} />
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>League-Wide Totals</h2>
+          <span className="text-[10px] text-muted-foreground/60 ml-1">Aggregate stats across all filtered players</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <NeuCard delay={0.05} glow="cyan" className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Crosshair size={14} className="text-cyan" />
@@ -505,16 +509,20 @@ export default function PlayerStats() {
           </div>
           <AnimatedCounter value={avgShotAcc} decimals={1} suffix="%" className="text-2xl text-purple-400" />
         </NeuCard>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Scatter Plot with Axis Selectors, Color Mode, and Trend Line */}
         <NeuCard delay={0.15} className="p-4 lg:col-span-2">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-1">
-            <h3 className="text-sm font-semibold flex items-center gap-2" style={{ fontFamily: 'Space Grotesk' }}>
-              <Crosshair size={14} className="text-cyan" />
-              Player Comparison
-            </h3>
+            <div>
+              <h3 className="text-sm font-semibold flex items-center gap-2" style={{ fontFamily: 'Space Grotesk' }}>
+                <Crosshair size={14} className="text-cyan" />
+                Player Comparison
+              </h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5 ml-5">Plot any two metrics to find correlations and outliers across the league</p>
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
               <AxisDropdown value={scatterX} onChange={setScatterX} label="X" />
               <AxisDropdown value={scatterY} onChange={setScatterY} label="Y" />
@@ -546,7 +554,10 @@ export default function PlayerStats() {
         {/* Top Scorers */}
         <NeuCard delay={0.25} className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Top Scorers</h3>
+            <div>
+              <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Top Scorers</h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Season goal leaders ranked by total goals scored</p>
+            </div>
             <div className="flex items-center gap-2">
               <CardInsightToggle isOpen={showScorersInsights} onToggle={() => setShowScorersInsights(v => !v)} isDark={isDark} compact />
               <MaximizeButton onClick={() => setMaximized('scorers')} />
@@ -627,7 +638,10 @@ export default function PlayerStats() {
       {/* Full Player Table */}
       <NeuCard delay={0.35} className="overflow-hidden">
         <div className="p-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--table-border)' }}>
-          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Player Database</h3>
+          <div>
+            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Player Database</h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Full roster table — sort by any column, click a row to view the player radar</p>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground font-mono">{sorted.length} players</span>
             <CardInsightToggle isOpen={showTableInsights} onToggle={() => setShowTableInsights(v => !v)} isDark={isDark} compact />
