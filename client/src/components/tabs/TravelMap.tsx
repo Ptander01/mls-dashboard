@@ -1007,7 +1007,7 @@ export default function TravelMap() {
     <div className="space-y-6 mt-4">
       {/* Tab Header Card — elevated command center */}
       <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
-        <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
           <span className="font-semibold text-foreground">Travel Map</span> — Visualize the travel burden across MLS clubs. The interactive map shows each team's location and travel routes. Select a team to see their away schedule, total miles traveled, and longest trips. Conference-heavy schedules mean Western teams often face significantly more travel than Eastern counterparts.
         </p>
       </NeuCard>

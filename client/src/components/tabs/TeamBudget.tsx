@@ -10,8 +10,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { DollarSign, TrendingUp, Users, Trophy } from 'lucide-react';
-import { InsightPanel, InsightHeadline } from '@/components/InsightPanel';
-import { teamBudgetHeadline, teamBudgetInsights, budgetBarCardInsights, salaryPieCardInsights, topEarnersCardInsights } from '@/lib/insightEngine';
+import { InsightPanel } from '@/components/InsightPanel';
+import { teamBudgetInsights, budgetBarCardInsights, salaryPieCardInsights, topEarnersCardInsights } from '@/lib/insightEngine';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
 
 export default function TeamBudget() {
@@ -52,11 +52,6 @@ export default function TeamBudget() {
   const maxBudget = Math.max(...budgetData.map(t => t.total), 0);
 
   /* Insight engine */
-  const headline = useMemo(() =>
-    teamBudgetHeadline(filteredTeams, filteredPlayers),
-    [filteredTeams, filteredPlayers]
-  );
-
   const insights = useMemo(() =>
     teamBudgetInsights(filteredTeams, filteredPlayers),
     [filteredTeams, filteredPlayers]
@@ -127,12 +122,9 @@ export default function TeamBudget() {
     <div className="space-y-6 mt-4">
       {/* Tab Header Card — elevated command center */}
       <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
-        <InsightHeadline
-          headline={headline}
-          isAnalyzing={isAnalyzing}
-          staticTitle={<><span className="font-semibold text-foreground">Team Budget</span> — Analyze how each MLS club allocates its salary budget across Designated Players, TAM, and regular contracts. Click a bar to drill into that team's positional salary breakdown and top earners. Use this to identify which teams invest heavily in attack vs. defense and spot potential value signings.</>}
-          isDark={isDark}
-        />
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <span className="font-semibold text-foreground">Team Budget</span> — Analyze how each MLS club allocates its salary budget across Designated Players, TAM, and regular contracts. Click a bar to drill into that team's positional salary breakdown and top earners. Use this to identify which teams invest heavily in attack vs. defense and spot potential value signings.
+        </p>
         <InsightPanel insights={insights} isDark={isDark} onToggle={setIsAnalyzing} />
       </NeuCard>
 

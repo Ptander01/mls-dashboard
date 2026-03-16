@@ -6,13 +6,13 @@
  *   Renders as a thin bar (~14px for full, ~8px for compact).
  * When active: rises prominently above surrounding content with deep,
  *   long-casting shadows that spill onto the environment beneath it.
- *   Strong cyan accent border glow and top-edge highlight reinforce
- *   the "floating above the data" metaphor.
+ *   No cyan border glow — the glow effect is on the sparkle icon in
+ *   the InsightPanel header instead.
  *
  * Shadow depth comparison:
  *   neu-flat:    6px/6px/12px   (base level)
  *   neu-raised:  8px/8px/16px   (standard cards)
- *   THIS active: 18px/18px/40px + translateY(-6px) + cyan accent glow
+ *   THIS active: 18px/18px/40px + translateY(-6px)
  */
 
 import { ReactNode, useRef, useState, useEffect } from 'react';
@@ -54,7 +54,7 @@ export function NeuInsightContainer({
   // Depression height (the thin groove when collapsed)
   const depressionHeight = isCompact ? 8 : 14;
 
-  // ── Shadow definitions — dramatically deeper for active state ──
+  // ── Shadow definitions — deep neumorphic elevation, NO cyan glow ──
   const activeShadow = isDark
     ? [
         // Primary deep shadow — long cast below
@@ -65,9 +65,6 @@ export function NeuInsightContainer({
         // Inner top highlight — surface light catch
         'inset 0 1px 0 rgba(255,255,255,0.08)',
         'inset 0 -1px 0 rgba(0,0,0,0.3)',
-        // Cyan accent glow — stronger presence
-        '0 0 30px rgba(0,212,255,0.08)',
-        '0 4px 20px rgba(0,212,255,0.04)',
       ].join(', ')
     : [
         // Primary deep shadow — long cast below
@@ -78,9 +75,6 @@ export function NeuInsightContainer({
         // Inner top highlight — glossy surface
         'inset 0 1px 0 rgba(255,255,255,0.85)',
         'inset 0 -1px 0 rgba(166,170,190,0.12)',
-        // Cyan accent glow
-        '0 0 30px rgba(8,145,178,0.06)',
-        '0 4px 20px rgba(8,145,178,0.03)',
       ].join(', ');
 
   const depressionShadow = isDark
@@ -91,10 +85,10 @@ export function NeuInsightContainer({
   const activeBg = isDark ? '#232340' : '#ebedf6';
   const depressionBg = isDark ? '#141422' : '#d8d8e2';
 
-  // Stronger border when active
+  // Neutral border — no cyan accent
   const activeBorder = isDark
-    ? '1.5px solid rgba(0,212,255,0.2)'
-    : '1.5px solid rgba(8,145,178,0.15)';
+    ? '1.5px solid rgba(255,255,255,0.06)'
+    : '1.5px solid rgba(0,0,0,0.06)';
   const depressionBorder = isDark
     ? '1px solid rgba(255,255,255,0.02)'
     : '1px solid rgba(0,0,0,0.03)';
@@ -127,21 +121,6 @@ export function NeuInsightContainer({
           border: isOpen ? activeBorder : depressionBorder,
         }}
       >
-        {/* Top edge highlight — pronounced light catch on the elevated surface */}
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.15, duration: 0.4 }}
-            className="absolute inset-x-0 top-0 h-[2px] pointer-events-none"
-            style={{
-              background: isDark
-                ? 'linear-gradient(90deg, transparent 5%, rgba(0,212,255,0.25) 30%, rgba(0,212,255,0.35) 50%, rgba(0,212,255,0.25) 70%, transparent 95%)'
-                : 'linear-gradient(90deg, transparent 5%, rgba(8,145,178,0.2) 30%, rgba(8,145,178,0.28) 50%, rgba(8,145,178,0.2) 70%, transparent 95%)',
-            }}
-          />
-        )}
-
         {/* Bottom edge shadow line — reinforces the floating effect */}
         {isOpen && !isCompact && (
           <motion.div
@@ -153,21 +132,6 @@ export function NeuInsightContainer({
               background: isDark
                 ? 'linear-gradient(90deg, transparent 10%, rgba(0,0,0,0.4) 50%, transparent 90%)'
                 : 'linear-gradient(90deg, transparent 10%, rgba(0,0,0,0.08) 50%, transparent 90%)',
-            }}
-          />
-        )}
-
-        {/* Left edge highlight */}
-        {isOpen && !isCompact && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.3 }}
-            className="absolute inset-y-0 left-0 w-[1px] pointer-events-none"
-            style={{
-              background: isDark
-                ? 'linear-gradient(180deg, rgba(0,212,255,0.15) 0%, rgba(255,255,255,0.04) 50%, transparent 100%)'
-                : 'linear-gradient(180deg, rgba(8,145,178,0.12) 0%, rgba(255,255,255,0.6) 50%, transparent 100%)',
             }}
           />
         )}

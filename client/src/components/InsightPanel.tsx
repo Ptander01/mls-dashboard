@@ -114,15 +114,44 @@ export function InsightPanel({ insights, isDark, className = '', onToggle }: Ins
                 }}
               >
                 <div
-                  className="flex items-center justify-center w-6 h-6 rounded-md"
+                  className="relative flex items-center justify-center w-8 h-8 rounded-lg"
                   style={{
-                    background: isDark ? 'rgba(0,212,255,0.1)' : 'rgba(8,145,178,0.08)',
-                    boxShadow: isDark
-                      ? 'inset 1px 1px 2px rgba(0,0,0,0.3), 1px 1px 2px rgba(0,212,255,0.05)'
-                      : 'inset 1px 1px 2px rgba(0,0,0,0.04), 1px 1px 2px rgba(8,145,178,0.03)',
+                    background: isDark ? 'rgba(0,212,255,0.08)' : 'rgba(8,145,178,0.06)',
                   }}
                 >
-                  <Sparkles size={12} style={{ color: 'var(--cyan)' }} />
+                  {/* Bloom glow layers radiating from the icon */}
+                  <div
+                    className="absolute inset-0 rounded-lg pointer-events-none"
+                    style={{
+                      boxShadow: isDark
+                        ? [
+                            '0 0 12px rgba(0,212,255,0.4)',
+                            '0 0 28px rgba(0,212,255,0.2)',
+                            '0 0 50px rgba(0,212,255,0.1)',
+                          ].join(', ')
+                        : [
+                            '0 0 12px rgba(8,145,178,0.35)',
+                            '0 0 28px rgba(8,145,178,0.15)',
+                            '0 0 50px rgba(8,145,178,0.08)',
+                          ].join(', '),
+                    }}
+                  />
+                  {/* Soft radial bloom behind the icon */}
+                  <div
+                    className="absolute pointer-events-none"
+                    style={{
+                      width: 48,
+                      height: 48,
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      background: isDark
+                        ? 'radial-gradient(circle, rgba(0,212,255,0.15) 0%, rgba(0,212,255,0.04) 50%, transparent 75%)'
+                        : 'radial-gradient(circle, rgba(8,145,178,0.12) 0%, rgba(8,145,178,0.03) 50%, transparent 75%)',
+                      borderRadius: '50%',
+                    }}
+                  />
+                  <Sparkles size={14} style={{ color: 'var(--cyan)', position: 'relative', zIndex: 1, filter: isDark ? 'drop-shadow(0 0 4px rgba(0,212,255,0.6))' : 'drop-shadow(0 0 4px rgba(8,145,178,0.5))' }} />
                 </div>
                 <div>
                   <p
@@ -138,7 +167,7 @@ export function InsightPanel({ insights, isDark, className = '', onToggle }: Ins
                   <p
                     className="text-[10px] mt-0.5"
                     style={{
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: 'Space Grotesk, sans-serif',
                       color: 'var(--muted-foreground)',
                     }}
                   >
@@ -286,7 +315,7 @@ export function InsightHeadline({ headline, isAnalyzing, staticTitle, isDark }: 
       </AnimatePresence>
       <div
         className="text-[11px] text-muted-foreground leading-relaxed"
-        style={{ fontFamily: 'Inter, sans-serif' }}
+        style={{ fontFamily: 'Space Grotesk, sans-serif' }}
       >
         {staticTitle}
       </div>

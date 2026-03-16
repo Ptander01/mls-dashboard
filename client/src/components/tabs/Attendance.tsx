@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home, BarChart3, Percent, Eye, X, Layers } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { InsightPanel, InsightHeadline } from '@/components/InsightPanel';
+import { InsightPanel } from '@/components/InsightPanel';
 import { attendanceHeadline, attendanceInsights, attendanceTrendCardInsights, capacityFillCardInsights, gravPullCardInsights, gravitationalPullHeadline } from '@/lib/insightEngine';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
 
@@ -179,7 +179,7 @@ export default function Attendance() {
   }, [selectedTeam, isDark]);
 
   /* Insight engine */
-  const headline = useMemo(() =>
+  const _headline = useMemo(() =>
     attendanceHeadline(filteredMatches, filteredTeams),
     [filteredMatches, filteredTeams]
   );
@@ -555,12 +555,9 @@ export default function Attendance() {
     <div className="space-y-6 mt-4">
       {/* Tab Header Card — elevated command center */}
       <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
-        <InsightHeadline
-          headline={headline}
-          isAnalyzing={isAnalyzing}
-          staticTitle={<><span className="font-semibold text-foreground">Attendance</span> — Explore match-day attendance across all MLS venues. The bar chart ranks teams by average home attendance (toggle to fill rate to see stadium utilization). The dotted white line shows stadium capacity. The trend chart tracks weekly attendance patterns, and the drill-down panels reveal how specific away teams affect turnout.</>}
-          isDark={isDark}
-        />
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <span className="font-semibold text-foreground">Attendance</span> — Explore match-day attendance across all MLS venues. The bar chart ranks teams by average home attendance (toggle to fill rate to see stadium utilization). The dotted white line shows stadium capacity. The trend chart tracks weekly attendance patterns, and the drill-down panels reveal how specific away teams affect turnout.
+        </p>
         <InsightPanel insights={attInsights} isDark={isDark} onToggle={setIsAnalyzing} />
       </NeuCard>
 

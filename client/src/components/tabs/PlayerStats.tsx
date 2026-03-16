@@ -12,8 +12,8 @@ import {
   ReferenceLine
 } from 'recharts';
 import { ArrowUpDown, TrendingUp, Crosshair, Shield, Zap, Palette } from 'lucide-react';
-import { InsightPanel, InsightHeadline } from '@/components/InsightPanel';
-import { playerStatsHeadline, playerStatsInsights, computeOutliers, scatterCardInsights, topScorersCardInsights, playerRadarCardInsights, playerTableCardInsights } from '@/lib/insightEngine';
+import { InsightPanel } from '@/components/InsightPanel';
+import { playerStatsInsights, computeOutliers, scatterCardInsights, topScorersCardInsights, playerRadarCardInsights, playerTableCardInsights } from '@/lib/insightEngine';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
 import StatsPlayground from '@/components/StatsPlayground';
 
@@ -89,11 +89,6 @@ export default function PlayerStats() {
   const [showScorersInsights, setShowScorersInsights] = useState(false);
   const [showRadarInsights, setShowRadarInsights] = useState(false);
   const [showTableInsights, setShowTableInsights] = useState(false);
-
-  const headline = useMemo(() =>
-    playerStatsHeadline(filteredPlayers, scatterX, scatterY),
-    [filteredPlayers, scatterX, scatterY]
-  );
 
   const insights = useMemo(() =>
     playerStatsInsights(filteredPlayers),
@@ -464,12 +459,9 @@ export default function PlayerStats() {
     <div className="space-y-6 mt-4">
       {/* Tab Header Card — elevated command center */}
       <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
-        <InsightHeadline
-          headline={headline}
-          isAnalyzing={isAnalyzing}
-          staticTitle={<><span className="font-semibold text-foreground">Player Stats</span> — Compare individual player performance across the 2025 MLS season. Use the scatter plot to explore relationships between any two metrics (e.g., Shots vs Goals). Toggle between team and position coloring, and use the trend line to gauge correlation strength. Click any player row or dot to view their full performance radar.</>}
-          isDark={isDark}
-        />
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <span className="font-semibold text-foreground">Player Stats</span> — Compare individual player performance across the 2025 MLS season. Use the scatter plot to explore relationships between any two metrics (e.g., Shots vs Goals). Toggle between team and position coloring, and use the trend line to gauge correlation strength. Click any player row or dot to view their full performance radar.
+        </p>
         <InsightPanel insights={insights} isDark={isDark} onToggle={setIsAnalyzing} />
       </NeuCard>
 
