@@ -208,7 +208,7 @@ export default function Attendance() {
             <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
             <XAxis dataKey="name" stroke="var(--table-header-color)" fontSize={9} tickLine={false} angle={-45} textAnchor="end" interval={0} />
             <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false}
-              domain={showFillRate ? [0, 120] : [0, 'auto']}
+              domain={showFillRate ? [0, Math.ceil(Math.max(...homeAvgData.map(d => d.fillPct), 100) * 1.15)] : [0, 'auto']}
               tickFormatter={showFillRate ? (v: number) => `${v}%` : undefined}
             />
             <Tooltip content={({ payload }) => {
@@ -294,7 +294,7 @@ export default function Attendance() {
   const GravitationalPullContent = ({ height = 700 }: { height?: number }) => (
     <div style={{ height }}>
       <ResponsiveContainer>
-        <BarChart data={gravitationalPull} layout="vertical" margin={{ top: 5, right: 30, bottom: 5, left: 5 }}>
+        <BarChart data={gravitationalPull} layout="vertical" margin={{ top: 5, right: 60, bottom: 5, left: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
           <XAxis type="number" stroke="var(--table-header-color)" fontSize={10} tickLine={false}
             tickFormatter={(v: number) => v >= 0 ? `+${(v/1000).toFixed(0)}k` : `${(v/1000).toFixed(0)}k`} />
