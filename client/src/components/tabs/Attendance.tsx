@@ -355,11 +355,14 @@ export default function Attendance() {
     const bottomFacePath = `M${firstPt.x},${baseline} L${firstPt.x + extrudeDepth},${baseline + extrudeDepth} L${lastPt.x + extrudeDepth},${baseline + extrudeDepth} L${lastPt.x},${baseline} Z`;
 
     // Top bevel highlight: a thin strip along the top curve to simulate rounded edge
-    // We create a second curve offset slightly upward
-    const bevelPts = pts.map(p => ({ x: p.x, y: p.y - 1.5 }));
+    // We create a second curve offset slightly upward and use the reverse spline for the bottom edge
+    const bevelPts = pts.map(p => ({ x: p.x, y: p.y - 1.2 }));
     const bevelCurve = catmullRomPath(bevelPts);
-    // The bevel strip is the area between the original top curve and the bevel curve
-    const bevelPath = `${bevelCurve} L${lastPt.x},${pts[pts.length - 1].y} ${[...pts].reverse().map((p, i) => `${i === 0 ? '' : ''}L${p.x},${p.y}`).join(' ')} Z`;
+    // Build reverse spline path for the original top curve (going right-to-left)
+    const reversePts = [...pts].reverse();
+    const reverseTopCurve = catmullRomPath(reversePts);
+    // The bevel strip is the area between the bevel curve (top) and the original top curve (bottom)
+    const bevelPath = `${bevelCurve} L${lastPt.x},${pts[pts.length - 1].y} ${reverseTopCurve.replace(/^M/, 'L')} Z`;
 
     if (isGhost) {
       // Ghost mode: just a subtle outline with very faint fill
@@ -394,8 +397,8 @@ export default function Attendance() {
           </filter>
           {/* Top bevel highlight gradient */}
           <linearGradient id={`${id}_bevel`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lighten(areaColor, 0.5)} stopOpacity={0.6} />
-            <stop offset="100%" stopColor={topColor} stopOpacity={0.1} />
+            <stop offset="0%" stopColor={lighten(areaColor, 0.35)} stopOpacity={0.4} />
+            <stop offset="100%" stopColor={topColor} stopOpacity={0.05} />
           </linearGradient>
         </defs>
 
@@ -411,8 +414,8 @@ export default function Attendance() {
         {/* Main area fill — the front face */}
         <path d={areaPath} fill={`url(#${id}_grad)`} />
 
-        {/* Top bevel highlight — smooth rounded edge effect */}
-        <path d={bevelPath} fill={`url(#${id}_bevel)`} />
+        {/* Top bevel highlight — smooth rounded edge effect (matte, subtle) */}
+        <path d={bevelPath} fill={`url(#${id}_bevel)`} opacity={0.5} />
 
         {/* Top edge line — subtle, defines the ridge */}
         <path d={topCurve} fill="none" stroke={topColor} strokeWidth={1.2} strokeOpacity={0.6} />
@@ -440,7 +443,7 @@ export default function Attendance() {
   };
 
   // ─── Custom 3D Braille Dots Reference Line Renderer ───
-  // ═══ VARIABLE BRAILLE LINE — follows per-week data curve ═══
+  // ═══ VARIABLE BRAILLE LINE — follows per-week data curve with smooth Catmull-Rom spline ═══
   const BrailleVariableLine = ({ points, label, labelColor, dotColor }: {
     points: Array<{ x: number; y: number }>;
     label: string; labelColor: string; dotColor?: string;
@@ -450,20 +453,35 @@ export default function Attendance() {
     const minSpacing = 8;
     const id = `braille_var_${Math.random().toString(36).slice(2, 8)}`;
 
-    // Interpolate points along the curve to get evenly-spaced dots
-    const allDots: Array<{ x: number; y: number }> = [];
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i];
-      const p1 = points[i + 1];
-      const segLen = Math.sqrt((p1.x - p0.x) ** 2 + (p1.y - p0.y) ** 2);
-      const numDots = Math.max(1, Math.floor(segLen / minSpacing));
-      for (let j = 0; j < numDots; j++) {
-        const t = j / numDots;
-        allDots.push({ x: p0.x + t * (p1.x - p0.x), y: p0.y + t * (p1.y - p0.y) });
+    // Catmull-Rom spline interpolation for smooth curves between data points
+    const catmullRomInterpolate = (pts: Array<{ x: number; y: number }>, tension = 0.35): Array<{ x: number; y: number }> => {
+      if (pts.length < 2) return pts;
+      const result: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[Math.max(0, i - 1)];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[Math.min(pts.length - 1, i + 2)];
+        // Estimate segment arc length for dot count
+        const segLen = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
+        const numDots = Math.max(2, Math.floor(segLen / minSpacing));
+        for (let j = 0; j < numDots; j++) {
+          const t = j / numDots;
+          const t2 = t * t;
+          const t3 = t2 * t;
+          // Catmull-Rom basis functions
+          const x = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
+          const y = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
+          result.push({ x, y });
+        }
       }
-    }
-    // Add the last point
-    allDots.push(points[points.length - 1]);
+      // Add the last point
+      result.push(pts[pts.length - 1]);
+      return result;
+    };
+
+    // Interpolate points along the smooth spline curve
+    const allDots = catmullRomInterpolate(points);
 
     const lastPt = points[points.length - 1];
     return (
