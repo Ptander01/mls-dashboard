@@ -50,9 +50,10 @@ interface InsightPanelProps {
   insights: Insight[];
   isDark: boolean;
   className?: string;
+  onToggle?: (isOpen: boolean) => void;
 }
 
-export function InsightPanel({ insights, isDark, className = '' }: InsightPanelProps) {
+export function InsightPanel({ insights, isDark, className = '', onToggle }: InsightPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   if (insights.length === 0) return null;
@@ -61,7 +62,7 @@ export function InsightPanel({ insights, isDark, className = '' }: InsightPanelP
     <div className={className}>
       {/* Analyze Toggle Button — always visible, outside the container */}
       <button
-        onClick={() => setIsOpen(v => !v)}
+        onClick={() => { setIsOpen(v => { const next = !v; onToggle?.(next); return next; }); }}
         className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-lg transition-all mb-2"
         style={{
           fontFamily: 'Space Grotesk, sans-serif',
@@ -170,21 +171,23 @@ export function InsightHeadline({ headline, isAnalyzing, staticTitle, isDark }: 
   return (
     <div className="space-y-1.5">
       <AnimatePresence mode="wait">
-        <motion.p
-          key={headline}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.3 }}
-          className="text-xs leading-relaxed"
-          style={{
-            fontFamily: 'Space Grotesk, sans-serif',
-            color: 'var(--foreground)',
-            fontWeight: 500,
-          }}
-        >
-          {headline}
-        </motion.p>
+        {isAnalyzing && headline && (
+          <motion.p
+            key={headline}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.3 }}
+            className="text-xs leading-relaxed"
+            style={{
+              fontFamily: 'Space Grotesk, sans-serif',
+              color: 'var(--cyan)',
+              fontWeight: 500,
+            }}
+          >
+            {headline}
+          </motion.p>
+        )}
       </AnimatePresence>
       <div
         className="text-[11px] text-muted-foreground leading-relaxed"

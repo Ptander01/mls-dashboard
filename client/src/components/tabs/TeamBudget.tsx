@@ -23,6 +23,7 @@ export default function TeamBudget() {
   const [showBudgetBarInsights, setShowBudgetBarInsights] = useState(false);
   const [showPieInsights, setShowPieInsights] = useState(false);
   const [showEarnersInsights, setShowEarnersInsights] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Auto-select team when exactly one team is filtered globally
   useEffect(() => {
@@ -128,14 +129,14 @@ export default function TeamBudget() {
       <div className="px-1">
         <InsightHeadline
           headline={headline}
-          isAnalyzing={false}
+          isAnalyzing={isAnalyzing}
           staticTitle={<><span className="font-semibold text-foreground">Team Budget</span> — Analyze how each MLS club allocates its salary budget across Designated Players, TAM, and regular contracts. Click a bar to drill into that team's positional salary breakdown and top earners. Use this to identify which teams invest heavily in attack vs. defense and spot potential value signings.</>}
           isDark={isDark}
         />
       </div>
 
       {/* Insight Panel */}
-      <InsightPanel insights={insights} isDark={isDark} />
+      <InsightPanel insights={insights} isDark={isDark} onToggle={setIsAnalyzing} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

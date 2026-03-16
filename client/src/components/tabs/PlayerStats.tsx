@@ -473,7 +473,7 @@ export default function PlayerStats() {
       </div>
 
       {/* Insight Panel */}
-      <InsightPanel insights={insights} isDark={isDark} />
+      <InsightPanel insights={insights} isDark={isDark} onToggle={setIsAnalyzing} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

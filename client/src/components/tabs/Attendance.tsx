@@ -36,6 +36,7 @@ export default function Attendance() {
   const [showCapacityInsights, setShowCapacityInsights] = useState(false);
   const [showTrendInsights, setShowTrendInsights] = useState(false);
   const [showGravInsights, setShowGravInsights] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Auto-select team when exactly one team is filtered globally
   useEffect(() => {
@@ -462,14 +463,14 @@ export default function Attendance() {
       <div className="px-1">
         <InsightHeadline
           headline={headline}
-          isAnalyzing={false}
+          isAnalyzing={isAnalyzing}
           staticTitle={<><span className="font-semibold text-foreground">Attendance</span> — Explore match-day attendance across all MLS venues. The bar chart ranks teams by average home attendance (toggle to fill rate to see stadium utilization). The dotted white line shows stadium capacity. The trend chart tracks weekly attendance patterns, and the drill-down panels reveal how specific away teams affect turnout.</>}
           isDark={isDark}
         />
       </div>
 
       {/* Insight Panel */}
-      <InsightPanel insights={attInsights} isDark={isDark} />
+      <InsightPanel insights={attInsights} isDark={isDark} onToggle={setIsAnalyzing} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
