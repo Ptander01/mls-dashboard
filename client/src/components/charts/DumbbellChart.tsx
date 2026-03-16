@@ -1,11 +1,12 @@
 /**
  * DumbbellChart — Home vs Away Performance Gap
  *
- * Neumorphic horizontal dumbbell chart inspired by audio mixer faders:
+ * Neumorphic horizontal dumbbell chart with brushed chrome knob endpoints:
  * - Grooved inset track (pressed/concave) with inner shadows
- * - 3D raised knob endpoints with cross-hatch texture detail
- * - Colored fill inside the groove between the two endpoints
- * - Sorted by gap magnitude descending
+ * - Chrome metallic knob endpoints with conical gradient sweep,
+ *   rim highlight, and cast shadow — inspired by anodized metal dials
+ * - Standard mode: dark forest green (home) / dark burgundy (away) chrome
+ * - Team mode: each team's primary color as the anodized metal hue
  *
  * Toggle modes: PPG | WIN% | GD (Goal Difference per game)
  * Symbology: STANDARD (green=home, red=away) | TEAM HUE (team primary color gradient)
@@ -25,15 +26,12 @@ interface DumbbellChartProps {
 }
 
 // ─── Neumorphic Grooved Track ───
-// A horizontal capsule pressed INTO the surface with inner shadows,
-// matching the mixer fader slot aesthetic.
 function GroovedTrack({
   x, y, width, height, id, isDark,
 }: {
   x: number; y: number; width: number; height: number; id: string; isDark: boolean;
 }) {
   const halfH = height / 2;
-  // Groove colors — slightly darker than surface, with inner shadow
   const grooveBg = isDark ? '#161625' : '#d4d4de';
   const innerShadowDark = isDark ? 'rgba(0,0,0,0.65)' : 'rgba(140,144,165,0.55)';
   const innerShadowLight = isDark ? 'rgba(60,60,80,0.15)' : 'rgba(255,255,255,0.75)';
@@ -41,48 +39,34 @@ function GroovedTrack({
   return (
     <g>
       <defs>
-        {/* Inner shadow filter — dark top-left, light bottom-right */}
         <filter id={`${id}_inset`} x="-10%" y="-30%" width="120%" height="200%">
           <feFlood floodColor={innerShadowDark} result="dark" />
           <feComposite in="dark" in2="SourceGraphic" operator="in" result="darkIn" />
           <feOffset dx="1.5" dy="1.5" result="darkOffset" />
           <feGaussianBlur in="darkOffset" stdDeviation="1.5" result="darkBlur" />
-
           <feFlood floodColor={innerShadowLight} result="light" />
           <feComposite in="light" in2="SourceGraphic" operator="in" result="lightIn" />
           <feOffset dx="-1" dy="-1" result="lightOffset" />
           <feGaussianBlur in="lightOffset" stdDeviation="1.2" result="lightBlur" />
-
           <feMerge>
             <feMergeNode in="SourceGraphic" />
             <feMergeNode in="darkBlur" />
             <feMergeNode in="lightBlur" />
           </feMerge>
         </filter>
-        {/* Subtle concave gradient — darker at top, lighter at bottom */}
         <linearGradient id={`${id}_grooveGrad`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={isDark ? '#111120' : '#c8c8d4'} />
           <stop offset="50%" stopColor={grooveBg} />
           <stop offset="100%" stopColor={isDark ? '#1e1e30' : '#dcdce8'} />
         </linearGradient>
       </defs>
-
-      {/* Groove body */}
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        rx={halfH}
-        fill={`url(#${id}_grooveGrad)`}
-        filter={`url(#${id}_inset)`}
-      />
+      <rect x={x} y={y} width={width} height={height} rx={halfH}
+        fill={`url(#${id}_grooveGrad)`} filter={`url(#${id}_inset)`} />
     </g>
   );
 }
 
 // ─── Colored Fill Inside Groove ───
-// The portion of the groove between the two knob positions, filled with color.
 function GrooveFill({
   x, y, width, height, color, id, isDark,
 }: {
@@ -102,147 +86,204 @@ function GrooveFill({
           <stop offset="100%" stopColor={botColor} stopOpacity={isDark ? 0.65 : 0.55} />
         </linearGradient>
       </defs>
-      <rect
-        x={x}
-        y={y + 1}
-        width={width}
-        height={height - 2}
-        rx={Math.max(1, halfH - 1)}
-        fill={`url(#${id}_fillGrad)`}
-      />
-      {/* Inner glow along top edge of fill */}
-      <rect
-        x={x + 2}
-        y={y + 1.5}
-        width={Math.max(0, width - 4)}
-        height={Math.max(1, (height - 2) * 0.28)}
-        rx={Math.max(1, halfH * 0.5)}
-        fill={topColor}
-        fillOpacity={0.25}
-      />
+      <rect x={x} y={y + 1} width={width} height={height - 2}
+        rx={Math.max(1, halfH - 1)} fill={`url(#${id}_fillGrad)`} />
+      <rect x={x + 2} y={y + 1.5} width={Math.max(0, width - 4)}
+        height={Math.max(1, (height - 2) * 0.28)} rx={Math.max(1, halfH * 0.5)}
+        fill={topColor} fillOpacity={0.25} />
     </g>
   );
 }
 
-// ─── 3D Neumorphic Knob ───
-// Raised circular button with cross-hatch texture, specular highlight,
-// and cast shadow — matching the mixer knob aesthetic.
-function NeuKnob3D({
+// ─── Chrome Metallic Knob ───
+// Simulates a brushed conical gradient using multiple angular SVG wedge slices.
+// Each slice transitions from dark to light to dark around the circumference,
+// creating the characteristic "brushed metal dial" look.
+function ChromeKnob({
   cx, cy, r, color, id, isDark,
 }: {
   cx: number; cy: number; r: number; color: string; id: string; isDark: boolean;
 }) {
-  const highlight = lighten(color, 0.5);
-  const shadow = darken(color, 0.45);
-  const midColor = lighten(color, 0.15);
+  // Derive chrome palette from the base color
+  const baseHue = color;
+  const darkest = darken(baseHue, 0.55);
+  const dark = darken(baseHue, 0.35);
+  const mid = darken(baseHue, 0.1);
+  const bright = lighten(baseHue, 0.25);
+  const brightest = lighten(baseHue, 0.45);
+  const highlight = lighten(baseHue, 0.6);
 
-  // Knob surface colors (raised neumorphic)
-  const knobBase = isDark ? '#2a2a40' : '#e2e2ec';
-  const knobHighlight = isDark ? '#3a3a55' : '#f4f4fc';
-  const knobShadow = isDark ? '#151528' : '#c0c0d0';
+  // Number of angular slices for the conical sweep
+  const SLICES = 24;
+
+  // Conical gradient color stops — creates the brushed metal sweep pattern
+  // Pattern: dark → bright → dark → bright (two highlight bands at ~90° and ~270°)
+  const getSliceColor = (angle: number): string => {
+    // Normalize to 0-1
+    const t = angle / (2 * Math.PI);
+    // Two-peak pattern for brushed metal
+    const v = Math.sin(t * Math.PI * 2 + 0.3) * 0.5 + 0.5;
+    // Secondary modulation for asymmetry (light source from top-left)
+    const lightBias = Math.sin(t * Math.PI * 2 - 1.2) * 0.25 + 0.5;
+    const combined = v * 0.65 + lightBias * 0.35;
+
+    if (combined > 0.8) return brightest;
+    if (combined > 0.65) return bright;
+    if (combined > 0.45) return mid;
+    if (combined > 0.3) return dark;
+    return darkest;
+  };
+
+  // Generate wedge paths for conical gradient
+  const wedges = useMemo(() => {
+    const result: { path: string; fill: string }[] = [];
+    const innerR = 0; // from center
+    const outerR = r * 0.88; // leave room for rim
+
+    for (let i = 0; i < SLICES; i++) {
+      const a1 = (i / SLICES) * Math.PI * 2 - Math.PI / 2;
+      const a2 = ((i + 1) / SLICES) * Math.PI * 2 - Math.PI / 2;
+      const midAngle = (a1 + a2) / 2;
+
+      const x1o = cx + Math.cos(a1) * outerR;
+      const y1o = cy + Math.sin(a1) * outerR;
+      const x2o = cx + Math.cos(a2) * outerR;
+      const y2o = cy + Math.sin(a2) * outerR;
+
+      // Simple wedge from center to arc
+      const path = `M ${cx},${cy} L ${x1o},${y1o} A ${outerR},${outerR} 0 0,1 ${x2o},${y2o} Z`;
+      const fill = getSliceColor(midAngle + Math.PI / 2);
+
+      result.push({ path, fill });
+    }
+    return result;
+  }, [cx, cy, r, color]);
 
   return (
     <g>
       <defs>
-        {/* Knob body gradient — convex dome lit from upper-left */}
-        <radialGradient id={`${id}_knobGrad`} cx="35%" cy="30%" r="70%">
-          <stop offset="0%" stopColor={knobHighlight} />
-          <stop offset="45%" stopColor={knobBase} />
-          <stop offset="100%" stopColor={knobShadow} />
-        </radialGradient>
-
-        {/* Color ring gradient */}
-        <radialGradient id={`${id}_ringGrad`} cx="40%" cy="35%" r="65%">
-          <stop offset="0%" stopColor={highlight} stopOpacity={0.9} />
-          <stop offset="50%" stopColor={color} stopOpacity={0.85} />
-          <stop offset="100%" stopColor={shadow} stopOpacity={0.8} />
-        </radialGradient>
-
-        {/* Cast shadow filter */}
-        <filter id={`${id}_knobShadow`} x="-60%" y="-30%" width="220%" height="220%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" />
+        {/* Cast shadow */}
+        <filter id={`${id}_shadow`} x="-60%" y="-30%" width="220%" height="220%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" />
         </filter>
+
+        {/* Rim gradient — metallic edge ring */}
+        <radialGradient id={`${id}_rim`} cx="35%" cy="28%" r="68%">
+          <stop offset="0%" stopColor={brightest} stopOpacity={0.9} />
+          <stop offset="40%" stopColor={mid} stopOpacity={0.85} />
+          <stop offset="100%" stopColor={darkest} stopOpacity={0.9} />
+        </radialGradient>
+
+        {/* Center dimple gradient */}
+        <radialGradient id={`${id}_dimple`} cx="38%" cy="32%" r="60%">
+          <stop offset="0%" stopColor={bright} stopOpacity={0.6} />
+          <stop offset="60%" stopColor={dark} stopOpacity={0.7} />
+          <stop offset="100%" stopColor={darkest} stopOpacity={0.85} />
+        </radialGradient>
+
+        {/* Clip circle for the conical wedges */}
+        <clipPath id={`${id}_clip`}>
+          <circle cx={cx} cy={cy} r={r * 0.88} />
+        </clipPath>
       </defs>
 
-      {/* Cast shadow — elliptical, offset below-right */}
+      {/* Cast shadow */}
       <ellipse
-        cx={cx + 1.5}
-        cy={cy + r * 0.8}
-        rx={r * 1.6}
-        ry={r * 0.6}
-        fill={isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.18)'}
-        filter={`url(#${id}_knobShadow)`}
+        cx={cx + 1.2} cy={cy + r * 0.7}
+        rx={r * 1.5} ry={r * 0.55}
+        fill={isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)'}
+        filter={`url(#${id}_shadow)`}
       />
 
-      {/* Outer color ring — thin colored border showing home/away identity */}
-      <circle
-        cx={cx}
-        cy={cy}
-        r={r}
-        fill={`url(#${id}_ringGrad)`}
-      />
+      {/* Outer rim ring — metallic edge */}
+      <circle cx={cx} cy={cy} r={r} fill={`url(#${id}_rim)`} />
 
-      {/* Inner knob body — raised neumorphic dome */}
-      <circle
-        cx={cx}
-        cy={cy}
-        r={r * 0.72}
-        fill={`url(#${id}_knobGrad)`}
-      />
-
-      {/* Cross-hatch texture — four subtle grooves carved into the knob surface */}
-      {/* Vertical groove */}
-      <line
-        x1={cx} y1={cy - r * 0.38}
-        x2={cx} y2={cy + r * 0.38}
-        stroke={knobShadow}
-        strokeWidth={0.8}
-        strokeOpacity={0.5}
-        strokeLinecap="round"
-      />
-      {/* Horizontal groove */}
-      <line
-        x1={cx - r * 0.38} y1={cy}
-        x2={cx + r * 0.38} y2={cy}
-        stroke={knobShadow}
-        strokeWidth={0.8}
-        strokeOpacity={0.5}
-        strokeLinecap="round"
-      />
-      {/* Groove highlight offsets (light side) */}
-      <line
-        x1={cx + 0.6} y1={cy - r * 0.38}
-        x2={cx + 0.6} y2={cy + r * 0.38}
-        stroke={knobHighlight}
-        strokeWidth={0.5}
-        strokeOpacity={0.35}
-        strokeLinecap="round"
-      />
-      <line
-        x1={cx - r * 0.38} y1={cy + 0.6}
-        x2={cx + r * 0.38} y2={cy + 0.6}
-        stroke={knobHighlight}
-        strokeWidth={0.5}
-        strokeOpacity={0.35}
-        strokeLinecap="round"
-      />
-
-      {/* Specular highlight — bright spot upper-left */}
-      <circle
-        cx={cx - r * 0.2}
-        cy={cy - r * 0.2}
-        r={r * 0.22}
-        fill="white"
-        fillOpacity={isDark ? 0.25 : 0.4}
-      />
-
-      {/* Rim light — subtle bright arc at top */}
+      {/* Rim highlight arc — bright edge on top-left */}
       <path
-        d={`M${cx - r * 0.5},${cy - r * 0.55} A${r * 0.72},${r * 0.72} 0 0,1 ${cx + r * 0.5},${cy - r * 0.55}`}
+        d={(() => {
+          const arcR = r;
+          const sa = -2.4; // ~-137°
+          const ea = -0.7; // ~-40°
+          const x1 = cx + Math.cos(sa) * arcR;
+          const y1 = cy + Math.sin(sa) * arcR;
+          const x2 = cx + Math.cos(ea) * arcR;
+          const y2 = cy + Math.sin(ea) * arcR;
+          return `M ${x1},${y1} A ${arcR},${arcR} 0 0,1 ${x2},${y2}`;
+        })()}
         fill="none"
-        stroke="white"
+        stroke={isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.5)'}
+        strokeWidth={1.2}
+        strokeLinecap="round"
+      />
+
+      {/* Rim shadow arc — dark edge on bottom-right */}
+      <path
+        d={(() => {
+          const arcR = r;
+          const sa = 0.7;
+          const ea = 2.4;
+          const x1 = cx + Math.cos(sa) * arcR;
+          const y1 = cy + Math.sin(sa) * arcR;
+          const x2 = cx + Math.cos(ea) * arcR;
+          const y2 = cy + Math.sin(ea) * arcR;
+          return `M ${x1},${y1} A ${arcR},${arcR} 0 0,1 ${x2},${y2}`;
+        })()}
+        fill="none"
+        stroke={isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)'}
+        strokeWidth={1}
+        strokeLinecap="round"
+      />
+
+      {/* Conical gradient body — brushed metal sweep */}
+      <g clipPath={`url(#${id}_clip)`}>
+        {wedges.map((w, i) => (
+          <path key={i} d={w.path} fill={w.fill} />
+        ))}
+      </g>
+
+      {/* Smooth overlay — radial gradient to soften the wedge transitions */}
+      <circle
+        cx={cx} cy={cy} r={r * 0.87}
+        fill="transparent"
+        style={{ mixBlendMode: 'soft-light' }}
+      />
+
+      {/* Upper-left highlight wash — simulates directional light */}
+      <ellipse
+        cx={cx - r * 0.2} cy={cy - r * 0.25}
+        rx={r * 0.55} ry={r * 0.45}
+        fill={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.18)'}
+        clipPath={`url(#${id}_clip)`}
+      />
+
+      {/* Lower-right shadow wash */}
+      <ellipse
+        cx={cx + r * 0.2} cy={cy + r * 0.25}
+        rx={r * 0.5} ry={r * 0.4}
+        fill={isDark ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.06)'}
+        clipPath={`url(#${id}_clip)`}
+      />
+
+      {/* Center dimple — small concave pit in the middle of the dial */}
+      <circle cx={cx} cy={cy} r={r * 0.18} fill={`url(#${id}_dimple)`} />
+
+      {/* Dimple inner shadow ring */}
+      <circle cx={cx} cy={cy} r={r * 0.17} fill="none"
+        stroke={isDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.1)'} strokeWidth={0.5} />
+
+      {/* Specular highlight — tiny bright dot */}
+      <circle
+        cx={cx - r * 0.06} cy={cy - r * 0.06}
+        r={r * 0.06}
+        fill="white"
+        fillOpacity={isDark ? 0.3 : 0.5}
+      />
+
+      {/* Outer edge line — thin bright ring */}
+      <circle cx={cx} cy={cy} r={r}
+        fill="none"
+        stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.35)'}
         strokeWidth={0.6}
-        strokeOpacity={isDark ? 0.15 : 0.25}
       />
     </g>
   );
@@ -254,7 +295,6 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
   const [mode, setMode] = useState<MetricMode>('PPG');
   const [symbology, setSymbology] = useState<SymbologyMode>('STANDARD');
 
-  // Get the appropriate values based on mode
   const chartData = useMemo(() => {
     return metrics.map(m => {
       let homeVal: number, awayVal: number, gap: number;
@@ -287,7 +327,6 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
     }).sort((a, b) => b.absGap - a.absGap);
   }, [metrics, mode]);
 
-  // Chart dimensions — balanced for readability without excessive scrolling
   const marginLeft = 160;
   const marginRight = 70;
   const marginTop = 40;
@@ -299,7 +338,6 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
   const plotWidth = chartWidth - marginLeft - marginRight;
   const svgHeight = marginTop + chartData.length * rowHeight + 20;
 
-  // Scale: find min/max across all values
   const allValues = chartData.flatMap(d => [d.homeVal, d.awayVal]);
   const dataMin = Math.min(...allValues, 0);
   const dataMax = Math.max(...allValues);
@@ -311,7 +349,6 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
     return marginLeft + ((val - scaleMin) / (scaleMax - scaleMin)) * plotWidth;
   };
 
-  // Tick marks
   const ticks = useMemo(() => {
     const range = scaleMax - scaleMin;
     let step: number;
@@ -329,23 +366,21 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
     return result;
   }, [scaleMin, scaleMax, mode]);
 
-  // Standard colors
-  const stdHomeColor = '#22c55e';
-  const stdAwayColor = '#ef4444';
+  // Chrome colors for standard mode — dark forest green & dark burgundy
+  const stdHomeColor = '#2d5a3a'; // dark forest green chrome
+  const stdAwayColor = '#6b2d3a'; // dark burgundy/rose chrome
 
-  // Resolve colors per team based on symbology mode
   const getColors = (teamColor: string) => {
     if (symbology === 'STANDARD') {
       return {
         homeKnob: stdHomeColor,
         awayKnob: stdAwayColor,
-        fillColor: isDark ? '#3a8a9a' : '#5aacbc', // neutral teal for the gap fill
+        fillColor: isDark ? '#3a8a9a' : '#5aacbc',
       };
     }
-    // TEAM mode: use team's primary color with lightness variation
     return {
-      homeKnob: lighten(teamColor, 0.15),
-      awayKnob: darken(teamColor, 0.25),
+      homeKnob: lighten(teamColor, 0.1),
+      awayKnob: darken(teamColor, 0.2),
       fillColor: teamColor,
     };
   };
@@ -360,13 +395,12 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
           </h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">
             {symbology === 'STANDARD'
-              ? <>Each team's average points earned at home <span style={{ color: stdHomeColor }}>(green)</span> vs away <span style={{ color: stdAwayColor }}>(red)</span>. Gap width = home advantage magnitude.</>
+              ? <>Each team's average points earned at home <span style={{ color: '#4a9a5a' }}>(green)</span> vs away <span style={{ color: '#c45a6a' }}>(red)</span>. Gap width = home advantage magnitude.</>
               : <>Each team colored by primary hue — lighter knob = home, darker = away. Gap width = home advantage magnitude.</>
             }
           </p>
         </div>
         <div className="flex items-center gap-3 relative z-10">
-          {/* Symbology toggle */}
           <div className="flex items-center gap-0">
             {(['STANDARD', 'TEAM'] as SymbologyMode[]).map(s => (
               <button
@@ -383,7 +417,6 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
               </button>
             ))}
           </div>
-          {/* Metric toggle */}
           <div className="flex items-center gap-0">
             {(['PPG', 'WIN%', 'GD'] as MetricMode[]).map(m => (
               <button
@@ -408,35 +441,37 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
         {symbology === 'STANDARD' ? (
           <>
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full border-2" style={{
-                borderColor: stdHomeColor,
-                background: isDark ? '#2a2a40' : '#e2e2ec',
-              }} />
+              <svg width="14" height="14" viewBox="0 0 14 14">
+                <circle cx="7" cy="7" r="6" fill={stdHomeColor} />
+                <circle cx="7" cy="7" r="6" fill="none" stroke={lighten(stdHomeColor, 0.3)} strokeWidth={0.5} />
+                <circle cx="5.5" cy="5.5" r="1.5" fill="white" fillOpacity={0.2} />
+              </svg>
               <span>Home</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full border-2" style={{
-                borderColor: stdAwayColor,
-                background: isDark ? '#2a2a40' : '#e2e2ec',
-              }} />
+              <svg width="14" height="14" viewBox="0 0 14 14">
+                <circle cx="7" cy="7" r="6" fill={stdAwayColor} />
+                <circle cx="7" cy="7" r="6" fill="none" stroke={lighten(stdAwayColor, 0.3)} strokeWidth={0.5} />
+                <circle cx="5.5" cy="5.5" r="1.5" fill="white" fillOpacity={0.2} />
+              </svg>
               <span>Away</span>
             </div>
           </>
         ) : (
           <>
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full border-2" style={{
-                borderColor: isDark ? '#6a6a8a' : '#888',
-                background: isDark ? '#3a3a55' : '#eaeaf2',
-              }} />
-              <span>Home (lighter)</span>
+              <svg width="14" height="14" viewBox="0 0 14 14">
+                <circle cx="7" cy="7" r="6" fill={isDark ? '#4a4a65' : '#bbbbd0'} />
+                <circle cx="5.5" cy="5.5" r="1.5" fill="white" fillOpacity={0.2} />
+              </svg>
+              <span>Home (lighter chrome)</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full border-2" style={{
-                borderColor: isDark ? '#3a3a55' : '#666',
-                background: isDark ? '#1e1e30' : '#c8c8d4',
-              }} />
-              <span>Away (darker)</span>
+              <svg width="14" height="14" viewBox="0 0 14 14">
+                <circle cx="7" cy="7" r="6" fill={isDark ? '#2a2a40' : '#888898'} />
+                <circle cx="5.5" cy="5.5" r="1.5" fill="white" fillOpacity={0.15} />
+              </svg>
+              <span>Away (darker chrome)</span>
             </div>
           </>
         )}
@@ -486,35 +521,25 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
 
             const colors = getColors(d.teamColor);
 
-            // Gap label
             const gapColor = 'var(--cyan)';
             const gapSign = d.gap >= 0 ? '+' : '';
             const gapLabel = mode === 'WIN%'
               ? `${gapSign}${d.gap.toFixed(0)}%`
               : `${gapSign}${d.gap.toFixed(2)}`;
 
-            // Track spans full plot width
             const trackX = marginLeft;
             const trackW = plotWidth;
-
-            // Fill between the two knobs
             const fillLeft = Math.min(homeX, awayX);
             const fillWidth = Math.abs(homeX - awayX);
 
             return (
               <g key={d.teamId}>
                 {/* Team color dot */}
-                <circle
-                  cx={12}
-                  cy={cy}
-                  r={4.5}
-                  fill={d.teamColor}
-                />
+                <circle cx={12} cy={cy} r={4.5} fill={d.teamColor} />
 
                 {/* Team name */}
                 <text
-                  x={22}
-                  y={cy + 1}
+                  x={22} y={cy + 1}
                   dominantBaseline="middle"
                   fill={isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.8)'}
                   fontSize={11.5}
@@ -524,53 +549,36 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
                   {d.teamShort}
                 </text>
 
-                {/* Grooved track — full width inset rail */}
+                {/* Grooved track */}
                 <GroovedTrack
-                  x={trackX}
-                  y={cy - trackHeight / 2}
-                  width={trackW}
-                  height={trackHeight}
-                  id={uid}
-                  isDark={isDark}
+                  x={trackX} y={cy - trackHeight / 2}
+                  width={trackW} height={trackHeight}
+                  id={uid} isDark={isDark}
                 />
 
-                {/* Colored fill inside groove between knobs */}
+                {/* Colored fill between knobs */}
                 <GrooveFill
-                  x={fillLeft}
-                  y={cy - trackHeight / 2}
-                  width={fillWidth}
-                  height={trackHeight}
-                  color={colors.fillColor}
-                  id={`${uid}_fill`}
-                  isDark={isDark}
+                  x={fillLeft} y={cy - trackHeight / 2}
+                  width={fillWidth} height={trackHeight}
+                  color={colors.fillColor} id={`${uid}_fill`} isDark={isDark}
                 />
 
-                {/* Away knob — rendered first so home overlaps if very close */}
-                <NeuKnob3D
-                  cx={awayX}
-                  cy={cy}
-                  r={knobRadius}
-                  color={colors.awayKnob}
-                  id={`${uid}_away`}
-                  isDark={isDark}
+                {/* Away knob — rendered first so home overlaps if close */}
+                <ChromeKnob
+                  cx={awayX} cy={cy} r={knobRadius}
+                  color={colors.awayKnob} id={`${uid}_away`} isDark={isDark}
                 />
 
                 {/* Home knob */}
-                <NeuKnob3D
-                  cx={homeX}
-                  cy={cy}
-                  r={knobRadius}
-                  color={colors.homeKnob}
-                  id={`${uid}_home`}
-                  isDark={isDark}
+                <ChromeKnob
+                  cx={homeX} cy={cy} r={knobRadius}
+                  color={colors.homeKnob} id={`${uid}_home`} isDark={isDark}
                 />
 
                 {/* Gap value label */}
                 <text
-                  x={chartWidth - 10}
-                  y={cy + 1}
-                  dominantBaseline="middle"
-                  textAnchor="end"
+                  x={chartWidth - 10} y={cy + 1}
+                  dominantBaseline="middle" textAnchor="end"
                   fill={gapColor}
                   fontSize={11}
                   fontFamily="JetBrains Mono, monospace"
