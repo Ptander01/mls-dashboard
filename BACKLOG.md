@@ -139,6 +139,8 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - **Implementation:** Play button auto-advances. Toggle East/West/All. Bars use team colors with 3D extruded treatment reusing `Extruded3DHorizontalBar`. Framer Motion layout prop handles smooth reordering. Metrics toggle: cumulative points, goals, attendance, salary spend.
 
 ## Future / Deferred Work
+- **Bar Chart Reorder Animation (react-spring):** When toggling between Absolute and Fill Rate modes, animate bars sliding horizontally to their new ranked positions using `@react-spring/web` (already installed). Reference implementation: [react-graph-gallery barplot-data-transition-animation](https://www.react-graph-gallery.com/example/barplot-data-transition-animation). Approach: render bars in stable DOM order, compute target X positions from rank, use `useSpring` to animate `x` and `height`. Requires replacing Recharts `<Bar>` with a `<Customized>` SVG overlay rendering `Extruded3DBarWithCeiling` / `Extruded3DBarFillRate` shapes manually.
+- **Multi-Team Area Chart Compare Mode (Mode 3):** Enable selecting 2-5 teams in the attendance trend chart to show layered translucent 3D area polygons stacked with slight depth offsets (paper-cutout aesthetic). UI: "COMPARE" button enables multi-select from dropdown or by clicking multiple bars. For 6+ teams, switch to 3D ridgelines only (topographic landscape). Architecture is already in place with `Area3DPolygon` component supporting `layerOffset` and `opacity` props.
 - Cross-chart pottery linking (validate single-chart pottery first in Priority 2)
 - Ultrawide layout optimization
 - 3D radar chart (Three.js powered)

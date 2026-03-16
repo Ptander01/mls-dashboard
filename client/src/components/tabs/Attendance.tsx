@@ -206,14 +206,16 @@ export default function Attendance() {
   // CHART COMPONENTS
   // ═══════════════════════════════════════════
 
-  // Track animation state: animate on initial render and on toggle, but NOT on team click
+  // ═══ BAR CHART ANIMATION STATE ═══
   const barChartRendered = useRef(false);
-  const [barAnimKey, setBarAnimKey] = useState(0); // bump to trigger re-animation
-  const suppressBarAnim = useRef(false); // true when a bar click caused the re-render
+  const [barAnimKey, setBarAnimKey] = useState(0);
+  const suppressBarAnim = useRef(false);
+
   useEffect(() => {
     const timer = setTimeout(() => { barChartRendered.current = true; }, 700);
     return () => clearTimeout(timer);
   }, []);
+
   // When toggling between Absolute / Fill Rate, bump the animation key so bars re-animate
   useEffect(() => {
     if (barChartRendered.current) {
@@ -223,7 +225,7 @@ export default function Attendance() {
   }, [showFillRate]);
 
   const handleBarClick = useCallback((d: any) => {
-    suppressBarAnim.current = true; // suppress animation on click-to-filter
+    suppressBarAnim.current = true;
     if (selectedTeam === d.id) {
       setSelectedTeam(null);
       setTrendTeamOverride('');
@@ -235,7 +237,6 @@ export default function Attendance() {
 
   const HomeBarContent = ({ height = 400 }: { height?: number }) => {
     const dataKey = showFillRate ? 'fillPct' : 'avg';
-    // When a team is selected, deemphasize all OTHER bars to white/light gray
     const deemphasizedFill = isDark ? '#2a2a2a' : '#e8e8e8';
     return (
       <div style={{ height }}>
@@ -275,7 +276,7 @@ export default function Attendance() {
                 const isSelected = selectedTeam === d.id;
                 const isDeemphasized = selectedTeam !== null && !isSelected;
                 return (
-                  <Cell key={i}
+                  <Cell key={d.id}
                     fill={isDeemphasized ? deemphasizedFill : d.color}
                     stroke={isSelected ? (isDark ? '#ffffff' : '#333333') : 'none'}
                     strokeWidth={isSelected ? 2 : 0}
@@ -289,71 +290,149 @@ export default function Attendance() {
     );
   };
 
-  // ─── Custom 3D Ribbon Line Renderer ───
-  const Ribbon3DLine = ({ points, lineColor, chartWidth, chartHeight }: {
+  // ─── Catmull-Rom spline helper: converts points to a smooth SVG cubic bezier path ───
+  const catmullRomPath = (pts: Array<{ x: number; y: number }>, tension = 0.35): string => {
+    if (pts.length < 2) return '';
+    if (pts.length === 2) return `M${pts[0].x},${pts[0].y} L${pts[1].x},${pts[1].y}`;
+    const d: string[] = [`M${pts[0].x},${pts[0].y}`];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(0, i - 1)];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[Math.min(pts.length - 1, i + 2)];
+      const cp1x = p1.x + (p2.x - p0.x) * tension;
+      const cp1y = p1.y + (p2.y - p0.y) * tension;
+      const cp2x = p2.x - (p3.x - p1.x) * tension;
+      const cp2y = p2.y - (p3.y - p1.y) * tension;
+      d.push(`C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`);
+    }
+    return d.join(' ');
+  };
+
+  // ─── Custom 3D Area Polygon Renderer ───
+  // Renders a filled area from the smooth top curve down to the baseline
+  // with matte gradient fill, side extrusion, and cast shadow — playdough aesthetic
+  const Area3DPolygon = ({ points, baselineY, areaColor, opacity = 1, layerOffset = 0, isGhost = false }: {
     points: Array<{ x: number; y: number }>;
-    lineColor: string;
-    chartWidth: number;
-    chartHeight: number;
+    baselineY: number;
+    areaColor: string;
+    opacity?: number;
+    layerOffset?: number; // vertical offset for multi-team stacking
+    isGhost?: boolean; // true for the league-average ghost outline
   }) => {
     if (!points || points.length < 2) return null;
-    const ribbonH = 6; // thickness of the 3D ribbon
-    const shadowOffY = 10; // how far the shadow drops
-    const shadowBlur = 6;
-    const id = `ribbon3d_${Math.random().toString(36).slice(2, 8)}`;
-    const topColor = lighten(lineColor, 0.45);
-    const midColor = lineColor;
-    const botColor = darken(lineColor, 0.45);
-    // Build the path string for the top edge
-    const topPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-    // Build the bottom edge (offset down by ribbonH)
-    const botPath = [...points].reverse().map((p, i) => `${i === 0 ? 'L' : 'L'}${p.x},${p.y + ribbonH}`).join(' ');
-    const ribbonPath = `${topPath} ${botPath} Z`;
-    // Shadow path — offset further down
-    const shadowTopPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y + shadowOffY}`).join(' ');
-    const shadowBotPath = [...points].reverse().map((p, i) => `${i === 0 ? 'L' : 'L'}${p.x},${p.y + ribbonH + shadowOffY}`).join(' ');
-    const shadowPath = `${shadowTopPath} ${shadowBotPath} Z`;
+    const id = `area3d_${Math.random().toString(36).slice(2, 8)}`;
+    const extrudeDepth = isGhost ? 2 : 4; // 3D extrusion depth
+    const shadowOffY = isGhost ? 4 : 8;
+    const shadowBlur = isGhost ? 3 : 5;
+
+    // Offset all points by layerOffset
+    const pts = layerOffset ? points.map(p => ({ x: p.x, y: p.y - layerOffset })) : points;
+    const baseline = baselineY - layerOffset;
+
+    // Colors
+    const topColor = lighten(areaColor, isGhost ? 0.2 : 0.35);
+    const midColor = areaColor;
+    const botColor = darken(areaColor, isGhost ? 0.15 : 0.3);
+    const sideColor = darken(areaColor, 0.45);
+
+    // Build smooth top curve path
+    const topCurve = catmullRomPath(pts);
+    // Build area path: smooth top curve → straight line down to baseline → back along bottom
+    const firstPt = pts[0];
+    const lastPt = pts[pts.length - 1];
+    const areaPath = `${topCurve} L${lastPt.x},${baseline} L${firstPt.x},${baseline} Z`;
+
+    // Shadow path: same shape but offset down
+    const shadowPts = pts.map(p => ({ x: p.x + 3, y: p.y + shadowOffY }));
+    const shadowCurve = catmullRomPath(shadowPts);
+    const shadowPath = `${shadowCurve} L${lastPt.x + 3},${baseline + shadowOffY} L${firstPt.x + 3},${baseline + shadowOffY} Z`;
+
+    // Right-side extrusion face: a parallelogram along the right edge
+    const rightSidePath = `M${lastPt.x},${pts[pts.length - 1].y} L${lastPt.x + extrudeDepth},${pts[pts.length - 1].y + extrudeDepth} L${lastPt.x + extrudeDepth},${baseline + extrudeDepth} L${lastPt.x},${baseline} Z`;
+
+    // Bottom extrusion face: a parallelogram along the baseline
+    const bottomFacePath = `M${firstPt.x},${baseline} L${firstPt.x + extrudeDepth},${baseline + extrudeDepth} L${lastPt.x + extrudeDepth},${baseline + extrudeDepth} L${lastPt.x},${baseline} Z`;
+
+    // Top bevel highlight: a thin strip along the top curve to simulate rounded edge
+    // We create a second curve offset slightly upward
+    const bevelPts = pts.map(p => ({ x: p.x, y: p.y - 1.5 }));
+    const bevelCurve = catmullRomPath(bevelPts);
+    // The bevel strip is the area between the original top curve and the bevel curve
+    const bevelPath = `${bevelCurve} L${lastPt.x},${pts[pts.length - 1].y} ${[...pts].reverse().map((p, i) => `${i === 0 ? '' : ''}L${p.x},${p.y}`).join(' ')} Z`;
+
+    if (isGhost) {
+      // Ghost mode: just a subtle outline with very faint fill
+      return (
+        <g opacity={0.3}>
+          <path d={areaPath} fill={isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}
+            stroke={isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}
+            strokeWidth={1.5} strokeDasharray="6 4" />
+        </g>
+      );
+    }
+
     return (
-      <g>
+      <g opacity={opacity}>
         <defs>
+          {/* Main area gradient — matte, no glossy highlights */}
           <linearGradient id={`${id}_grad`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={topColor} stopOpacity={0.95} />
-            <stop offset="30%" stopColor={lighten(midColor, 0.15)} stopOpacity={0.9} />
-            <stop offset="70%" stopColor={midColor} stopOpacity={0.85} />
-            <stop offset="100%" stopColor={botColor} stopOpacity={0.9} />
+            <stop offset="0%" stopColor={topColor} stopOpacity={0.92} />
+            <stop offset="15%" stopColor={lighten(midColor, 0.12)} stopOpacity={0.88} />
+            <stop offset="50%" stopColor={midColor} stopOpacity={0.82} />
+            <stop offset="85%" stopColor={darken(midColor, 0.1)} stopOpacity={0.78} />
+            <stop offset="100%" stopColor={botColor} stopOpacity={0.85} />
           </linearGradient>
-          <filter id={`${id}_shadowF`} x="-10%" y="-10%" width="120%" height="140%">
+          {/* Side face gradient */}
+          <linearGradient id={`${id}_side`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={sideColor} stopOpacity={0.8} />
+            <stop offset="100%" stopColor={darken(areaColor, 0.55)} stopOpacity={0.9} />
+          </linearGradient>
+          {/* Shadow filter */}
+          <filter id={`${id}_shadowF`} x="-10%" y="-10%" width="130%" height="140%">
             <feGaussianBlur in="SourceGraphic" stdDeviation={shadowBlur} />
           </filter>
+          {/* Top bevel highlight gradient */}
+          <linearGradient id={`${id}_bevel`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={lighten(areaColor, 0.5)} stopOpacity={0.6} />
+            <stop offset="100%" stopColor={topColor} stopOpacity={0.1} />
+          </linearGradient>
         </defs>
+
         {/* Cast shadow */}
-        <path d={shadowPath} fill="rgba(0,0,0,0.35)" filter={`url(#${id}_shadowF)`} />
-        {/* Right-side extrusion face (3D depth) */}
-        {points.map((p, i) => {
-          if (i === points.length - 1) return null;
-          const next = points[i + 1];
-          return (
-            <path key={`side_${i}`}
-              d={`M${next.x},${next.y} L${next.x + 2},${next.y + 2} L${next.x + 2},${next.y + ribbonH + 2} L${next.x},${next.y + ribbonH} Z`}
-              fill={darken(lineColor, 0.5)}
-              fillOpacity={0.3}
-            />
-          );
-        })}
-        {/* Main ribbon face */}
-        <path d={ribbonPath} fill={`url(#${id}_grad)`} />
-        {/* Top edge highlight */}
-        <path d={topPath} fill="none" stroke={topColor} strokeWidth={1.5} strokeOpacity={0.7} />
-        {/* Bottom edge shadow line */}
-        <path d={points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y + ribbonH}`).join(' ')}
-          fill="none" stroke={botColor} strokeWidth={0.8} strokeOpacity={0.5} />
-        {/* Subtle data points */}
-        {points.map((p, i) => (
+        <path d={shadowPath} fill="rgba(0,0,0,0.3)" filter={`url(#${id}_shadowF)`} />
+
+        {/* Bottom extrusion face */}
+        <path d={bottomFacePath} fill={darken(areaColor, 0.45)} fillOpacity={0.6} />
+
+        {/* Right-side extrusion face */}
+        <path d={rightSidePath} fill={`url(#${id}_side)`} />
+
+        {/* Main area fill — the front face */}
+        <path d={areaPath} fill={`url(#${id}_grad)`} />
+
+        {/* Top bevel highlight — smooth rounded edge effect */}
+        <path d={bevelPath} fill={`url(#${id}_bevel)`} />
+
+        {/* Top edge line — subtle, defines the ridge */}
+        <path d={topCurve} fill="none" stroke={topColor} strokeWidth={1.2} strokeOpacity={0.6} />
+
+        {/* Bottom edge contact shadow */}
+        <line x1={firstPt.x} y1={baseline} x2={lastPt.x} y2={baseline}
+          stroke={darken(areaColor, 0.4)} strokeWidth={1} strokeOpacity={0.3} />
+
+        {/* Subtle data points along the top curve */}
+        {pts.map((p, i) => (
           <g key={`dot_${i}`}>
-            <circle cx={p.x} cy={p.y + ribbonH / 2} r={3.5}
-              fill={isDark ? '#1a1a1a' : '#ffffff'} stroke={lineColor} strokeWidth={1.5} />
-            <circle cx={p.x - 0.5} cy={p.y + ribbonH / 2 - 0.5} r={1.2}
-              fill={lighten(lineColor, 0.6)} fillOpacity={0.6} />
+            {/* Tiny contact shadow */}
+            <ellipse cx={p.x + 0.5} cy={p.y + 1} rx={2.5} ry={1.2}
+              fill="rgba(0,0,0,0.15)" />
+            {/* Point dot */}
+            <circle cx={p.x} cy={p.y} r={2.8}
+              fill={isDark ? '#1a1a1a' : '#ffffff'} stroke={midColor} strokeWidth={1.2} />
+            {/* Specular highlight */}
+            <circle cx={p.x - 0.4} cy={p.y - 0.4} r={0.9}
+              fill={lighten(areaColor, 0.6)} fillOpacity={0.5} />
           </g>
         ))}
       </g>
@@ -404,31 +483,72 @@ export default function Attendance() {
     );
   };
 
-  const WeeklyContent = ({ height = 220 }: { height?: number }) => {
-    const lineColor = effectiveTrendTeam ? trendColor : (isDark ? '#3A6A7A' : '#4A7A8A');
-    // Determine if we should show the average guide line
-    // Only show when a specific team is selected (not league-wide, which IS the average)
-    const showAvgGuide = false; // removed — redundant for league-wide
+  // ═══ LEAGUE-WIDE WEEKLY DATA (for ghost overlay when a team is selected) ═══
+  const leagueWeeklyData = useMemo(() => {
+    const allWithAtt = filteredMatches.filter(m => m.attendance > 0);
+    const byWeek: Record<number, number[]> = {};
+    allWithAtt.forEach(m => {
+      if (!byWeek[m.week]) byWeek[m.week] = [];
+      byWeek[m.week].push(m.attendance);
+    });
+    return Object.entries(byWeek).map(([week, atts]) => ({
+      week: +week, avg: Math.round(atts.reduce((s, a) => s + a, 0) / atts.length),
+      max: Math.max(...atts), min: Math.min(...atts),
+    })).sort((a, b) => a.week - b.week);
+  }, [filteredMatches]);
+
+  const WeeklyContent = ({ height = 240 }: { height?: number }) => {
+    const areaColor = effectiveTrendTeam ? trendColor : (isDark ? '#3A6A7A' : '#4A7A8A');
+    // Merge league data with team data for the chart domain
+    // When a team is selected, we show both the team area and a ghost league average
+    const showGhost = !!effectiveTrendTeam;
+    const chartData = weeklyData; // primary data source (team or league avg)
+
+    // Compute Y domain to encompass both datasets when ghost is shown
+    const allMaxVals = [
+      ...weeklyData.map(d => d.max),
+      ...(showGhost ? leagueWeeklyData.map(d => d.max) : []),
+    ];
+    const yMax = allMaxVals.length > 0 ? Math.max(...allMaxVals) : 50000;
+
     return (
       <div style={{ height }}>
         <ResponsiveContainer>
-          <LineChart data={weeklyData} margin={{ top: 10, right: 80, bottom: 5, left: 0 }}>
+          <LineChart data={chartData} margin={{ top: 15, right: 120, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
             <XAxis dataKey="week" stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
-            <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
-            <Tooltip contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'blur(20px) saturate(1.4)', WebkitBackdropFilter: 'blur(20px) saturate(1.4)', border: '1px solid var(--glass-border)', borderRadius: 12, fontSize: 11, fontFamily: 'JetBrains Mono', color: 'var(--glass-text)', boxShadow: 'var(--glass-shadow)' }} />
-            {/* Hidden line to drive data/tooltip — invisible, the Ribbon3D renders the visual */}
+            <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false}
+              domain={[0, Math.ceil(yMax * 1.1)]} />
+            <Tooltip content={({ payload }) => {
+              if (!payload?.length) return null;
+              const d = payload[0]?.payload;
+              if (!d) return null;
+              return (
+                <div className="glass-sm p-2 text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                  <div className="font-semibold" style={{ color: areaColor }}>Week {d.week}</div>
+                  <div>{effectiveTrendTeam ? 'Attendance' : 'Avg Attendance'}: <span className="text-amber">{d.avg?.toLocaleString()}</span></div>
+                  <div style={{ color: 'var(--glass-text-muted)' }}>Max: {d.max?.toLocaleString()}</div>
+                  <div style={{ color: 'var(--glass-text-muted)' }}>Min: {d.min?.toLocaleString()}</div>
+                  {showGhost && (() => {
+                    const leagueWeek = leagueWeeklyData.find(lw => lw.week === d.week);
+                    return leagueWeek ? (
+                      <div style={{ color: 'var(--glass-text-muted)', borderTop: '1px solid var(--table-border)', paddingTop: 3, marginTop: 3 }}>
+                        League Avg: {leagueWeek.avg?.toLocaleString()}
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              );
+            }} />
+            {/* Hidden line to drive Recharts data/tooltip — Area3DPolygon renders the visual */}
             <Line type="monotone" dataKey="avg" stroke="transparent" strokeWidth={0}
               name={effectiveTrendTeam ? `${trendTeamObj?.short} Home Attendance` : 'Avg Attendance'}
-              animationDuration={0}
-              dot={false}
-              activeDot={{ r: 6, fill: lineColor, stroke: isDark ? '#ffffff' : '#333333', strokeWidth: 2 }}
+              animationDuration={0} dot={false}
+              activeDot={{ r: 5, fill: areaColor, stroke: isDark ? '#ffffff' : '#333333', strokeWidth: 2 }}
             />
-            {/* Max line with braille dots rendered via Customized */}
-            {!effectiveTrendTeam && (
-              <Line type="monotone" dataKey="max" stroke="transparent" strokeWidth={0} dot={false} name="Max" />
-            )}
-            {/* 3D Ribbon line rendered as a Customized overlay */}
+            {/* Max line — drives braille dots */}
+            <Line type="monotone" dataKey="max" stroke="transparent" strokeWidth={0} dot={false} name="Max" />
+            {/* 3D Area Polygon + braille reference dots rendered as Customized overlay */}
             <Customized component={(props: any) => {
               const { xAxisMap, yAxisMap, formattedGraphicalItems } = props;
               if (!formattedGraphicalItems || formattedGraphicalItems.length === 0) return null;
@@ -440,24 +560,60 @@ export default function Attendance() {
               const yAxis = yAxisMap && Object.values(yAxisMap)[0] as any;
               const chartLeft = xAxis?.x || 0;
               const chartRight = (xAxis?.x || 0) + (xAxis?.width || 0);
+              const baselineY = yAxis ? yAxis.scale(0) : 0;
+
+              // Build ghost league-average points when a team is selected
+              let ghostPts: Array<{ x: number; y: number }> | null = null;
+              if (showGhost && yAxis) {
+                ghostPts = leagueWeeklyData.map(lw => {
+                  // Map league week to x position using the same x scale
+                  const matchingPt = pts.find((p: any) => {
+                    const ptData = chartData.find(cd => cd.week === lw.week);
+                    return ptData !== undefined;
+                  });
+                  // Use xAxis scale if available
+                  const xPos = xAxis?.scale ? xAxis.scale(lw.week) : 0;
+                  const yPos = yAxis.scale(lw.avg);
+                  return { x: xPos, y: yPos };
+                }).filter(p => p.x > 0 && !isNaN(p.y));
+              }
+
+              // Capacity braille dots (when a team is selected)
               const capYPx = yAxis && trendCapacity > 0 ? yAxis.scale(trendCapacity) : null;
-              // Max line braille dots
-              const maxLine = formattedGraphicalItems.length > 1 ? formattedGraphicalItems[1] : null;
-              const maxPts = maxLine?.props?.points?.filter((p: any) => p.x != null && p.y != null) || [];
-              // Find the max Y value across max line points for braille reference
+              // Max attendance braille dots
               const maxVal = weeklyData.length > 0 ? Math.max(...weeklyData.map(d => d.max)) : 0;
               const maxYPx = yAxis && maxVal > 0 ? yAxis.scale(maxVal) : null;
+
               return (
                 <g>
-                  <Ribbon3DLine points={pts} lineColor={lineColor}
-                    chartWidth={chartRight - chartLeft} chartHeight={yAxis?.height || 200} />
-                  {/* Capacity braille dots */}
-                  {capYPx != null && trendCapacity > 0 && (
+                  {/* Ghost league average area (when a specific team is selected) */}
+                  {ghostPts && ghostPts.length >= 2 && (
+                    <Area3DPolygon
+                      points={ghostPts}
+                      baselineY={baselineY}
+                      areaColor={isDark ? '#5A6A7A' : '#8A9AAA'}
+                      isGhost={true}
+                    />
+                  )}
+                  {/* Primary 3D area polygon */}
+                  <Area3DPolygon
+                    points={pts}
+                    baselineY={baselineY}
+                    areaColor={areaColor}
+                  />
+                  {/* Capacity braille dots — only when a specific team is selected */}
+                  {effectiveTrendTeam && capYPx != null && trendCapacity > 0 && (
                     <BrailleReferenceDots
                       y={capYPx} xStart={chartLeft} xEnd={chartRight}
-                      label={effectiveTrendTeam
-                        ? `${trendTeamObj?.short} Capacity ${(trendCapacity / 1000).toFixed(1)}k`
-                        : `Avg Capacity ${(trendCapacity / 1000).toFixed(1)}k`}
+                      label={`${trendTeamObj?.short} Capacity ${(trendCapacity / 1000).toFixed(1)}k`}
+                      labelColor={isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)'}
+                    />
+                  )}
+                  {/* Max attendance braille dots — always shown */}
+                  {maxYPx != null && maxVal > 0 && (
+                    <BrailleReferenceDots
+                      y={maxYPx} xStart={chartLeft} xEnd={chartRight}
+                      label={`Max ${(maxVal / 1000).toFixed(1)}k`}
                       labelColor={isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)'}
                     />
                   )}
