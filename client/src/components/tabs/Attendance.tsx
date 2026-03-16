@@ -440,6 +440,62 @@ export default function Attendance() {
   };
 
   // ─── Custom 3D Braille Dots Reference Line Renderer ───
+  // ═══ VARIABLE BRAILLE LINE — follows per-week data curve ═══
+  const BrailleVariableLine = ({ points, label, labelColor, dotColor }: {
+    points: Array<{ x: number; y: number }>;
+    label: string; labelColor: string; dotColor?: string;
+  }) => {
+    if (!points || points.length < 2) return null;
+    const dotRadius = 2.0;
+    const minSpacing = 8;
+    const id = `braille_var_${Math.random().toString(36).slice(2, 8)}`;
+
+    // Interpolate points along the curve to get evenly-spaced dots
+    const allDots: Array<{ x: number; y: number }> = [];
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i];
+      const p1 = points[i + 1];
+      const segLen = Math.sqrt((p1.x - p0.x) ** 2 + (p1.y - p0.y) ** 2);
+      const numDots = Math.max(1, Math.floor(segLen / minSpacing));
+      for (let j = 0; j < numDots; j++) {
+        const t = j / numDots;
+        allDots.push({ x: p0.x + t * (p1.x - p0.x), y: p0.y + t * (p1.y - p0.y) });
+      }
+    }
+    // Add the last point
+    allDots.push(points[points.length - 1]);
+
+    const lastPt = points[points.length - 1];
+    return (
+      <g>
+        <defs>
+          <filter id={`${id}_dotShadow`} x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" />
+          </filter>
+          <radialGradient id={`${id}_dotGrad`} cx="35%" cy="30%" r="65%">
+            <stop offset="0%" stopColor={dotColor || '#ffffff'} stopOpacity={0.95} />
+            <stop offset="40%" stopColor={dotColor ? dotColor : '#e8e4dc'} stopOpacity={0.85} />
+            <stop offset="75%" stopColor="#b8b4ac" stopOpacity={0.7} />
+            <stop offset="100%" stopColor="#888480" stopOpacity={0.6} />
+          </radialGradient>
+        </defs>
+        {allDots.map((dot, di) => (
+          <g key={`vdot_${di}`}>
+            <ellipse cx={dot.x + 1.2} cy={dot.y + 1.8} rx={dotRadius + 0.6} ry={dotRadius * 0.45 + 0.4}
+              fill="rgba(0,0,0,0.3)" filter={`url(#${id}_dotShadow)`} />
+            <circle cx={dot.x} cy={dot.y} r={dotRadius} fill={`url(#${id}_dotGrad)`} />
+            <circle cx={dot.x - dotRadius * 0.3} cy={dot.y - dotRadius * 0.3} r={dotRadius * 0.3}
+              fill="rgba(255,255,255,0.7)" />
+          </g>
+        ))}
+        {/* Label at end */}
+        <text x={lastPt.x + 8} y={lastPt.y + 3} fill={labelColor} fontSize={9} fontFamily="JetBrains Mono">
+          {label}
+        </text>
+      </g>
+    );
+  };
+
   const BrailleReferenceDots = ({ y: refY, xStart, xEnd, label, labelColor }: {
     y: number; xStart: number; xEnd: number; label: string; labelColor: string;
   }) => {
@@ -546,8 +602,10 @@ export default function Attendance() {
               animationDuration={0} dot={false}
               activeDot={{ r: 5, fill: areaColor, stroke: isDark ? '#ffffff' : '#333333', strokeWidth: 2 }}
             />
-            {/* Max line — drives braille dots */}
+            {/* Max line — drives variable braille dots */}
             <Line type="monotone" dataKey="max" stroke="transparent" strokeWidth={0} dot={false} name="Max" />
+            {/* Min line — drives variable braille dots */}
+            <Line type="monotone" dataKey="min" stroke="transparent" strokeWidth={0} dot={false} name="Min" />
             {/* 3D Area Polygon + braille reference dots rendered as Customized overlay */}
             <Customized component={(props: any) => {
               const { xAxisMap, yAxisMap, formattedGraphicalItems } = props;
@@ -578,11 +636,15 @@ export default function Attendance() {
                 }).filter(p => p.x > 0 && !isNaN(p.y));
               }
 
+              // Build variable max and min braille dot points
+              // formattedGraphicalItems: [0]=avg, [1]=max, [2]=min
+              const maxLine = formattedGraphicalItems[1];
+              const minLine = formattedGraphicalItems[2];
+              const maxPts = maxLine?.props?.points?.filter((p: any) => p.x != null && p.y != null) || [];
+              const minPts = minLine?.props?.points?.filter((p: any) => p.x != null && p.y != null) || [];
+
               // Capacity braille dots (when a team is selected)
               const capYPx = yAxis && trendCapacity > 0 ? yAxis.scale(trendCapacity) : null;
-              // Max attendance braille dots
-              const maxVal = weeklyData.length > 0 ? Math.max(...weeklyData.map(d => d.max)) : 0;
-              const maxYPx = yAxis && maxVal > 0 ? yAxis.scale(maxVal) : null;
 
               return (
                 <g>
@@ -601,19 +663,27 @@ export default function Attendance() {
                     baselineY={baselineY}
                     areaColor={areaColor}
                   />
+                  {/* Variable MIN braille dots — sits on top of the area surface */}
+                  {minPts.length >= 2 && (
+                    <BrailleVariableLine
+                      points={minPts.map((p: any) => ({ x: p.x, y: p.y }))}
+                      label={`Min`}
+                      labelColor={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'}
+                    />
+                  )}
+                  {/* Variable MAX braille dots — floats above the area */}
+                  {maxPts.length >= 2 && (
+                    <BrailleVariableLine
+                      points={maxPts.map((p: any) => ({ x: p.x, y: p.y }))}
+                      label={`Max`}
+                      labelColor={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'}
+                    />
+                  )}
                   {/* Capacity braille dots — only when a specific team is selected */}
                   {effectiveTrendTeam && capYPx != null && trendCapacity > 0 && (
                     <BrailleReferenceDots
                       y={capYPx} xStart={chartLeft} xEnd={chartRight}
                       label={`${trendTeamObj?.short} Capacity ${(trendCapacity / 1000).toFixed(1)}k`}
-                      labelColor={isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)'}
-                    />
-                  )}
-                  {/* Max attendance braille dots — always shown */}
-                  {maxYPx != null && maxVal > 0 && (
-                    <BrailleReferenceDots
-                      y={maxYPx} xStart={chartLeft} xEnd={chartRight}
-                      label={`Max ${(maxVal / 1000).toFixed(1)}k`}
                       labelColor={isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)'}
                     />
                   )}
