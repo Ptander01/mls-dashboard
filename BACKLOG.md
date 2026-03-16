@@ -151,3 +151,14 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 - Maximize the use of available width and height on larger displays by decreasing margins.
 - Utilize Three.js/Deck.gl for actual geometry and lighting in 3D visualizations (e.g., travel maps, correlation matrix) to achieve a genuine 3D effect.
 - Default theme for UI and documentation screenshots should be Light Mode.
+
+## Appendix: Future Data Sources Inventory
+The following resources have been cataloged for future data integration efforts (Epic 8+):
+
+- **[Squawka Comparison Matrix](https://www.squawka.com/us/comparison-matrix/)**: Excellent reference for data definitions and player comparison methodologies. Could inform tooltip text, stat glossary, and radar chart percentile calculations.
+- **[MLS Conference Standings](https://www.mlssoccer.com/standings/2026/conference)**: Official standings including home/away record splits, which are directly useful for the Travel Map performance section (home vs away PPG).
+- **[MLS Form Guide](https://www.mlssoccer.com/standings/2026/conference)**: Recent form visualization (W/D/L sequence) that could be added to a future league standings page.
+- **[MLS Supporters' Shield Standings](https://www.mlssoccer.com/standings/2026/supporters-shield)**: Single-table view of all 30 teams ranked together, filterable by conference.
+- **[MLS Player Stats](https://www.mlssoccer.com/stats/)**: Database including new metrics like key passes and touches to enrich player radar charts.
+- **[MLS Club Stats](https://www.mlssoccer.com/stats/clubs/)**: Four distinct table views (General, Passing, Attacking, Defending). Club-level aggregates are useful for Team Budget insights.
+- **[ESPN MLS Performance Stats](https://www.espn.com/soccer/stats/_/league/USA.1/season/2025/view/performance)**: Streak data (winning, unbeaten, losing streaks) that is excellent for the insight engine to generate narrative summaries.
