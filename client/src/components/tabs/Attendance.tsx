@@ -815,14 +815,111 @@ export default function Attendance() {
       {/* Maximize Modals */}
       <ChartModal isOpen={maximized === 'home'} onClose={() => setMaximized(null)}
         title={showFillRate ? 'Stadium Fill Rate by Team' : 'Average Home Attendance by Team'}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFillRate(!showFillRate)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
+              style={{
+                background: showFillRate ? (isDark ? 'rgba(0, 212, 255, 0.12)' : 'rgba(8, 145, 178, 0.1)') : (isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)'),
+                color: showFillRate ? 'var(--cyan)' : 'var(--table-header-color)',
+                border: `1px solid ${showFillRate ? (isDark ? 'rgba(0, 212, 255, 0.3)' : 'rgba(8, 145, 178, 0.3)') : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')}`,
+              }}
+            >
+              {showFillRate ? <BarChart3 size={11} /> : <Percent size={11} />}
+              {showFillRate ? 'Absolute' : 'Fill Rate'}
+            </button>
+            <CardInsightToggle isOpen={showCapacityInsights} onToggle={() => setShowCapacityInsights(v => !v)} isDark={isDark} />
+          </div>
+          {!showFillRate && (
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-5 border-t-2 border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.25)' }} />
+              <span className="text-[9px] text-muted-foreground" style={{ fontFamily: 'JetBrains Mono' }}>Stadium Capacity</span>
+            </div>
+          )}
+        </div>
+        <CardInsightSection isOpen={showCapacityInsights} insights={capacityFillInsights} isDark={isDark} />
         <HomeBarContent height={600} />
       </ChartModal>
       <ChartModal isOpen={maximized === 'weekly'} onClose={() => setMaximized(null)}
         title={`Attendance Trend by Matchweek${trendTeamObj ? ` — ${trendTeamObj.short}` : ''}`}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <select
+              value={trendTeamOverride || (filters.selectedTeams.length === 1 ? filters.selectedTeams[0] : '')}
+              onChange={(e) => setTrendTeamOverride(e.target.value)}
+              className="text-[10px] font-semibold uppercase tracking-wider rounded-md px-2 py-1 transition-all duration-200"
+              style={{
+                background: effectiveTrendTeam ? (isDark ? 'rgba(0, 212, 255, 0.08)' : 'rgba(8, 145, 178, 0.08)') : 'var(--neu-bg-flat)',
+                color: effectiveTrendTeam ? trendColor : 'var(--table-header-color)',
+                border: `1px solid ${effectiveTrendTeam ? (isDark ? 'rgba(0, 212, 255, 0.25)' : 'rgba(8, 145, 178, 0.25)') : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')}`,
+                outline: 'none',
+              }}
+            >
+              <option value="">All Teams</option>
+              {TEAMS.slice().sort((a, b) => a.short.localeCompare(b.short)).map(t => (
+                <option key={t.id} value={t.id}>{t.short}</option>
+              ))}
+            </select>
+            <CardInsightToggle isOpen={showTrendInsights} onToggle={() => setShowTrendInsights(v => !v)} isDark={isDark} />
+          </div>
+        </div>
+        <CardInsightSection isOpen={showTrendInsights} insights={trendInsights} isDark={isDark} />
         <WeeklyContent height={600} />
       </ChartModal>
       <ChartModal isOpen={maximized === 'gravity'} onClose={() => setMaximized(null)} title="Gravitational Pull — League-Wide Away Team Impact">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-md overflow-hidden" style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }}>
+              {(['COMPARE', 'ABSOLUTE'] as const).map(mode => (
+                <button key={mode}
+                  onClick={() => {
+                    setGravMode(mode);
+                    if (mode === 'ABSOLUTE') setEmphasizedTeam(null);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
+                  style={{
+                    background: gravMode === mode
+                      ? (isDark ? 'rgba(0, 212, 255, 0.12)' : 'rgba(8, 145, 178, 0.1)')
+                      : (isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'),
+                    color: gravMode === mode ? 'var(--cyan)' : 'var(--table-header-color)',
+                  }}
+                >
+                  {mode === 'COMPARE' ? <Layers size={10} /> : <Eye size={10} />}
+                  {mode}
+                </button>
+              ))}
+            </div>
+            <CardInsightToggle isOpen={showGravInsights} onToggle={() => setShowGravInsights(v => !v)} isDark={isDark} />
+          </div>
+          {emphasizedTeam && gravMode === 'COMPARE' && (() => {
+            const empTeam = getTeam(emphasizedTeam);
+            return (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold"
+                style={{
+                  background: isDark ? 'rgba(0, 212, 255, 0.08)' : 'rgba(8, 145, 178, 0.06)',
+                  border: `1px solid ${isDark ? 'rgba(0, 212, 255, 0.2)' : 'rgba(8, 145, 178, 0.2)'}`,
+                  color: mutedTeamColor(emphasizedTeam, isDark),
+                  fontFamily: 'Space Grotesk',
+                }}>
+                <Eye size={10} />
+                Viewing: {empTeam?.short}
+                <button onClick={() => setEmphasizedTeam(null)}
+                  className="ml-0.5 hover:opacity-70 transition-opacity"
+                  style={{ color: 'var(--table-header-color)' }}>
+                  <X size={10} />
+                </button>
+              </span>
+            );
+          })()}
+        </div>
+        <CardInsightSection isOpen={showGravInsights} insights={gravInsights} isDark={isDark} />
         <GravitationalPullContent height={800} />
+        <p className="text-[10px] text-muted-foreground mt-2 text-center">
+          {gravMode === 'COMPARE'
+            ? 'Click any team bar to highlight it (pottery focus) and drill down into their away impact.'
+            : 'Showing top 10 teams on a true linear scale. Switch to COMPARE to see all 30 teams.'}
+        </p>
       </ChartModal>
       <ChartModal isOpen={maximized === 'awayImpact'} onClose={() => setMaximized(null)}
         title={`${selectedTeamObj?.short || 'Team'} — Away Impact at Each Stadium`}>
