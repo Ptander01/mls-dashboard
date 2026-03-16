@@ -13,6 +13,9 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { computeAllResilienceMetrics, dumbbellHeadline, resilienceHeadline } from '@/lib/resilienceUtils';
 import DumbbellChart from '@/components/charts/DumbbellChart';
 import ResilienceIndexChart from '@/components/charts/ResilienceIndexChart';
+import TravelScatterChart from '@/components/charts/TravelScatterChart';
+import RadarTeamCards from '@/components/charts/RadarTeamCards';
+import DeepDivePanel from '@/components/charts/DeepDivePanel';
 import { GEO_DATA } from '@/lib/geoData';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
@@ -1222,6 +1225,14 @@ export default function TravelMap() {
           <DumbbellChart metrics={resilienceMetrics} />
         </NeuCard>
 
+        {/* Chart B — Travel Burden Scatter (full width) */}
+        <NeuCard className="p-5">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Chart B — Travel Burden Scatter</span>
+          </div>
+          <TravelScatterChart metrics={resilienceMetrics} />
+        </NeuCard>
+
         {/* Chart C — Resilience Index (full width) */}
         <NeuCard className="p-5">
           <div className="flex items-center justify-between mb-1">
@@ -1230,6 +1241,22 @@ export default function TravelMap() {
           </div>
           <CardInsightSection isOpen={showResilienceInsights} insights={resilienceInsights} isDark={isDark} />
           <ResilienceIndexChart metrics={resilienceMetrics} />
+        </NeuCard>
+
+        {/* Chart D — Radar Team Cards (collapsible) */}
+        <NeuCard className="p-5">
+          <div className="mb-2">
+            <span className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Chart D — Team Profiles</span>
+          </div>
+          <RadarTeamCards metrics={resilienceMetrics} />
+        </NeuCard>
+
+        {/* Deep Dive — Squad Construction & Salary Analysis (collapsible) */}
+        <NeuCard className="p-5">
+          <div className="mb-2">
+            <span className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Deep Dive</span>
+          </div>
+          <DeepDivePanel metrics={resilienceMetrics} players={filteredPlayers} teams={filteredTeams} />
         </NeuCard>
       </div>
 

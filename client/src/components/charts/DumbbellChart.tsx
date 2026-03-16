@@ -365,19 +365,19 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
             }
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 relative z-10">
           {/* Symbology toggle */}
           <div className="flex items-center gap-0">
             {(['STANDARD', 'TEAM'] as SymbologyMode[]).map(s => (
               <button
                 key={s}
-                onClick={() => setSymbology(s)}
-                className={`text-[10px] px-2.5 py-1 font-semibold tracking-wider transition-all ${
+                onClick={(e) => { e.stopPropagation(); setSymbology(s); }}
+                className={`text-[10px] px-2.5 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
                   symbology === s
                     ? 'neu-pressed text-cyan'
                     : 'neu-raised text-muted-foreground hover:text-foreground'
                 } ${s === 'STANDARD' ? 'rounded-l-lg' : 'rounded-r-lg'}`}
-                style={{ fontFamily: 'Space Grotesk' }}
+                style={{ fontFamily: 'Space Grotesk', minWidth: '40px', minHeight: '28px' }}
               >
                 {s === 'STANDARD' ? 'H/A' : 'TEAM'}
               </button>
@@ -388,13 +388,13 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
             {(['PPG', 'WIN%', 'GD'] as MetricMode[]).map(m => (
               <button
                 key={m}
-                onClick={() => setMode(m)}
-                className={`text-[10px] px-3 py-1 font-semibold tracking-wider transition-all ${
+                onClick={(e) => { e.stopPropagation(); setMode(m); }}
+                className={`text-[10px] px-3 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
                   mode === m
                     ? 'neu-pressed text-cyan'
                     : 'neu-raised text-muted-foreground hover:text-foreground'
                 } ${m === 'PPG' ? 'rounded-l-lg' : m === 'GD' ? 'rounded-r-lg' : ''}`}
-                style={{ fontFamily: 'Space Grotesk' }}
+                style={{ fontFamily: 'Space Grotesk', minWidth: '40px', minHeight: '28px' }}
               >
                 {m}
               </button>
