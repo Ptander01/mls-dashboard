@@ -102,33 +102,42 @@ export function CardInsightSection({ isOpen, insights, isDark }: CardInsightSect
         variant="compact"
         showDepression={isOpen}
       >
-        {isOpen && (
-          <div className="space-y-1.5">
-            {insights.map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06 + 0.15, duration: 0.2 }}
-                className="flex items-start gap-2"
-              >
-                <span
-                  className="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-[5px]"
-                  style={{ background: ACCENT_COLORS[item.accent] }}
-                />
-                <p
-                  className="text-[11px] leading-relaxed"
-                  style={{
-                    fontFamily: 'Space Grotesk, sans-serif',
-                    color: 'var(--foreground)',
-                  }}
+        <AnimatePresence mode="wait">
+          {isOpen && (
+            <motion.div
+              key="card-insights"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="space-y-1.5"
+            >
+              {insights.map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06 + 0.15, duration: 0.2 }}
+                  className="flex items-start gap-2"
                 >
-                  {item.text}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        )}
+                  <span
+                    className="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-[5px]"
+                    style={{ background: ACCENT_COLORS[item.accent] }}
+                  />
+                  <p
+                    className="text-[11px] leading-relaxed"
+                    style={{
+                      fontFamily: 'Space Grotesk, sans-serif',
+                      color: 'var(--foreground)',
+                    }}
+                  >
+                    {item.text}
+                  </p>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </NeuInsightContainer>
     </div>
   );

@@ -83,13 +83,22 @@ export function InsightPanel({ insights, isDark, className = '' }: InsightPanelP
 
       {/* NeuInsightContainer — shows depression groove when closed, rises when open */}
       <NeuInsightContainer isOpen={isOpen} isDark={isDark} variant="full" showDepression={true}>
-        {isOpen && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {insights.map((insight, i) => (
-              <InsightCard key={i} insight={insight} isDark={isDark} index={i} />
-            ))}
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {isOpen && (
+            <motion.div
+              key="insight-grid"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-3"
+            >
+              {insights.map((insight, i) => (
+                <InsightCard key={i} insight={insight} isDark={isDark} index={i} />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </NeuInsightContainer>
     </div>
   );
