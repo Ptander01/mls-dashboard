@@ -1,13 +1,13 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useFilters, type PotteryFocus } from '@/contexts/FilterContext';
 import { TEAMS, MATCHES, getTeam } from '@/lib/mlsData';
-import { mutedTeamColor, Extruded3DBar, Extruded3DHorizontalBar, Extruded3DBarWithCeiling, Extruded3DBarFillRate } from '@/lib/chartUtils';
+import { mutedTeamColor, Extruded3DBar, Extruded3DHorizontalBar, Extruded3DBarWithCeiling, Extruded3DBarFillRate, lighten, darken, hexToRgba } from '@/lib/chartUtils';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area, Line, LineChart, Cell, ReferenceLine
+  AreaChart, Area, Line, LineChart, Cell, ReferenceLine, Customized
 } from 'recharts';
 import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home, BarChart3, Percent, Eye, X, Layers } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -206,17 +206,25 @@ export default function Attendance() {
   // CHART COMPONENTS
   // ═══════════════════════════════════════════
 
-  // Track whether the bar chart has already rendered once to suppress re-animation
+  // Track animation state: animate on initial render and on toggle, but NOT on team click
   const barChartRendered = useRef(false);
+  const [barAnimKey, setBarAnimKey] = useState(0); // bump to trigger re-animation
+  const suppressBarAnim = useRef(false); // true when a bar click caused the re-render
   useEffect(() => {
-    // After first render, mark as rendered so subsequent updates skip animation
     const timer = setTimeout(() => { barChartRendered.current = true; }, 700);
     return () => clearTimeout(timer);
   }, []);
+  // When toggling between Absolute / Fill Rate, bump the animation key so bars re-animate
+  useEffect(() => {
+    if (barChartRendered.current) {
+      suppressBarAnim.current = false;
+      setBarAnimKey(k => k + 1);
+    }
+  }, [showFillRate]);
 
   const handleBarClick = useCallback((d: any) => {
+    suppressBarAnim.current = true; // suppress animation on click-to-filter
     if (selectedTeam === d.id) {
-      // Clicking the same bar again clears the selection
       setSelectedTeam(null);
       setTrendTeamOverride('');
     } else {
@@ -258,8 +266,9 @@ export default function Attendance() {
             }} />
             <Bar dataKey={dataKey} radius={[4, 4, 0, 0]} cursor="pointer"
               onClick={(d: any) => handleBarClick(d)}
-              isAnimationActive={!barChartRendered.current}
-              animationDuration={600} animationEasing="ease-in-out"
+              isAnimationActive={!suppressBarAnim.current}
+              animationDuration={700} animationEasing="ease-in-out"
+              key={`bar_${barAnimKey}`}
               shape={showFillRate ? (props: any) => <Extruded3DBarFillRate {...props} /> : (props: any) => <Extruded3DBarWithCeiling {...props} />}
             >
               {homeAvgData.map((d, i) => {
@@ -280,48 +289,181 @@ export default function Attendance() {
     );
   };
 
+  // ─── Custom 3D Ribbon Line Renderer ───
+  const Ribbon3DLine = ({ points, lineColor, chartWidth, chartHeight }: {
+    points: Array<{ x: number; y: number }>;
+    lineColor: string;
+    chartWidth: number;
+    chartHeight: number;
+  }) => {
+    if (!points || points.length < 2) return null;
+    const ribbonH = 6; // thickness of the 3D ribbon
+    const shadowOffY = 10; // how far the shadow drops
+    const shadowBlur = 6;
+    const id = `ribbon3d_${Math.random().toString(36).slice(2, 8)}`;
+    const topColor = lighten(lineColor, 0.45);
+    const midColor = lineColor;
+    const botColor = darken(lineColor, 0.45);
+    // Build the path string for the top edge
+    const topPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+    // Build the bottom edge (offset down by ribbonH)
+    const botPath = [...points].reverse().map((p, i) => `${i === 0 ? 'L' : 'L'}${p.x},${p.y + ribbonH}`).join(' ');
+    const ribbonPath = `${topPath} ${botPath} Z`;
+    // Shadow path — offset further down
+    const shadowTopPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y + shadowOffY}`).join(' ');
+    const shadowBotPath = [...points].reverse().map((p, i) => `${i === 0 ? 'L' : 'L'}${p.x},${p.y + ribbonH + shadowOffY}`).join(' ');
+    const shadowPath = `${shadowTopPath} ${shadowBotPath} Z`;
+    return (
+      <g>
+        <defs>
+          <linearGradient id={`${id}_grad`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={topColor} stopOpacity={0.95} />
+            <stop offset="30%" stopColor={lighten(midColor, 0.15)} stopOpacity={0.9} />
+            <stop offset="70%" stopColor={midColor} stopOpacity={0.85} />
+            <stop offset="100%" stopColor={botColor} stopOpacity={0.9} />
+          </linearGradient>
+          <filter id={`${id}_shadowF`} x="-10%" y="-10%" width="120%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation={shadowBlur} />
+          </filter>
+        </defs>
+        {/* Cast shadow */}
+        <path d={shadowPath} fill="rgba(0,0,0,0.35)" filter={`url(#${id}_shadowF)`} />
+        {/* Right-side extrusion face (3D depth) */}
+        {points.map((p, i) => {
+          if (i === points.length - 1) return null;
+          const next = points[i + 1];
+          return (
+            <path key={`side_${i}`}
+              d={`M${next.x},${next.y} L${next.x + 2},${next.y + 2} L${next.x + 2},${next.y + ribbonH + 2} L${next.x},${next.y + ribbonH} Z`}
+              fill={darken(lineColor, 0.5)}
+              fillOpacity={0.3}
+            />
+          );
+        })}
+        {/* Main ribbon face */}
+        <path d={ribbonPath} fill={`url(#${id}_grad)`} />
+        {/* Top edge highlight */}
+        <path d={topPath} fill="none" stroke={topColor} strokeWidth={1.5} strokeOpacity={0.7} />
+        {/* Bottom edge shadow line */}
+        <path d={points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y + ribbonH}`).join(' ')}
+          fill="none" stroke={botColor} strokeWidth={0.8} strokeOpacity={0.5} />
+        {/* Subtle data points */}
+        {points.map((p, i) => (
+          <g key={`dot_${i}`}>
+            <circle cx={p.x} cy={p.y + ribbonH / 2} r={3.5}
+              fill={isDark ? '#1a1a1a' : '#ffffff'} stroke={lineColor} strokeWidth={1.5} />
+            <circle cx={p.x - 0.5} cy={p.y + ribbonH / 2 - 0.5} r={1.2}
+              fill={lighten(lineColor, 0.6)} fillOpacity={0.6} />
+          </g>
+        ))}
+      </g>
+    );
+  };
+
+  // ─── Custom 3D Braille Dots Reference Line Renderer ───
+  const BrailleReferenceDots = ({ y: refY, xStart, xEnd, label, labelColor }: {
+    y: number; xStart: number; xEnd: number; label: string; labelColor: string;
+  }) => {
+    if (!refY || refY <= 0) return null;
+    const dotRadius = 2.2;
+    const dotSpacing = 10;
+    const lineLen = xEnd - xStart;
+    const dotCount = Math.max(2, Math.floor(lineLen / dotSpacing));
+    const actualSpacing = lineLen / dotCount;
+    const id = `braille_ref_${Math.random().toString(36).slice(2, 8)}`;
+    return (
+      <g>
+        <defs>
+          <filter id={`${id}_dotShadow`} x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
+          </filter>
+          <radialGradient id={`${id}_dotGrad`} cx="35%" cy="30%" r="65%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity={0.95} />
+            <stop offset="40%" stopColor="#e8e4dc" stopOpacity={0.85} />
+            <stop offset="75%" stopColor="#b8b4ac" stopOpacity={0.7} />
+            <stop offset="100%" stopColor="#888480" stopOpacity={0.6} />
+          </radialGradient>
+        </defs>
+        {Array.from({ length: dotCount + 1 }, (_, di) => {
+          const dotX = xStart + di * actualSpacing;
+          return (
+            <g key={`rdot_${di}`}>
+              <ellipse cx={dotX + 1.5} cy={refY + 2} rx={dotRadius + 0.8} ry={dotRadius * 0.5 + 0.5}
+                fill="rgba(0,0,0,0.35)" filter={`url(#${id}_dotShadow)`} />
+              <circle cx={dotX} cy={refY} r={dotRadius} fill={`url(#${id}_dotGrad)`} />
+              <circle cx={dotX - dotRadius * 0.3} cy={refY - dotRadius * 0.3} r={dotRadius * 0.35}
+                fill="rgba(255,255,255,0.7)" />
+            </g>
+          );
+        })}
+        {/* Label */}
+        <text x={xEnd + 6} y={refY + 3} fill={labelColor} fontSize={9} fontFamily="JetBrains Mono">
+          {label}
+        </text>
+      </g>
+    );
+  };
+
   const WeeklyContent = ({ height = 220 }: { height?: number }) => {
     const lineColor = effectiveTrendTeam ? trendColor : (isDark ? '#3A6A7A' : '#4A7A8A');
+    // Determine if we should show the average guide line
+    // Only show when a specific team is selected (not league-wide, which IS the average)
+    const showAvgGuide = false; // removed — redundant for league-wide
     return (
       <div style={{ height }}>
         <ResponsiveContainer>
-          <LineChart data={weeklyData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-            <defs>
-              <filter id="trendLineShadow3d" x="-20%" y="-20%" width="140%" height="160%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
-                <feOffset in="blur" dx="0" dy="5" result="offsetBlur" />
-                <feFlood floodColor="rgba(0,0,0,0.5)" result="color" />
-                <feComposite in="color" in2="offsetBlur" operator="in" result="shadow" />
-                <feMerge>
-                  <feMergeNode in="shadow" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
+          <LineChart data={weeklyData} margin={{ top: 10, right: 80, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
             <XAxis dataKey="week" stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
             <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
             <Tooltip contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'blur(20px) saturate(1.4)', WebkitBackdropFilter: 'blur(20px) saturate(1.4)', border: '1px solid var(--glass-border)', borderRadius: 12, fontSize: 11, fontFamily: 'JetBrains Mono', color: 'var(--glass-text)', boxShadow: 'var(--glass-shadow)' }} />
-            {trendCapacity > 0 && (
-              <ReferenceLine y={trendCapacity} stroke={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.25)'} strokeDasharray="6 3" strokeWidth={2} strokeOpacity={1}
-                style={{ filter: isDark ? 'drop-shadow(0 1px 2px rgba(255,255,255,0.3)) drop-shadow(0 -1px 0 rgba(255,255,255,0.15))' : 'drop-shadow(0 1px 2px rgba(0,0,0,0.15)) drop-shadow(0 -1px 0 rgba(255,255,255,0.5))' }}
-                label={{
-                  value: effectiveTrendTeam
-                    ? `${trendTeamObj?.short} Capacity ${(trendCapacity / 1000).toFixed(1)}k`
-                    : `Avg Capacity ${(trendCapacity / 1000).toFixed(1)}k`,
-                  position: 'right', fill: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)', fontSize: 9, fontFamily: 'JetBrains Mono'
-                }} />
-            )}
-            <Line type="monotone" dataKey="avg" stroke={lineColor} strokeWidth={3}
+            {/* Hidden line to drive data/tooltip — invisible, the Ribbon3D renders the visual */}
+            <Line type="monotone" dataKey="avg" stroke="transparent" strokeWidth={0}
               name={effectiveTrendTeam ? `${trendTeamObj?.short} Home Attendance` : 'Avg Attendance'}
-              animationDuration={500}
-              dot={{ r: 3, fill: lineColor, stroke: isDark ? '#1a1a1a' : '#ffffff', strokeWidth: 1.5 }}
-              activeDot={{ r: 5, fill: lineColor, stroke: isDark ? '#ffffff' : '#333333', strokeWidth: 2 }}
-              style={{ filter: 'url(#trendLineShadow3d)' }}
+              animationDuration={0}
+              dot={false}
+              activeDot={{ r: 6, fill: lineColor, stroke: isDark ? '#ffffff' : '#333333', strokeWidth: 2 }}
             />
+            {/* Max line with braille dots rendered via Customized */}
             {!effectiveTrendTeam && (
-              <Line type="monotone" dataKey="max" stroke={isDark ? '#8B7B2A' : '#9A8A3A'} strokeWidth={1} strokeDasharray="4 4" dot={false} name="Max" />
+              <Line type="monotone" dataKey="max" stroke="transparent" strokeWidth={0} dot={false} name="Max" />
             )}
+            {/* 3D Ribbon line rendered as a Customized overlay */}
+            <Customized component={(props: any) => {
+              const { xAxisMap, yAxisMap, formattedGraphicalItems } = props;
+              if (!formattedGraphicalItems || formattedGraphicalItems.length === 0) return null;
+              const avgLine = formattedGraphicalItems[0];
+              if (!avgLine?.props?.points) return null;
+              const pts = avgLine.props.points.filter((p: any) => p.x != null && p.y != null);
+              if (pts.length < 2) return null;
+              const xAxis = xAxisMap && Object.values(xAxisMap)[0] as any;
+              const yAxis = yAxisMap && Object.values(yAxisMap)[0] as any;
+              const chartLeft = xAxis?.x || 0;
+              const chartRight = (xAxis?.x || 0) + (xAxis?.width || 0);
+              const capYPx = yAxis && trendCapacity > 0 ? yAxis.scale(trendCapacity) : null;
+              // Max line braille dots
+              const maxLine = formattedGraphicalItems.length > 1 ? formattedGraphicalItems[1] : null;
+              const maxPts = maxLine?.props?.points?.filter((p: any) => p.x != null && p.y != null) || [];
+              // Find the max Y value across max line points for braille reference
+              const maxVal = weeklyData.length > 0 ? Math.max(...weeklyData.map(d => d.max)) : 0;
+              const maxYPx = yAxis && maxVal > 0 ? yAxis.scale(maxVal) : null;
+              return (
+                <g>
+                  <Ribbon3DLine points={pts} lineColor={lineColor}
+                    chartWidth={chartRight - chartLeft} chartHeight={yAxis?.height || 200} />
+                  {/* Capacity braille dots */}
+                  {capYPx != null && trendCapacity > 0 && (
+                    <BrailleReferenceDots
+                      y={capYPx} xStart={chartLeft} xEnd={chartRight}
+                      label={effectiveTrendTeam
+                        ? `${trendTeamObj?.short} Capacity ${(trendCapacity / 1000).toFixed(1)}k`
+                        : `Avg Capacity ${(trendCapacity / 1000).toFixed(1)}k`}
+                      labelColor={isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)'}
+                    />
+                  )}
+                </g>
+              );
+            }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
