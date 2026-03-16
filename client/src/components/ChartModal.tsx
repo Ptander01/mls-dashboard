@@ -105,13 +105,15 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
         {/* Modal card */}
         <div
           ref={modalCardRef}
-          className="neu-raised rounded-2xl"
+          className="rounded-2xl"
           style={{
             position: 'relative',
             width: '95vw',
             maxWidth: '95vw',
             overflow: 'hidden',
             animation: 'modal-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            background: 'var(--neu-bg-raised)',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
           }}
         >
           {/* Header */}
