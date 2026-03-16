@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useFilters } from '@/contexts/FilterContext';
+import { useFilters, type PotteryFocus } from '@/contexts/FilterContext';
 import { TEAMS, MATCHES, getTeam } from '@/lib/mlsData';
 import { mutedTeamColor, Extruded3DBar, Extruded3DHorizontalBar, Extruded3DBarWithCeiling } from '@/lib/chartUtils';
 import NeuCard from '@/components/NeuCard';
@@ -9,10 +9,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, Line, Cell, ReferenceLine
 } from 'recharts';
-import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home, BarChart3, Percent } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home, BarChart3, Percent, Eye, X, Layers } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { InsightPanel, InsightHeadline } from '@/components/InsightPanel';
-import { attendanceHeadline, attendanceInsights, attendanceTrendCardInsights, capacityFillCardInsights, gravPullCardInsights } from '@/lib/insightEngine';
+import { attendanceHeadline, attendanceInsights, attendanceTrendCardInsights, capacityFillCardInsights, gravPullCardInsights, gravitationalPullHeadline } from '@/lib/insightEngine';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
 
 // ─── Stadium Capacities (expandable max for multi-use venues) ───
@@ -26,7 +26,7 @@ const STADIUM_CAPACITY: Record<string, number> = {
 };
 
 export default function Attendance() {
-  const { filters, filteredTeams, filteredMatches } = useFilters();
+  const { filters, filteredTeams, filteredMatches, potteryFocus, setPotteryFocus } = useFilters();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
@@ -37,6 +37,11 @@ export default function Attendance() {
   const [showTrendInsights, setShowTrendInsights] = useState(false);
   const [showGravInsights, setShowGravInsights] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [gravMode, setGravMode] = useState<'COMPARE' | 'ABSOLUTE'>('COMPARE');
+
+  const emphasizedTeam = potteryFocus.emphasizedTeam;
+  const setEmphasizedTeam = (teamId: string | null) =>
+    setPotteryFocus({ emphasizedTeam: teamId });
 
   // Auto-select team when exactly one team is filtered globally
   useEffect(() => {
@@ -188,6 +193,7 @@ export default function Attendance() {
   const capacityFillInsights = useMemo(() => capacityFillCardInsights(filteredTeams, filteredMatches), [filteredTeams, filteredMatches]);
   const trendInsights = useMemo(() => attendanceTrendCardInsights(filteredMatches, filteredTeams), [filteredMatches, filteredTeams]);
   const gravInsights = useMemo(() => gravPullCardInsights(filteredTeams, filteredMatches), [filteredTeams, filteredMatches]);
+  const gravHeadline = useMemo(() => gravitationalPullHeadline(filteredTeams), [filteredTeams]);
 
   const selectedTeamObj = selectedTeam ? getTeam(selectedTeam) : null;
   const selectedHomeAvg = useMemo(() => {
@@ -292,54 +298,142 @@ export default function Attendance() {
     );
   };
 
-  const GravitationalPullContent = ({ height = 700 }: { height?: number }) => (
-    <div style={{ height }}>
-      <ResponsiveContainer>
-        <BarChart data={gravitationalPull} layout="vertical" margin={{ top: 5, right: 60, bottom: 5, left: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
-          <XAxis type="number" stroke="var(--table-header-color)" fontSize={10} tickLine={false}
-            tickFormatter={(v: number) => v >= 0 ? `+${(v/1000).toFixed(0)}k` : `${(v/1000).toFixed(0)}k`} />
-          <YAxis dataKey="name" type="category" stroke="var(--table-header-color)" fontSize={9} tickLine={false} width={110}
-            tick={({ x, y, payload }: any) => {
-              const item = gravitationalPull.find(d => d.name === payload.value);
-              return (
-                <g transform={`translate(${x},${y})`}>
-                  <circle cx={-100} cy={0} r={4} fill={item?.color || '#666'} />
-                  <text x={-92} y={0} dy={4} textAnchor="start" fill="var(--table-header-color)" fontSize={9}
-                    style={{ cursor: 'pointer' }}>{payload.value}</text>
-                </g>
-              );
-            }}
-          />
-          <ReferenceLine x={0} stroke="var(--border)" strokeWidth={1} />
-          <Tooltip content={({ payload }) => {
-            if (!payload?.length) return null;
-            const d = payload[0].payload;
-            return (
-              <div className="glass-sm p-3 text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
-                <div className="font-semibold mb-1" style={{ color: d.color }}>{d.name}</div>
-                <div>Net Impact: <span className={d.totalDelta >= 0 ? 'text-emerald' : 'text-coral'}>
-                  {d.totalDelta >= 0 ? '+' : ''}{d.totalDelta.toLocaleString()}</span></div>
-                <div>Avg Delta/Game: <span className={d.avgDelta >= 0 ? 'text-emerald' : 'text-coral'}>
-                  {d.avgDelta >= 0 ? '+' : ''}{d.avgDelta.toLocaleString()}</span></div>
-                <div style={{ color: 'var(--glass-text-muted)' }}>Away Games: {d.matches}</div>
-              </div>
-            );
-          }} />
-          <Bar dataKey="totalDelta" radius={[0, 4, 4, 0]} cursor="pointer"
-            onClick={(d: any) => { setSelectedTeam(d.id); setTrendTeamOverride(d.id); }}
-            shape={(props: any) => <Extruded3DHorizontalBar {...props} />}
+  const GravitationalPullContent = ({ height = 700 }: { height?: number }) => {
+    // ── ABSOLUTE mode: true linear scale, top 10 only, Inter Miami bar bleeds ──
+    // ── COMPARE mode: all 30 teams, capped domain, pottery focus lives here ──
+    const isAbsolute = gravMode === 'ABSOLUTE';
+
+    // Data slicing
+    const displayData = isAbsolute ? gravitationalPull.slice(0, 10) : gravitationalPull;
+    const remainingCount = isAbsolute ? gravitationalPull.length - 10 : 0;
+
+    // Domain calculation
+    const secondHighest = gravitationalPull.length > 1 ? gravitationalPull[1].totalDelta : 0;
+    const minVal = Math.min(...displayData.map(d => d.totalDelta));
+    const xDomain: [number, number] = isAbsolute
+      ? [Math.min(minVal, 0), 'dataMax' as any]
+      : [Math.min(minVal * 1.05, 0), Math.round(secondHighest * 1.15)];
+
+    // ABSOLUTE mode: find the top team for end-of-bar label
+    const topTeam = gravitationalPull[0];
+    const topMultiple = secondHighest > 0 ? (topTeam.totalDelta / secondHighest).toFixed(1) : '—';
+
+    const chartHeight = isAbsolute ? Math.max(350, 10 * 35) : height;
+
+    // Pottery focus click handler (COMPARE mode only)
+    const handleBarClick = (d: any) => {
+      if (!isAbsolute) {
+        // Toggle pottery focus
+        if (emphasizedTeam === d.id) {
+          setEmphasizedTeam(null);
+        } else {
+          setEmphasizedTeam(d.id);
+        }
+      }
+      // Always set drill-down selection
+      setSelectedTeam(d.id);
+      setTrendTeamOverride(d.id);
+    };
+
+    return (
+      <div style={{ height: chartHeight, position: 'relative' }}
+        className={isAbsolute ? 'overflow-visible' : 'overflow-hidden'}
+      >
+        <ResponsiveContainer>
+          <BarChart data={displayData} layout="vertical"
+            margin={{ top: 5, right: isAbsolute ? 120 : 60, bottom: 5, left: 5 }}
+            style={isAbsolute ? { overflow: 'visible' } as any : undefined}
           >
-            {gravitationalPull.map((d, i) => (
-              <Cell key={i} fill={d.color}
-                stroke={selectedTeam === d.id ? (isDark ? '#ffffff' : '#333333') : 'none'}
-                strokeWidth={selectedTeam === d.id ? 2 : 0} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
+            <XAxis type="number" stroke="var(--table-header-color)" fontSize={10} tickLine={false}
+              domain={xDomain}
+              tickFormatter={(v: number) => v >= 0 ? `+${(v/1000).toFixed(0)}k` : `${(v/1000).toFixed(0)}k`} />
+            <YAxis dataKey="name" type="category" stroke="var(--table-header-color)" fontSize={9} tickLine={false} width={110}
+              tick={({ x, y, payload }: any) => {
+                const item = displayData.find(d => d.name === payload.value);
+                const isEmphasized = emphasizedTeam === item?.id;
+                const isDeemphasized = emphasizedTeam && emphasizedTeam !== item?.id;
+                return (
+                  <g transform={`translate(${x},${y})`} style={{ cursor: 'pointer' }}
+                    onClick={() => item && handleBarClick(item)}>
+                    <circle cx={-100} cy={0} r={4}
+                      fill={isDeemphasized ? (isDark ? '#3a3830' : '#c8c4bc') : (item?.color || '#666')}
+                      opacity={isDeemphasized ? 0.5 : 1} />
+                    <text x={-92} y={0} dy={4} textAnchor="start"
+                      fill={isDeemphasized ? (isDark ? '#5a5850' : '#a8a4a0') : 'var(--table-header-color)'}
+                      fontSize={isEmphasized ? 10 : 9}
+                      fontWeight={isEmphasized ? 700 : 400}
+                      style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}>{payload.value}</text>
+                  </g>
+                );
+              }}
+            />
+            <ReferenceLine x={0} stroke="var(--border)" strokeWidth={1} />
+            <Tooltip content={({ payload }) => {
+              if (!payload?.length) return null;
+              const d = payload[0].payload;
+              return (
+                <div className="glass-sm p-3 text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                  <div className="font-semibold mb-1" style={{ color: d.color }}>{d.name}</div>
+                  <div>Net Impact: <span className={d.totalDelta >= 0 ? 'text-emerald' : 'text-coral'}>
+                    {d.totalDelta >= 0 ? '+' : ''}{d.totalDelta.toLocaleString()}</span></div>
+                  <div>Avg Delta/Game: <span className={d.avgDelta >= 0 ? 'text-emerald' : 'text-coral'}>
+                    {d.avgDelta >= 0 ? '+' : ''}{d.avgDelta.toLocaleString()}</span></div>
+                  <div style={{ color: 'var(--glass-text-muted)' }}>Away Games: {d.matches}</div>
+                  {isAbsolute && d.id === topTeam.id && (
+                    <div className="mt-1 pt-1 border-t" style={{ borderColor: 'var(--glass-border)' }}>
+                      <span className="text-cyan font-semibold">{topMultiple}x</span>
+                      <span style={{ color: 'var(--glass-text-muted)' }}> the next-closest team</span>
+                    </div>
+                  )}
+                </div>
+              );
+            }} />
+            <Bar dataKey="totalDelta" radius={[0, 4, 4, 0]} cursor="pointer"
+              onClick={(d: any) => handleBarClick(d)}
+              shape={(props: any) => {
+                const teamId = props.payload?.id;
+                const isEmp = emphasizedTeam === teamId;
+                const isDemp = !!(emphasizedTeam && emphasizedTeam !== teamId);
+                return <Extruded3DHorizontalBar {...props}
+                  emphasized={!isAbsolute && isEmp}
+                  deemphasized={!isAbsolute && isDemp}
+                  isDarkTheme={isDark}
+                />;
+              }}
+            >
+              {displayData.map((d, i) => (
+                <Cell key={i} fill={d.color}
+                  stroke={selectedTeam === d.id ? (isDark ? '#ffffff' : '#333333') : 'none'}
+                  strokeWidth={selectedTeam === d.id ? 2 : 0} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+
+        {/* ABSOLUTE mode: end-of-bar label for top team */}
+        {isAbsolute && topTeam && (
+          <div className="absolute top-2 right-2 text-right" style={{ fontFamily: 'JetBrains Mono' }}>
+            <div className="text-[10px] font-semibold" style={{ color: topTeam.color }}>
+              {topTeam.name}: +{topTeam.totalDelta.toLocaleString()}
+            </div>
+            <div className="text-[9px] text-cyan font-bold">
+              {topMultiple}x next highest
+            </div>
+          </div>
+        )}
+
+        {/* ABSOLUTE mode: remaining teams hint */}
+        {isAbsolute && remainingCount > 0 && (
+          <div className="text-center mt-1">
+            <span className="text-[10px] text-muted-foreground italic">
+              + {remainingCount} more teams (switch to COMPARE to see all)
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const AwayImpactContent = ({ height = 400 }: { height?: number }) => {
     if (!selectedTeam || awayImpactData.length === 0) {
@@ -458,22 +552,26 @@ export default function Attendance() {
   };
 
   return (
-    <div className="space-y-4 mt-4">
-      {/* Tab Description / Insight Headline */}
-      <div className="px-1">
+    <div className="space-y-6 mt-4">
+      {/* Tab Header Card — elevated command center */}
+      <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
         <InsightHeadline
           headline={headline}
           isAnalyzing={isAnalyzing}
           staticTitle={<><span className="font-semibold text-foreground">Attendance</span> — Explore match-day attendance across all MLS venues. The bar chart ranks teams by average home attendance (toggle to fill rate to see stadium utilization). The dotted white line shows stadium capacity. The trend chart tracks weekly attendance patterns, and the drill-down panels reveal how specific away teams affect turnout.</>}
           isDark={isDark}
         />
-      </div>
+        <InsightPanel insights={attInsights} isDark={isDark} onToggle={setIsAnalyzing} />
+      </NeuCard>
 
-      {/* Insight Panel */}
-      <InsightPanel insights={attInsights} isDark={isDark} onToggle={setIsAnalyzing} />
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* League-Wide Totals */}
+      <div>
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <div className="w-1 h-4 rounded-full bg-cyan" style={{ boxShadow: '0 0 6px var(--cyan)' }} />
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>League-Wide Totals</h2>
+          <span className="text-[10px] text-muted-foreground/60 ml-1">Aggregate attendance figures across all matches</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <NeuCard delay={0.05} className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Users size={14} className="text-cyan" />
@@ -507,6 +605,7 @@ export default function Attendance() {
           </div>
           <AnimatedCounter value={filteredMatches.length} className="text-2xl text-purple-400" />
         </NeuCard>
+        </div>
       </div>
 
       {/* Home Attendance with Fill Rate Toggle */}
@@ -516,6 +615,7 @@ export default function Attendance() {
             <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
               {showFillRate ? 'Stadium Fill Rate by Team' : 'Average Home Attendance by Team'}
             </h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{showFillRate ? 'Percentage of stadium capacity filled on average — how well each club sells out' : 'Average fans per home match — dotted line shows stadium capacity'}</p>
             {!showFillRate && (
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="inline-block w-5 border-t-2 border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.25)' }} />
@@ -547,14 +647,17 @@ export default function Attendance() {
       {/* Weekly Trend with Team Filter */}
       <NeuCard delay={0.25} className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-            Attendance Trend by Matchweek
-            {trendTeamObj && (
-              <span className="ml-2 text-xs font-normal" style={{ color: trendColor }}>
-                — {trendTeamObj.short} Home Games
-              </span>
-            )}
-          </h3>
+          <div>
+            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
+              Attendance Trend by Matchweek
+              {trendTeamObj && (
+                <span className="ml-2 text-xs font-normal" style={{ color: trendColor }}>
+                  — {trendTeamObj.short} Home Games
+                </span>
+              )}
+            </h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Weekly attendance over the season — filter by team to see individual trends</p>
+          </div>
           <div className="flex items-center gap-2">
             <select
               value={trendTeamOverride || (filters.selectedTeams.length === 1 ? filters.selectedTeams[0] : '')}
@@ -581,7 +684,9 @@ export default function Attendance() {
       </NeuCard>
 
       {/* Gravitational Pull */}
-      <NeuCard delay={0.35} className="p-4">
+      <NeuCard delay={0.35} className={`p-4 ${gravMode === 'ABSOLUTE' ? 'z-10 relative' : ''}`}
+        overflowVisible={gravMode === 'ABSOLUTE'}
+      >
         <div className="flex items-center justify-between mb-2">
           <div>
             <div className="flex items-center gap-2">
@@ -590,15 +695,64 @@ export default function Attendance() {
                 Gravitational Pull — League-Wide Away Team Impact
               </h3>
             </div>
-            <p className="text-xs text-muted-foreground mt-1 ml-6">
-              Cumulative attendance delta across all away games. Positive = team draws more fans than the host's average when visiting.
+            <p className="text-[10.5px] text-muted-foreground mt-1 ml-6" style={{ fontFamily: 'JetBrains Mono', lineHeight: 1.5 }}>
+              {gravHeadline}
             </p>
           </div>
-          <CardInsightToggle isOpen={showGravInsights} onToggle={() => setShowGravInsights(v => !v)} isDark={isDark} />
-          <MaximizeButton onClick={() => setMaximized('gravity')} />
+          <div className="flex items-center gap-2">
+            {/* ABSOLUTE / COMPARE toggle */}
+            <div className="flex rounded-md overflow-hidden" style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }}>
+              {(['COMPARE', 'ABSOLUTE'] as const).map(mode => (
+                <button key={mode}
+                  onClick={() => {
+                    setGravMode(mode);
+                    if (mode === 'ABSOLUTE') setEmphasizedTeam(null);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
+                  style={{
+                    background: gravMode === mode
+                      ? (isDark ? 'rgba(0, 212, 255, 0.12)' : 'rgba(8, 145, 178, 0.1)')
+                      : (isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'),
+                    color: gravMode === mode ? 'var(--cyan)' : 'var(--table-header-color)',
+                  }}
+                >
+                  {mode === 'COMPARE' ? <Layers size={10} /> : <Eye size={10} />}
+                  {mode}
+                </button>
+              ))}
+            </div>
+            <CardInsightToggle isOpen={showGravInsights} onToggle={() => setShowGravInsights(v => !v)} isDark={isDark} />
+            <MaximizeButton onClick={() => setMaximized('gravity')} />
+          </div>
         </div>
         <CardInsightSection isOpen={showGravInsights} insights={gravInsights} isDark={isDark} />
-        {selectedTeam && (
+
+        {/* Pottery Focus Badge (COMPARE mode) */}
+        {emphasizedTeam && gravMode === 'COMPARE' && (() => {
+          const empTeam = getTeam(emphasizedTeam);
+          return (
+            <div className="flex items-center gap-2 mb-2 ml-6">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold"
+                style={{
+                  background: isDark ? 'rgba(0, 212, 255, 0.08)' : 'rgba(8, 145, 178, 0.06)',
+                  border: `1px solid ${isDark ? 'rgba(0, 212, 255, 0.2)' : 'rgba(8, 145, 178, 0.2)'}`,
+                  color: mutedTeamColor(emphasizedTeam, isDark),
+                  fontFamily: 'Space Grotesk',
+                }}>
+                <Eye size={10} />
+                Viewing: {empTeam?.short}
+                <button onClick={() => setEmphasizedTeam(null)}
+                  className="ml-0.5 hover:opacity-70 transition-opacity"
+                  style={{ color: 'var(--table-header-color)' }}>
+                  <X size={10} />
+                </button>
+              </span>
+            </div>
+          );
+        })()}
+
+        {/* Selected team (drill-down) indicator */}
+        {selectedTeam && !emphasizedTeam && (
           <div className="flex items-center gap-2 mb-2 ml-6">
             <span className="text-[10px] text-muted-foreground">Selected:</span>
             <span className="text-xs font-semibold" style={{ color: mutedTeamColor(selectedTeam, isDark), fontFamily: 'Space Grotesk' }}>
@@ -612,13 +766,15 @@ export default function Attendance() {
         )}
         <GravitationalPullContent />
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Click any team bar to drill down into their specific away impact and home response data.
+          {gravMode === 'COMPARE'
+            ? 'Click any team bar to highlight it (pottery focus) and drill down into their away impact.'
+            : 'Showing top 10 teams on a true linear scale. Switch to COMPARE to see all 30 teams.'}
         </p>
       </NeuCard>
 
       {/* Drill-Down Panels */}
       {selectedTeam && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <NeuCard delay={0.1} className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div>
