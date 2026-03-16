@@ -1,23 +1,9 @@
-# Visual Verification v2 — Stacked Full-Width Charts
+# Visual Verification v2 — Cinematic Crater Scatter Upgrade
 
-## Dumbbell Chart (Chart A)
-- Now takes full page width — much more readable
-- Team names (NY Red Bulls, Charlotte FC, Nashville SC, etc.) clearly visible at ~13px font
-- Neumorphic grooved tracks are wider and more visible
-- 3D knob endpoints are larger (r=13) — cross-hatch texture visible
-- Green/red knobs in H/A mode clearly distinguishable
-- Gap values in cyan on right side (+1.35, +1.24, +1.06, etc.) clearly readable
-- Toggle buttons (H/A, TEAM, PPG, WIN%, GD) are larger and more clickable
-- Legend shows Home (green) and Away (red) with knob swatches
-- Row height 52px gives comfortable spacing between teams
+## Crater Scatter Chart (Chart B) — Upgraded
 
-## Resilience Index Chart (Chart C)
-- Also full width below the dumbbell chart
-- Need to scroll further to verify
+The upgraded crater scatter chart is rendering with the new cinematic lighting model. Each crater now features a thick beveled rim with directional lighting (bright arc on top-left, shadow arc on bottom-right), variable-spacing concentric rings that tighten toward center, deep inner bowl with shadow crescent, and visible center pits with specular highlights. Cast shadows beneath each crater add to the physical "pressed into surface" feel.
 
-## Layout
-- Charts are stacked vertically in a space-y-4 container
-- Each in its own NeuCard with p-5 padding
-- Section header "Performance & Resilience Analysis" visible above
+Teams clearly labeled: NY Red Bulls, Charlotte FC, Nashville SC, LA Galaxy, Seattle Sounders, Philadelphia Union, Atlanta Utd, Columbus Crew, NYCFC, and more. Conference filter buttons (ALL/EAST/WEST) visible and working. Insight headline bar shows R² = 0.01 analysis.
 
-## Status: Looking great at 100% zoom!
+## Status: Major visual upgrade achieved — craters look like physical impressions in clay.

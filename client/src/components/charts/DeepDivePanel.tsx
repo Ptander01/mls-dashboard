@@ -385,164 +385,254 @@ function SalaryRoadScatter({ metrics, isDark }: { metrics: TeamResilienceMetrics
 }
 
 // ═══════════════════════════════════════════
-// SUB-PANEL 3: Age Distribution Stacked Bars
+// SUB-PANEL 3: Age Distribution Ridgeline Plot
 // ═══════════════════════════════════════════
 
-function AgeDistributionBars({ metrics, players, isDark }: { metrics: TeamResilienceMetrics[]; players: Player[]; isDark: boolean }) {
-  const data = useMemo(() => {
+/**
+ * Gaussian kernel density estimation for smooth ridgeline curves.
+ * bandwidth controls smoothness — higher = smoother.
+ */
+function kernelDensity(values: number[], bandwidth: number, xMin: number, xMax: number, steps: number): { x: number; y: number }[] {
+  const result: { x: number; y: number }[] = [];
+  const step = (xMax - xMin) / steps;
+  for (let i = 0; i <= steps; i++) {
+    const x = xMin + i * step;
+    let sum = 0;
+    for (const v of values) {
+      const z = (x - v) / bandwidth;
+      sum += Math.exp(-0.5 * z * z) / (bandwidth * Math.sqrt(2 * Math.PI));
+    }
+    result.push({ x, y: sum / Math.max(1, values.length) });
+  }
+  return result;
+}
+
+function AgeRidgeline({ metrics, players, isDark }: { metrics: TeamResilienceMetrics[]; players: Player[]; isDark: boolean }) {
+  // Build per-team age distributions (weighted by minutes)
+  const teamData = useMemo(() => {
     return metrics.map(m => {
       const teamPlayers = players.filter(p => p.team === m.teamId && p.minutes > 0);
+      // Create weighted samples: repeat ages proportional to minutes
       const totalMin = teamPlayers.reduce((s, p) => s + p.minutes, 0);
-      if (totalMin === 0) return { ...m, u23: 0, mid: 0, senior: 0 };
-
-      const u23Min = teamPlayers.filter(p => p.age < 23).reduce((s, p) => s + p.minutes, 0);
-      const midMin = teamPlayers.filter(p => p.age >= 23 && p.age < 30).reduce((s, p) => s + p.minutes, 0);
-      const seniorMin = teamPlayers.filter(p => p.age >= 30).reduce((s, p) => s + p.minutes, 0);
-
-      return {
-        ...m,
-        u23: (u23Min / totalMin) * 100,
-        mid: (midMin / totalMin) * 100,
-        senior: (seniorMin / totalMin) * 100,
-      };
-    }).sort((a, b) => b.u23 - a.u23); // Sort by youngest squad
+      const ages: number[] = [];
+      for (const p of teamPlayers) {
+        // Use fractional representation — each player contributes proportional samples
+        const weight = Math.max(1, Math.round((p.minutes / Math.max(1, totalMin)) * 50));
+        for (let i = 0; i < weight; i++) ages.push(p.age);
+      }
+      const avgAge = totalMin > 0
+        ? teamPlayers.reduce((s, p) => s + p.age * p.minutes, 0) / totalMin
+        : 0;
+      return { ...m, ages, avgAge };
+    }).sort((a, b) => a.avgAge - b.avgAge); // Sort youngest to oldest (bottom to top)
   }, [metrics, players]);
 
-  const barHeight = 20;
-  const labelWidth = 90;
-  const chartWidth = 700;
-  const barAreaWidth = chartWidth - labelWidth - 10;
-  const svgHeight = data.length * (barHeight + 4) + 30;
+  const chartWidth = 800;
+  const rowHeight = 38;
+  const overlapFactor = 0.65; // How much ridges overlap
+  const labelWidth = 85;
+  const rightPad = 30;
+  const plotWidth = chartWidth - labelWidth - rightPad;
+  const topPad = 15;
+  const bottomPad = 35;
+  const svgHeight = topPad + teamData.length * rowHeight * (1 - overlapFactor) + rowHeight + bottomPad;
 
-  // Age group colors
-  const u23Color = isDark ? '#3A7A5A' : '#4A8A6A';
-  const midColor = isDark ? '#3A5A8A' : '#4A6A9A';
-  const seniorColor = isDark ? '#8A5A3A' : '#9A6A4A';
+  // Age range for x-axis
+  const ageMin = 16;
+  const ageMax = 40;
+  const bandwidth = 1.8;
+  const densitySteps = 80;
+
+  // Compute all densities and find global max for normalization
+  const densities = useMemo(() => {
+    return teamData.map(td => kernelDensity(td.ages, bandwidth, ageMin, ageMax, densitySteps));
+  }, [teamData]);
+
+  const globalMaxDensity = useMemo(() => {
+    let max = 0;
+    for (const d of densities) {
+      for (const pt of d) {
+        if (pt.y > max) max = pt.y;
+      }
+    }
+    return max || 1;
+  }, [densities]);
+
+  const xScale = (age: number) => labelWidth + ((age - ageMin) / (ageMax - ageMin)) * plotWidth;
+  const maxRidgeHeight = rowHeight * 1.6;
+
+  // Age bracket reference lines
+  const ageBrackets = [
+    { age: 23, label: 'U23' },
+    { age: 30, label: '30+' },
+  ];
 
   const textColor = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)';
+  const bracketColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
 
   return (
     <div className="w-full overflow-x-auto">
-      {/* Legend */}
-      <div className="flex items-center gap-4 mb-2 text-[10px] text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: u23Color }} />
-          <span>U23</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: midColor }} />
-          <span>23–29</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: seniorColor }} />
-          <span>30+</span>
-        </div>
-        <span className="text-[9px] text-muted-foreground/50 ml-2">% of total minutes played</span>
-      </div>
+      <svg viewBox={`0 0 ${chartWidth} ${svgHeight}`} className="w-full" style={{ minWidth: '550px' }}>
+        <defs>
+          {teamData.map((td, i) => {
+            const color = mutedTeamColor(td.teamId, isDark);
+            return (
+              <linearGradient key={td.teamId} id={`ridge-grad-${td.teamId}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={lighten(color, 0.15)} stopOpacity={isDark ? 0.7 : 0.6} />
+                <stop offset="100%" stopColor={color} stopOpacity={isDark ? 0.15 : 0.08} />
+              </linearGradient>
+            );
+          })}
+          <filter id="ridge-shadow" x="-5%" y="-10%" width="110%" height="130%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
+          </filter>
+        </defs>
 
-      <svg viewBox={`0 0 ${chartWidth} ${svgHeight}`} className="w-full" style={{ minWidth: '500px' }}>
-        {/* Grid lines at 25%, 50%, 75% */}
-        {[25, 50, 75].map(v => {
-          const x = labelWidth + (v / 100) * barAreaWidth;
+        {/* Age bracket reference lines */}
+        {ageBrackets.map(b => (
+          <g key={b.age}>
+            <line
+              x1={xScale(b.age)} y1={topPad - 5}
+              x2={xScale(b.age)} y2={svgHeight - bottomPad + 5}
+              stroke={bracketColor}
+              strokeDasharray="4,4"
+              strokeWidth={1}
+            />
+            <text
+              x={xScale(b.age)}
+              y={topPad - 8}
+              fill={isDark ? 'rgba(0,212,255,0.25)' : 'rgba(0,160,200,0.2)'}
+              fontSize={8}
+              fontFamily="Space Grotesk"
+              fontWeight={600}
+              textAnchor="middle"
+              letterSpacing="0.05em"
+            >
+              {b.label}
+            </text>
+          </g>
+        ))}
+
+        {/* X-axis ticks */}
+        {[18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38].map(age => (
+          <g key={age}>
+            <line
+              x1={xScale(age)} y1={svgHeight - bottomPad}
+              x2={xScale(age)} y2={svgHeight - bottomPad + 4}
+              stroke={textColor}
+            />
+            <text
+              x={xScale(age)}
+              y={svgHeight - bottomPad + 16}
+              fill={textColor}
+              fontSize={9}
+              fontFamily="Space Grotesk"
+              textAnchor="middle"
+            >
+              {age}
+            </text>
+          </g>
+        ))}
+
+        {/* X-axis label */}
+        <text
+          x={labelWidth + plotWidth / 2}
+          y={svgHeight - 4}
+          fill={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)'}
+          fontSize={10}
+          fontFamily="Space Grotesk"
+          fontWeight={500}
+          textAnchor="middle"
+        >
+          Player Age (minutes-weighted)
+        </text>
+
+        {/* Ridgeline rows — render from back (oldest) to front (youngest) */}
+        {teamData.map((td, i) => {
+          const density = densities[i];
+          const baseY = topPad + (teamData.length - 1 - i) * rowHeight * (1 - overlapFactor) + rowHeight;
+          const color = mutedTeamColor(td.teamId, isDark);
+
+          // Build the ridge path
+          const pathPoints = density.map(pt => {
+            const px = xScale(pt.x);
+            const py = baseY - (pt.y / globalMaxDensity) * maxRidgeHeight;
+            return `${px},${py}`;
+          });
+
+          // Close the path along the baseline
+          const pathD = `M ${xScale(ageMin)},${baseY} L ${pathPoints.join(' L ')} L ${xScale(ageMax)},${baseY} Z`;
+          const strokeD = `M ${pathPoints.join(' L ')}`;
+
           return (
-            <g key={v}>
-              <line x1={x} y1={0} x2={x} y2={svgHeight - 20} stroke={isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'} strokeDasharray="3,3" />
-              <text x={x} y={svgHeight - 6} fill={textColor} fontSize={8} fontFamily="Space Grotesk" textAnchor="middle">
-                {v}%
-              </text>
-            </g>
-          );
-        })}
+            <g key={td.teamId}>
+              {/* Shadow beneath the ridge */}
+              <path
+                d={pathD}
+                fill={isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)'}
+                transform="translate(1.5, 2)"
+                filter="url(#ridge-shadow)"
+              />
 
-        {data.map((d, i) => {
-          const y = i * (barHeight + 4) + 4;
-          const u23W = (d.u23 / 100) * barAreaWidth;
-          const midW = (d.mid / 100) * barAreaWidth;
-          const seniorW = (d.senior / 100) * barAreaWidth;
+              {/* Filled ridge area */}
+              <path
+                d={pathD}
+                fill={`url(#ridge-grad-${td.teamId})`}
+              />
 
-          return (
-            <g key={d.teamId}>
+              {/* Ridge outline — top edge only */}
+              <path
+                d={strokeD}
+                fill="none"
+                stroke={color}
+                strokeWidth={1.5}
+                strokeOpacity={isDark ? 0.6 : 0.5}
+              />
+
+              {/* Highlight line along the top edge */}
+              <path
+                d={strokeD}
+                fill="none"
+                stroke={lighten(color, 0.4)}
+                strokeWidth={0.5}
+                strokeOpacity={isDark ? 0.2 : 0.3}
+                transform="translate(-0.5, -1)"
+              />
+
               {/* Team label */}
               <text
-                x={labelWidth - 6}
-                y={y + barHeight / 2 + 4}
-                fill={textColor}
-                fontSize={10}
+                x={labelWidth - 8}
+                y={baseY - rowHeight * 0.15}
+                fill={isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)'}
+                fontSize={9.5}
                 fontFamily="Space Grotesk"
                 fontWeight={500}
                 textAnchor="end"
               >
-                {d.teamShort}
+                {td.teamShort}
               </text>
 
-              {/* Stacked bar shadow */}
-              <rect
-                x={labelWidth + 2}
-                y={y + 2}
-                width={barAreaWidth}
-                height={barHeight}
-                rx={2}
-                fill={isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.04)'}
+              {/* Average age marker */}
+              <circle
+                cx={xScale(td.avgAge)}
+                cy={baseY - (kernelDensity(td.ages, bandwidth, td.avgAge, td.avgAge, 0)[0]?.y || 0) / globalMaxDensity * maxRidgeHeight}
+                r={2.5}
+                fill={color}
+                fillOpacity={0.8}
+                stroke={lighten(color, 0.3)}
+                strokeWidth={0.8}
               />
-
-              {/* U23 segment */}
-              <rect
-                x={labelWidth}
-                y={y}
-                width={u23W}
-                height={barHeight}
-                rx={2}
-                fill={u23Color}
-                fillOpacity={0.85}
-              />
-              {/* Highlight */}
-              <rect
-                x={labelWidth + 1}
-                y={y + 1}
-                width={Math.max(0, u23W - 2)}
-                height={barHeight * 0.25}
-                rx={1}
-                fill={lighten(u23Color, 0.3)}
-                fillOpacity={0.2}
-              />
-
-              {/* Mid segment */}
-              <rect
-                x={labelWidth + u23W}
-                y={y}
-                width={midW}
-                height={barHeight}
-                fill={midColor}
-                fillOpacity={0.85}
-              />
-
-              {/* Senior segment */}
-              <rect
-                x={labelWidth + u23W + midW}
-                y={y}
-                width={seniorW}
-                height={barHeight}
-                rx={2}
-                fill={seniorColor}
-                fillOpacity={0.85}
-              />
-
-              {/* Percentage labels inside bars if wide enough */}
-              {u23W > 30 && (
-                <text x={labelWidth + u23W / 2} y={y + barHeight / 2 + 3.5} fill="white" fillOpacity={0.7} fontSize={8} fontFamily="Space Grotesk" fontWeight={600} textAnchor="middle">
-                  {d.u23.toFixed(0)}%
-                </text>
-              )}
-              {midW > 30 && (
-                <text x={labelWidth + u23W + midW / 2} y={y + barHeight / 2 + 3.5} fill="white" fillOpacity={0.7} fontSize={8} fontFamily="Space Grotesk" fontWeight={600} textAnchor="middle">
-                  {d.mid.toFixed(0)}%
-                </text>
-              )}
-              {seniorW > 30 && (
-                <text x={labelWidth + u23W + midW + seniorW / 2} y={y + barHeight / 2 + 3.5} fill="white" fillOpacity={0.7} fontSize={8} fontFamily="Space Grotesk" fontWeight={600} textAnchor="middle">
-                  {d.senior.toFixed(0)}%
-                </text>
-              )}
+              <text
+                x={xScale(td.avgAge)}
+                y={baseY - (kernelDensity(td.ages, bandwidth, td.avgAge, td.avgAge, 0)[0]?.y || 0) / globalMaxDensity * maxRidgeHeight - 6}
+                fill={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)'}
+                fontSize={7.5}
+                fontFamily="Space Grotesk"
+                fontWeight={600}
+                textAnchor="middle"
+              >
+                {td.avgAge.toFixed(1)}
+              </text>
             </g>
           );
         })}
@@ -685,14 +775,14 @@ export default function DeepDivePanel({ metrics, players, teams }: DeepDivePanel
                   <h4 className="text-[12px] font-bold uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>
                     Age Distribution
                   </h4>
-                  <span className="text-[9px] text-muted-foreground/50 ml-1">% of minutes by age bracket</span>
+                  <span className="text-[9px] text-muted-foreground/50 ml-1">Minutes-weighted age density per team</span>
                 </div>
                 {ageInsight && (
                   <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed px-1" style={{ fontFamily: 'Space Grotesk' }}>
                     {ageInsight}
                   </p>
                 )}
-                <AgeDistributionBars metrics={metrics} players={players} isDark={isDark} />
+                <AgeRidgeline metrics={metrics} players={players} isDark={isDark} />
               </motion.div>
 
             </div>
