@@ -162,7 +162,7 @@ export function InsightPanel({ insights, isDark, className = '', onToggle }: Ins
 }
 
 function InsightCard({ insight, isDark, index }: { insight: Insight; isDark: boolean; index: number }) {
-  const Icon = ICON_MAP[insight.icon] || Zap;
+  const Icon: React.ElementType = ICON_MAP[insight.icon] || Zap;
   const accentColor = ACCENT_MAP[insight.accentColor];
   const bgColor = isDark
     ? ACCENT_BG_MAP[insight.accentColor].dark
@@ -230,6 +230,7 @@ function InsightCard({ insight, isDark, index }: { insight: Insight; isDark: boo
               : '1px solid rgba(0,0,0,0.04)',
           }}
         >
+          {/* @ts-ignore — lucide-react icon typing */}
           <Icon size={15} style={{ color: accentColor }} />
         </div>
         <div className="flex-1 min-w-0">
