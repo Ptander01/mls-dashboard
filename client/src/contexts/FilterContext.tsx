@@ -11,6 +11,11 @@ export interface Filters {
   conferenceFilter: string[];
 }
 
+/** Pottery-focus state: which team (if any) is emphasized on the Gravitational Pull chart */
+export interface PotteryFocus {
+  emphasizedTeam: string | null;
+}
+
 interface FilterContextType {
   filters: Filters;
   setFilters: React.Dispatch<React.SetStateAction<Filters>>;
@@ -19,6 +24,8 @@ interface FilterContextType {
   filteredMatches: Match[];
   filteredTeams: Team[];
   isFilterActive: boolean;
+  potteryFocus: PotteryFocus;
+  setPotteryFocus: React.Dispatch<React.SetStateAction<PotteryFocus>>;
 }
 
 const defaultFilters: Filters = {
@@ -35,6 +42,7 @@ const FilterContext = createContext<FilterContextType | null>(null);
 
 export function FilterProvider({ children }: { children: React.ReactNode }) {
   const [filters, setFilters] = useState<Filters>(defaultFilters);
+  const [potteryFocus, setPotteryFocus] = useState<PotteryFocus>({ emphasizedTeam: null });
 
   const resetFilters = useCallback(() => setFilters(defaultFilters), []);
 
@@ -84,7 +92,7 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
   }, [filters.selectedTeams, filters.conferenceFilter, filteredTeams]);
 
   return (
-    <FilterContext.Provider value={{ filters, setFilters, resetFilters, filteredPlayers, filteredMatches, filteredTeams, isFilterActive }}>
+    <FilterContext.Provider value={{ filters, setFilters, resetFilters, filteredPlayers, filteredMatches, filteredTeams, isFilterActive, potteryFocus, setPotteryFocus }}>
       {children}
     </FilterContext.Provider>
   );

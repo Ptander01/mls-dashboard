@@ -456,27 +456,39 @@ export function Extruded3DStackedBar(props: any & { stackPosition?: 'bottom' | '
   );
 }
 
+/** Pottery-focus warm gray palette */
+const POTTERY_LIGHT = '#c8c4bc';
+const POTTERY_DARK = '#3a3830';
+
 /**
  * 3D Extruded Horizontal Bar — For layout="vertical" charts (e.g., Gravitational Pull)
- * Same physical extrusion but oriented horizontally
+ * Same physical extrusion but oriented horizontally.
+ * Supports pottery-focus: when `deemphasized` is true, bar renders in warm gray
+ * with reduced extrusion (0.6x). When `emphasized` is true, bar gets a subtle glow.
  */
 export function Extruded3DHorizontalBar(props: any) {
-  const { x, y, width, height: h, fill } = props;
+  const { x, y, width, height: h, fill, emphasized, deemphasized, isDarkTheme } = props;
   if (!h || h <= 0 || !width) return null;
 
   const barWidth = Math.abs(width);
   const barX = width >= 0 ? x : x + width;
-  const baseColor = fill || '#4A4A5A';
+  // Pottery focus: deemphasized bars become warm gray
+  const baseColor = deemphasized
+    ? (isDarkTheme ? POTTERY_DARK : POTTERY_LIGHT)
+    : (fill || '#4A4A5A');
   const id = `hbar3d_${gradientCounter++}`;
-  const highlightColor = lighten(baseColor, 0.4);
-  const shadowColor = darken(baseColor, 0.5);
-  const sideColor = darken(baseColor, 0.35);
+  const highlightColor = lighten(baseColor, deemphasized ? 0.15 : 0.4);
+  const shadowColor = darken(baseColor, deemphasized ? 0.2 : 0.5);
+  const sideColor = darken(baseColor, deemphasized ? 0.15 : 0.35);
 
-  const extrudeX = 2;
-  const extrudeY = 3;
+  // Reduced extrusion for deemphasized bars
+  const extrudeScale = deemphasized ? 0.6 : 1;
+  const extrudeX = Math.round(2 * extrudeScale);
+  const extrudeY = Math.round(3 * extrudeScale);
+  const opacity = deemphasized ? 0.55 : 1;
 
   return (
-    <g>
+    <g opacity={opacity} style={{ transition: 'opacity 0.3s ease' }}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={highlightColor} stopOpacity={0.92} />
@@ -487,7 +499,29 @@ export function Extruded3DHorizontalBar(props: any) {
         <filter id={`${id}_shadow`} x="-25%" y="-20%" width="160%" height="150%">
           <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" />
         </filter>
+        {emphasized && (
+          <filter id={`${id}_glow`} x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        )}
       </defs>
+
+      {/* Emphasis glow ring */}
+      {emphasized && (
+        <rect
+          x={barX - 2}
+          y={y - 2}
+          width={barWidth + 4}
+          height={h + 4}
+          rx={4}
+          fill="none"
+          stroke={fill || '#4A4A5A'}
+          strokeWidth={2}
+          strokeOpacity={0.6}
+          filter={`url(#${id}_glow)`}
+        />
+      )}
 
       {/* Cast shadow — enhanced for topographic depth */}
       <rect
@@ -496,7 +530,7 @@ export function Extruded3DHorizontalBar(props: any) {
         width={barWidth + 2}
         height={h + 2}
         rx={3}
-        fill="rgba(0,0,0,0.45)"
+        fill={`rgba(0,0,0,${deemphasized ? 0.2 : 0.45})`}
         filter={`url(#${id}_shadow)`}
       />
       {/* Ambient ground shadow */}
@@ -506,7 +540,7 @@ export function Extruded3DHorizontalBar(props: any) {
         width={barWidth}
         height={5}
         rx={2.5}
-        fill="rgba(0,0,0,0.15)"
+        fill={`rgba(0,0,0,${deemphasized ? 0.08 : 0.15})`}
         filter={`url(#${id}_shadow)`}
       />
 
@@ -514,14 +548,14 @@ export function Extruded3DHorizontalBar(props: any) {
       <path
         d={`M${barX},${y + h} L${barX + extrudeX},${y + h + extrudeY} L${barX + barWidth + extrudeX},${y + h + extrudeY} L${barX + barWidth},${y + h} Z`}
         fill={sideColor}
-        fillOpacity={0.65}
+        fillOpacity={deemphasized ? 0.35 : 0.65}
       />
 
-      {/* Right side face — for positive bars, this is the far end; for negative bars, this is the edge closest to the zero line */}
+      {/* Right side face */}
       <path
         d={`M${barX + barWidth},${y} L${barX + barWidth + extrudeX},${y + extrudeY} L${barX + barWidth + extrudeX},${y + h + extrudeY} L${barX + barWidth},${y + h} Z`}
         fill={sideColor}
-        fillOpacity={0.5}
+        fillOpacity={deemphasized ? 0.3 : 0.5}
       />
 
       {/* Front face */}
@@ -543,7 +577,7 @@ export function Extruded3DHorizontalBar(props: any) {
         height={Math.min(2, h * 0.1)}
         rx={1}
         fill={highlightColor}
-        fillOpacity={0.5}
+        fillOpacity={deemphasized ? 0.2 : 0.5}
       />
     </g>
   );

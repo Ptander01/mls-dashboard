@@ -587,7 +587,9 @@ export function attendanceInsights(matches: Match[], teams: Team[]): Insight[] {
 }
 
 /**
- * Compute a headline for the Gravitational Pull section
+ * Compute a two-sentence headline for the Gravitational Pull section.
+ * Sentence 1: describes the top team's dominance (maps to ABSOLUTE view)
+ * Sentence 2: describes mid-tier clustering (maps to COMPARE view)
  */
 export function gravitationalPullHeadline(teams: Team[]): string {
   const homeAvgs: Record<string, number> = {};
@@ -606,15 +608,33 @@ export function gravitationalPullHeadline(teams: Team[]): string {
     return { team: t, totalDelta, avgDelta: matchCount > 0 ? totalDelta / matchCount : 0 };
   }).sort((a, b) => b.totalDelta - a.totalDelta);
 
-  if (pullData.length < 2) return 'Gravitational Pull';
+  if (pullData.length < 3) return 'Gravitational Pull';
 
   const top = pullData[0];
-  const negativeCount = pullData.filter(t => t.totalDelta < 0).length;
+  const second = pullData[1];
+  const ratio = second.totalDelta > 0 ? (top.totalDelta / second.totalDelta).toFixed(1) : '—';
 
-  if (top.totalDelta > 0) {
-    return `${top.team.short} is the league's biggest road draw — ${negativeCount} teams actually suppress away attendance.`;
-  }
-  return `No team consistently boosts away attendance — ${negativeCount} of ${pullData.length} teams have a negative pull.`;
+  // Sentence 1: dominance / ABSOLUTE perspective
+  const s1 = top.totalDelta > 0
+    ? `${top.team.short} generates +${fmt(top.totalDelta)} cumulative extra fans on the road — ${ratio}x the next-closest team (${second.team.short}).`
+    : `No team dominates the road draw — ${top.team.short} leads with just ${fmt(top.totalDelta)}.`;
+
+  // Sentence 2: mid-tier clustering / COMPARE perspective
+  const positiveTeams = pullData.filter(t => t.totalDelta > 0);
+  const negativeTeams = pullData.filter(t => t.totalDelta < 0);
+  // Find the tightest cluster in the middle
+  const midStart = Math.floor(pullData.length * 0.25);
+  const midEnd = Math.floor(pullData.length * 0.75);
+  const midSlice = pullData.slice(midStart, midEnd);
+  const midRange = midSlice.length > 1
+    ? Math.abs(midSlice[0].totalDelta - midSlice[midSlice.length - 1].totalDelta)
+    : 0;
+
+  const s2 = midRange < 30000 && midSlice.length > 3
+    ? `The middle ${midSlice.length} teams are tightly clustered within ${fmt(midRange)} total fans — ${negativeTeams.length} teams actually suppress attendance when visiting.`
+    : `${positiveTeams.length} teams boost away attendance while ${negativeTeams.length} suppress it — the gap between #2 ${second.team.short} and the bottom is ${fmt(Math.abs(second.totalDelta - pullData[pullData.length - 1].totalDelta))}.`;
+
+  return `${s1} ${s2}`;
 }
 
 
