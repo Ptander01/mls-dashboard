@@ -4,7 +4,8 @@
  * Layout:
  *   [ANALYZE button]                    ← always visible, outside the container
  *   [NeuInsightContainer]               ← depression groove when closed, elevated with cards when open
- *     └── 2x2 grid of InsightCards      ← only when open
+ *     └── Header line                   ← describes what the panel shows
+ *     └── 2x2 grid of InsightCards      ← tactile 3D cards with embossed borders
  *
  * The container always renders (showing the depression floor when collapsed).
  * When the user clicks ANALYZE, the container rises above surrounding content
@@ -15,7 +16,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, TrendingDown, AlertTriangle, Star, Zap, Target,
-  DollarSign, Users, BarChart3, Lightbulb, ChevronDown, ChevronUp
+  DollarSign, Users, BarChart3, Lightbulb, ChevronDown, ChevronUp, Sparkles
 } from 'lucide-react';
 import type { Insight } from '@/lib/insightEngine';
 import { NeuInsightContainer } from './NeuInsightContainer';
@@ -40,10 +41,17 @@ const ACCENT_MAP: Record<Insight['accentColor'], string> = {
 };
 
 const ACCENT_BG_MAP: Record<Insight['accentColor'], { dark: string; light: string }> = {
-  cyan: { dark: 'rgba(0,212,255,0.06)', light: 'rgba(8,145,178,0.06)' },
-  amber: { dark: 'rgba(255,179,71,0.06)', light: 'rgba(217,119,6,0.06)' },
-  emerald: { dark: 'rgba(0,200,151,0.06)', light: 'rgba(5,150,105,0.06)' },
-  coral: { dark: 'rgba(255,107,107,0.06)', light: 'rgba(220,38,38,0.06)' },
+  cyan: { dark: 'rgba(0,212,255,0.08)', light: 'rgba(8,145,178,0.07)' },
+  amber: { dark: 'rgba(255,179,71,0.08)', light: 'rgba(217,119,6,0.07)' },
+  emerald: { dark: 'rgba(0,200,151,0.08)', light: 'rgba(5,150,105,0.07)' },
+  coral: { dark: 'rgba(255,107,107,0.08)', light: 'rgba(220,38,38,0.07)' },
+};
+
+const ACCENT_BORDER_MAP: Record<Insight['accentColor'], { dark: string; light: string }> = {
+  cyan: { dark: 'rgba(0,212,255,0.18)', light: 'rgba(8,145,178,0.14)' },
+  amber: { dark: 'rgba(255,179,71,0.18)', light: 'rgba(217,119,6,0.14)' },
+  emerald: { dark: 'rgba(0,200,151,0.18)', light: 'rgba(5,150,105,0.14)' },
+  coral: { dark: 'rgba(255,107,107,0.18)', light: 'rgba(220,38,38,0.14)' },
 };
 
 interface InsightPanelProps {
@@ -63,7 +71,7 @@ export function InsightPanel({ insights, isDark, className = '', onToggle }: Ins
       {/* Analyze Toggle Button — always visible, outside the container */}
       <button
         onClick={() => { setIsOpen(v => { const next = !v; onToggle?.(next); return next; }); }}
-        className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-lg transition-all mb-2"
+        className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-lg transition-all mb-3"
         style={{
           fontFamily: 'Space Grotesk, sans-serif',
           background: isOpen ? 'var(--neu-bg-pressed)' : 'var(--neu-bg-raised)',
@@ -87,16 +95,64 @@ export function InsightPanel({ insights, isDark, className = '', onToggle }: Ins
         <AnimatePresence mode="wait">
           {isOpen && (
             <motion.div
-              key="insight-grid"
+              key="insight-content"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-3"
+              transition={{ duration: 0.25 }}
             >
-              {insights.map((insight, i) => (
-                <InsightCard key={i} insight={insight} isDark={isDark} index={i} />
-              ))}
+              {/* ── Header line ── */}
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05, duration: 0.25 }}
+                className="flex items-center gap-2.5 mb-4 pb-3"
+                style={{
+                  borderBottom: isDark
+                    ? '1px solid rgba(255,255,255,0.06)'
+                    : '1px solid rgba(0,0,0,0.06)',
+                }}
+              >
+                <div
+                  className="flex items-center justify-center w-6 h-6 rounded-md"
+                  style={{
+                    background: isDark ? 'rgba(0,212,255,0.1)' : 'rgba(8,145,178,0.08)',
+                    boxShadow: isDark
+                      ? 'inset 1px 1px 2px rgba(0,0,0,0.3), 1px 1px 2px rgba(0,212,255,0.05)'
+                      : 'inset 1px 1px 2px rgba(0,0,0,0.04), 1px 1px 2px rgba(8,145,178,0.03)',
+                  }}
+                >
+                  <Sparkles size={12} style={{ color: 'var(--cyan)' }} />
+                </div>
+                <div>
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-wider"
+                    style={{
+                      fontFamily: 'Space Grotesk, sans-serif',
+                      color: 'var(--cyan)',
+                      letterSpacing: '0.08em',
+                    }}
+                  >
+                    AI-Powered Insights
+                  </p>
+                  <p
+                    className="text-[10px] mt-0.5"
+                    style={{
+                      fontFamily: 'Inter, sans-serif',
+                      color: 'var(--muted-foreground)',
+                    }}
+                  >
+                    Key patterns and anomalies detected from the current data view
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* ── Insight cards grid ── */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {insights.map((insight, i) => (
+                  <InsightCard key={i} insight={insight} isDark={isDark} index={i} />
+                ))}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -111,36 +167,74 @@ function InsightCard({ insight, isDark, index }: { insight: Insight; isDark: boo
   const bgColor = isDark
     ? ACCENT_BG_MAP[insight.accentColor].dark
     : ACCENT_BG_MAP[insight.accentColor].light;
+  const borderColor = isDark
+    ? ACCENT_BORDER_MAP[insight.accentColor].dark
+    : ACCENT_BORDER_MAP[insight.accentColor].light;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12, scale: 0.97 }}
+      initial={{ opacity: 0, y: 14, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay: index * 0.08 + 0.1, duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-      className="rounded-xl p-3.5 transition-colors"
+      transition={{ delay: index * 0.08 + 0.12, duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+      className="rounded-xl p-4 transition-colors relative"
       style={{
         background: bgColor,
-        border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+        border: `1.5px solid ${borderColor}`,
         boxShadow: isDark
-          ? 'inset 1px 1px 2px rgba(255,255,255,0.02), 2px 2px 6px rgba(0,0,0,0.2)'
-          : 'inset 1px 1px 2px rgba(255,255,255,0.5), 2px 2px 6px rgba(166,170,190,0.15)',
+          ? [
+              // Outer shadow — card sits above the panel surface
+              '4px 4px 12px rgba(0,0,0,0.35)',
+              '-2px -2px 6px rgba(60,60,80,0.06)',
+              // Inner top-left highlight — 3D bevel / light catch
+              'inset 1px 1px 0 rgba(255,255,255,0.06)',
+              // Inner bottom-right shadow — depth
+              'inset -1px -1px 0 rgba(0,0,0,0.15)',
+            ].join(', ')
+          : [
+              // Outer shadow — card sits above the panel surface
+              '4px 4px 12px rgba(166,170,190,0.25)',
+              '-2px -2px 6px rgba(255,255,255,0.7)',
+              // Inner top-left highlight — 3D bevel / glossy light catch
+              'inset 1px 1px 0 rgba(255,255,255,0.7)',
+              // Inner bottom-right shadow — depth
+              'inset -1px -1px 0 rgba(166,170,190,0.15)',
+            ].join(', '),
       }}
     >
-      <div className="flex items-start gap-2.5">
+      {/* Top-left accent corner glow */}
+      <div
+        className="absolute top-0 left-0 w-8 h-8 rounded-tl-xl pointer-events-none"
+        style={{
+          background: `radial-gradient(circle at 0% 0%, ${accentColor}10 0%, transparent 70%)`,
+        }}
+      />
+
+      <div className="flex items-start gap-3 relative">
         <div
-          className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center mt-0.5"
+          className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5"
           style={{
-            background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+            background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
             boxShadow: isDark
-              ? 'inset 1px 1px 3px rgba(0,0,0,0.3), -1px -1px 2px rgba(255,255,255,0.03)'
-              : 'inset 1px 1px 3px rgba(0,0,0,0.06), -1px -1px 2px rgba(255,255,255,0.6)',
+              ? [
+                  'inset 2px 2px 4px rgba(0,0,0,0.4)',
+                  'inset -1px -1px 2px rgba(255,255,255,0.04)',
+                  '1px 1px 2px rgba(0,0,0,0.2)',
+                ].join(', ')
+              : [
+                  'inset 2px 2px 4px rgba(0,0,0,0.07)',
+                  'inset -1px -1px 2px rgba(255,255,255,0.7)',
+                  '1px 1px 2px rgba(166,170,190,0.1)',
+                ].join(', '),
+            border: isDark
+              ? '1px solid rgba(255,255,255,0.04)'
+              : '1px solid rgba(0,0,0,0.04)',
           }}
         >
-          <Icon size={14} style={{ color: accentColor }} />
+          <Icon size={15} style={{ color: accentColor }} />
         </div>
         <div className="flex-1 min-w-0">
           <p
-            className="text-xs font-semibold leading-snug mb-1"
+            className="text-[12.5px] font-semibold leading-snug mb-1.5"
             style={{ fontFamily: 'Space Grotesk, sans-serif', color: 'var(--foreground)' }}
           >
             {insight.headline}

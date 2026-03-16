@@ -1,17 +1,18 @@
 /**
  * NeuInsightContainer — Neumorphic container that transitions between
- * a sunken depression and an elevated state.
+ * a sunken depression and a dramatically elevated state.
  *
  * When inactive: a subtle recessed groove in the surface (inset shadows).
- *   Renders as a thin bar (~12px for full, ~8px for compact).
- * When active: rises above surrounding content with deeper shadows than
- *   standard NeuCards, casting shadows onto the environment beneath it.
- *   Expands to fit children content.
+ *   Renders as a thin bar (~14px for full, ~8px for compact).
+ * When active: rises prominently above surrounding content with deep,
+ *   long-casting shadows that spill onto the environment beneath it.
+ *   Strong cyan accent border glow and top-edge highlight reinforce
+ *   the "floating above the data" metaphor.
  *
  * Shadow depth comparison:
- *   neu-flat:    6px/6px/12px  (base level)
- *   neu-raised:  8px/8px/16px  (standard cards)
- *   THIS active: 12px/12px/24px + translateY(-3px) + cyan accent glow
+ *   neu-flat:    6px/6px/12px   (base level)
+ *   neu-raised:  8px/8px/16px   (standard cards)
+ *   THIS active: 18px/18px/40px + translateY(-6px) + cyan accent glow
  */
 
 import { ReactNode, useRef, useState, useEffect } from 'react';
@@ -41,7 +42,6 @@ export function NeuInsightContainer({
   // Measure content height when open
   useEffect(() => {
     if (isOpen && contentRef.current) {
-      // Small delay to let children render
       const timer = setTimeout(() => {
         if (contentRef.current) {
           setContentHeight(contentRef.current.scrollHeight);
@@ -52,21 +52,35 @@ export function NeuInsightContainer({
   }, [isOpen, children]);
 
   // Depression height (the thin groove when collapsed)
-  const depressionHeight = isCompact ? 8 : 12;
+  const depressionHeight = isCompact ? 8 : 14;
 
-  // ── Shadow definitions ──
+  // ── Shadow definitions — dramatically deeper for active state ──
   const activeShadow = isDark
     ? [
-        '12px 12px 24px rgba(0,0,0,0.65)',
-        '-8px -8px 20px rgba(60,60,80,0.1)',
-        'inset 0 1px 0 rgba(255,255,255,0.06)',
-        '0 0 24px rgba(0,212,255,0.05)',
+        // Primary deep shadow — long cast below
+        '0 18px 40px rgba(0,0,0,0.7)',
+        '0 8px 16px rgba(0,0,0,0.5)',
+        // Lift shadow — subtle upper-left highlight
+        '-6px -6px 16px rgba(60,60,80,0.12)',
+        // Inner top highlight — surface light catch
+        'inset 0 1px 0 rgba(255,255,255,0.08)',
+        'inset 0 -1px 0 rgba(0,0,0,0.3)',
+        // Cyan accent glow — stronger presence
+        '0 0 30px rgba(0,212,255,0.08)',
+        '0 4px 20px rgba(0,212,255,0.04)',
       ].join(', ')
     : [
-        '12px 12px 24px rgba(166,170,190,0.55)',
-        '-8px -8px 20px rgba(255,255,255,0.9)',
-        'inset 0 1px 0 rgba(255,255,255,0.7)',
-        '0 0 24px rgba(8,145,178,0.05)',
+        // Primary deep shadow — long cast below
+        '0 18px 40px rgba(140,145,170,0.4)',
+        '0 8px 16px rgba(166,170,190,0.35)',
+        // Lift shadow — bright upper-left
+        '-6px -6px 16px rgba(255,255,255,0.95)',
+        // Inner top highlight — glossy surface
+        'inset 0 1px 0 rgba(255,255,255,0.85)',
+        'inset 0 -1px 0 rgba(166,170,190,0.12)',
+        // Cyan accent glow
+        '0 0 30px rgba(8,145,178,0.06)',
+        '0 4px 20px rgba(8,145,178,0.03)',
       ].join(', ');
 
   const depressionShadow = isDark
@@ -74,71 +88,124 @@ export function NeuInsightContainer({
     : 'inset 3px 3px 8px rgba(166,170,190,0.35), inset -3px -3px 8px rgba(255,255,255,0.6)';
 
   // ── Colors ──
-  const activeBg = isDark ? '#232340' : '#eaeaf4';
+  const activeBg = isDark ? '#232340' : '#ebedf6';
   const depressionBg = isDark ? '#141422' : '#d8d8e2';
 
+  // Stronger border when active
   const activeBorder = isDark
-    ? '1px solid rgba(0,212,255,0.12)'
-    : '1px solid rgba(8,145,178,0.1)';
+    ? '1.5px solid rgba(0,212,255,0.2)'
+    : '1.5px solid rgba(8,145,178,0.15)';
   const depressionBorder = isDark
     ? '1px solid rgba(255,255,255,0.02)'
     : '1px solid rgba(0,0,0,0.03)';
 
-  const rounding = isCompact ? 'rounded-lg' : 'rounded-xl';
-  const padding = isCompact ? 10 : 16;
+  const rounding = isCompact ? 'rounded-lg' : 'rounded-2xl';
+  const padding = isCompact ? 10 : 20;
 
   // Don't render if not open and depression is disabled
   if (!isOpen && !showDepression) return null;
 
   return (
-    <motion.div
-      animate={{
-        height: isOpen ? contentHeight + (padding * 2) : depressionHeight,
-        boxShadow: isOpen ? activeShadow : depressionShadow,
-        background: isOpen ? activeBg : depressionBg,
-        y: isOpen ? (isCompact ? -1 : -3) : 0,
-      }}
-      transition={{
-        duration: 0.4,
-        ease: [0.22, 1, 0.36, 1],
-      }}
-      className={`${rounding} overflow-hidden ${className}`}
-      style={{
-        position: 'relative',
-        zIndex: isOpen ? 10 : 1,
-        border: isOpen ? activeBorder : depressionBorder,
-      }}
-    >
-      {/* Top edge highlight — subtle light catch on the elevated surface */}
-      {isOpen && (
+    <>
+      <motion.div
+        animate={{
+          height: isOpen ? contentHeight + (padding * 2) : depressionHeight,
+          boxShadow: isOpen ? activeShadow : depressionShadow,
+          background: isOpen ? activeBg : depressionBg,
+          y: isOpen ? (isCompact ? -2 : -6) : 0,
+          marginTop: isOpen ? (isCompact ? 4 : 8) : 0,
+          marginBottom: isOpen ? (isCompact ? 4 : 16) : 0,
+        }}
+        transition={{
+          duration: 0.45,
+          ease: [0.22, 1, 0.36, 1],
+        }}
+        className={`${rounding} overflow-hidden ${className}`}
+        style={{
+          position: 'relative',
+          zIndex: isOpen ? 10 : 1,
+          border: isOpen ? activeBorder : depressionBorder,
+        }}
+      >
+        {/* Top edge highlight — pronounced light catch on the elevated surface */}
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.15, duration: 0.4 }}
+            className="absolute inset-x-0 top-0 h-[2px] pointer-events-none"
+            style={{
+              background: isDark
+                ? 'linear-gradient(90deg, transparent 5%, rgba(0,212,255,0.25) 30%, rgba(0,212,255,0.35) 50%, rgba(0,212,255,0.25) 70%, transparent 95%)'
+                : 'linear-gradient(90deg, transparent 5%, rgba(8,145,178,0.2) 30%, rgba(8,145,178,0.28) 50%, rgba(8,145,178,0.2) 70%, transparent 95%)',
+            }}
+          />
+        )}
+
+        {/* Bottom edge shadow line — reinforces the floating effect */}
+        {isOpen && !isCompact && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
+            className="absolute inset-x-0 bottom-0 h-[1px] pointer-events-none"
+            style={{
+              background: isDark
+                ? 'linear-gradient(90deg, transparent 10%, rgba(0,0,0,0.4) 50%, transparent 90%)'
+                : 'linear-gradient(90deg, transparent 10%, rgba(0,0,0,0.08) 50%, transparent 90%)',
+            }}
+          />
+        )}
+
+        {/* Left edge highlight */}
+        {isOpen && !isCompact && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
+            className="absolute inset-y-0 left-0 w-[1px] pointer-events-none"
+            style={{
+              background: isDark
+                ? 'linear-gradient(180deg, rgba(0,212,255,0.15) 0%, rgba(255,255,255,0.04) 50%, transparent 100%)'
+                : 'linear-gradient(180deg, rgba(8,145,178,0.12) 0%, rgba(255,255,255,0.6) 50%, transparent 100%)',
+            }}
+          />
+        )}
+
+        {/* Content */}
+        <motion.div
+          ref={contentRef}
+          animate={{
+            opacity: isOpen ? 1 : 0,
+            padding: isOpen ? padding : 0,
+          }}
+          transition={{
+            opacity: { duration: isOpen ? 0.3 : 0.15, delay: isOpen ? 0.15 : 0 },
+            padding: { duration: 0.3 },
+          }}
+        >
+          {children}
+        </motion.div>
+      </motion.div>
+
+      {/* Cast shadow element — sits below the container to cast onto content beneath */}
+      {isOpen && !isCompact && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.3 }}
-          className="absolute inset-x-0 top-0 h-[1px] pointer-events-none"
+          exit={{ opacity: 0 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="pointer-events-none"
           style={{
+            height: 8,
+            marginTop: -4,
             background: isDark
-              ? 'linear-gradient(90deg, transparent 10%, rgba(0,212,255,0.18) 50%, transparent 90%)'
-              : 'linear-gradient(90deg, transparent 10%, rgba(8,145,178,0.14) 50%, transparent 90%)',
+              ? 'radial-gradient(ellipse 80% 100% at 50% 0%, rgba(0,0,0,0.15) 0%, transparent 100%)'
+              : 'radial-gradient(ellipse 80% 100% at 50% 0%, rgba(140,145,170,0.1) 0%, transparent 100%)',
           }}
         />
       )}
-
-      {/* Content */}
-      <motion.div
-        ref={contentRef}
-        animate={{
-          opacity: isOpen ? 1 : 0,
-          padding: isOpen ? padding : 0,
-        }}
-        transition={{
-          opacity: { duration: isOpen ? 0.3 : 0.15, delay: isOpen ? 0.15 : 0 },
-          padding: { duration: 0.3 },
-        }}
-      >
-        {children}
-      </motion.div>
-    </motion.div>
+    </>
   );
 }
 
