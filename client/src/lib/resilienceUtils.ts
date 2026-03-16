@@ -380,15 +380,29 @@ export function resilienceHeadline(metrics: TeamResilienceMetrics[]): string {
 }
 
 // ═══════════════════════════════════════════
-// TIER COLORS — for chart rendering
+// TIER COLORS — earthy matte palette matching the Team Budget pie chart hues
 // ═══════════════════════════════════════════
 
-export const TIER_COLORS: Record<ResilienceTier, string> = {
-  green: '#22c55e',
-  cyan: '#06b6d4',
-  amber: '#f59e0b',
-  red: '#ef4444',
+export const TIER_COLORS_DARK: Record<ResilienceTier, string> = {
+  green: '#1E3448',   // deep steel blue — excellent
+  cyan: '#1E3A28',    // deep forest green — good
+  amber: '#4A3E1A',   // deep olive-brown — vulnerable
+  red: '#6A2222',     // deep brick red — fragile
 };
+
+export const TIER_COLORS_LIGHT: Record<ResilienceTier, string> = {
+  green: '#2A4A64',   // dark steel blue — excellent
+  cyan: '#2A4A35',    // dark forest green — good
+  amber: '#5A4A2A',   // dark olive-brown — vulnerable
+  red: '#8A2A2A',     // dark brick red — fragile
+};
+
+/** Legacy single-palette export for backward compatibility */
+export const TIER_COLORS: Record<ResilienceTier, string> = TIER_COLORS_DARK;
+
+export function tierColor(tier: ResilienceTier, isDark: boolean): string {
+  return isDark ? TIER_COLORS_DARK[tier] : TIER_COLORS_LIGHT[tier];
+}
 
 export const TIER_LABELS: Record<ResilienceTier, string> = {
   green: 'Excellent',
