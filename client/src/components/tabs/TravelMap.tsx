@@ -8,11 +8,17 @@
  */
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useFilters } from '@/contexts/FilterContext';
-import { TEAMS, MATCHES, getTeam, calculateDistance } from '@/lib/mlsData';
+import { TEAMS, MATCHES, PLAYERS, getTeam, calculateDistance } from '@/lib/mlsData';
+import { useTheme } from '@/contexts/ThemeContext';
+import { computeAllResilienceMetrics, dumbbellHeadline, resilienceHeadline } from '@/lib/resilienceUtils';
+import DumbbellChart from '@/components/charts/DumbbellChart';
+import ResilienceIndexChart from '@/components/charts/ResilienceIndexChart';
 import { GEO_DATA } from '@/lib/geoData';
 import NeuCard from '@/components/NeuCard';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
+import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
+import type { CardInsightItem } from '@/components/CardInsight';
 import { Play, Pause, SkipForward, SkipBack, MapPin, Plane, Route, RotateCcw } from 'lucide-react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -734,7 +740,9 @@ function TooltipOverlay({ info, position }: {
 // Main Component
 // ═══════════════════════════════════════════
 export default function TravelMap() {
-  const { filteredTeams, filteredMatches } = useFilters();
+  const { filteredTeams, filteredMatches, filteredPlayers } = useFilters();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [currentWeek, setCurrentWeek] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showAllArcs, setShowAllArcs] = useState(false);
@@ -771,6 +779,28 @@ export default function TravelMap() {
   const totalMiles = useMemo(() => allArcs.reduce((s, a) => s + a.distance, 0), [allArcs]);
   const avgDistance = allArcs.length > 0 ? totalMiles / allArcs.length : 0;
   const longestTrip = allArcs.length > 0 ? Math.max(...allArcs.map(a => a.distance)) : 0;
+
+  // ═══ RESILIENCE METRICS ═══
+  const resilienceMetrics = useMemo(() =>
+    computeAllResilienceMetrics(filteredTeams, filteredMatches, filteredPlayers),
+    [filteredTeams, filteredMatches, filteredPlayers]
+  );
+
+  const dbHeadline = useMemo(() => dumbbellHeadline(resilienceMetrics), [resilienceMetrics]);
+  const riHeadline = useMemo(() => resilienceHeadline(resilienceMetrics), [resilienceMetrics]);
+
+  const [showDumbbellInsights, setShowDumbbellInsights] = useState(false);
+  const [showResilienceInsights, setShowResilienceInsights] = useState(false);
+
+  const dumbbellInsights = useMemo<CardInsightItem[]>(() => {
+    if (!dbHeadline) return [];
+    return [{ text: dbHeadline, accent: 'cyan' }];
+  }, [dbHeadline]);
+
+  const resilienceInsights = useMemo<CardInsightItem[]>(() => {
+    if (!riHeadline) return [];
+    return [{ text: riHeadline, accent: 'emerald' }];
+  }, [riHeadline]);
 
   // Playback
   useEffect(() => {
@@ -1170,6 +1200,38 @@ export default function TravelMap() {
           })}
         </div>
       </NeuCard>
+
+      {/* ═══ PERFORMANCE & RESILIENCE ANALYSIS ═══ */}
+      <div className="mt-6 mb-2">
+        <h2 className="text-base font-bold tracking-wide" style={{ fontFamily: 'Space Grotesk' }}>
+          Performance & Resilience Analysis
+        </h2>
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          How does travel burden affect on-field results? Explore home/away splits and composite resilience scores.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        {/* Chart A — Dumbbell Gap (full width) */}
+        <NeuCard className="p-5">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Chart A — Dumbbell Gap</span>
+            <CardInsightToggle isOpen={showDumbbellInsights} onToggle={() => setShowDumbbellInsights(v => !v)} isDark={isDark} compact />
+          </div>
+          <CardInsightSection isOpen={showDumbbellInsights} insights={dumbbellInsights} isDark={isDark} />
+          <DumbbellChart metrics={resilienceMetrics} />
+        </NeuCard>
+
+        {/* Chart C — Resilience Index (full width) */}
+        <NeuCard className="p-5">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Chart C — Resilience Index</span>
+            <CardInsightToggle isOpen={showResilienceInsights} onToggle={() => setShowResilienceInsights(v => !v)} isDark={isDark} compact />
+          </div>
+          <CardInsightSection isOpen={showResilienceInsights} insights={resilienceInsights} isDark={isDark} />
+          <ResilienceIndexChart metrics={resilienceMetrics} />
+        </NeuCard>
+      </div>
 
       {/* Maximize Modal */}
       <ChartModal isOpen={maximized === 'map'} onClose={() => setMaximized(null)} title={`League Travel Map — Matchweek ${currentWeek}`}>
