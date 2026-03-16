@@ -328,7 +328,9 @@ export default function Attendance() {
 
     // Offset all points by layerOffset
     const pts = layerOffset ? points.map(p => ({ x: p.x, y: p.y - layerOffset })) : points;
-    const baseline = baselineY - layerOffset;
+    // Bottom-face offset: lift the baseline up so the area sits above the X-axis line (same as bar charts)
+    const bottomOffset = isGhost ? 0 : extrudeDepth;
+    const baseline = baselineY - layerOffset - bottomOffset;
 
     // Colors
     const topColor = lighten(areaColor, isGhost ? 0.2 : 0.35);
@@ -424,20 +426,7 @@ export default function Attendance() {
         <line x1={firstPt.x} y1={baseline} x2={lastPt.x} y2={baseline}
           stroke={darken(areaColor, 0.4)} strokeWidth={1} strokeOpacity={0.3} />
 
-        {/* Subtle data points along the top curve */}
-        {pts.map((p, i) => (
-          <g key={`dot_${i}`}>
-            {/* Tiny contact shadow */}
-            <ellipse cx={p.x + 0.5} cy={p.y + 1} rx={2.5} ry={1.2}
-              fill="rgba(0,0,0,0.15)" />
-            {/* Point dot */}
-            <circle cx={p.x} cy={p.y} r={2.8}
-              fill={isDark ? '#1a1a1a' : '#ffffff'} stroke={midColor} strokeWidth={1.2} />
-            {/* Specular highlight */}
-            <circle cx={p.x - 0.4} cy={p.y - 0.4} r={0.9}
-              fill={lighten(areaColor, 0.6)} fillOpacity={0.5} />
-          </g>
-        ))}
+        {/* Data point dots removed for clean putty-edge aesthetic */}
       </g>
     );
   };
