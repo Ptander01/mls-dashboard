@@ -19,6 +19,8 @@ Sprint 2 focused entirely on the **Attendance tab**, overhauling both the bar ch
 | `c54d8b6` | Sprint 2 Attendance polish: bar chart Y-axis height increase, fill rate bar offset + braille capacity dots, top shadow artifact fix, trend line shadow + area fill removal, deemphasize-on-click behavior |
 | `f9801a3` | Sprint 2: bar chart toggle animation, 3D ribbon line chart with gradient/shadow, braille capacity dots on trend, removed redundant avg line |
 | `6e31c92` | Sprint 2: 3D area polygon trend chart, variable braille range envelope (max/min lines), smooth Catmull-Rom splines, matte bevel fix |
+| `30f9c37` | Sprint 2: smooth Catmull-Rom braille lines, fix bevel bleed, add SPRINT2_HANDOFF.md |
+| `3a906bd` | Sprint 2: remove data point dots from area chart, add bottom-face offset for 3D effect |
 
 ---
 
