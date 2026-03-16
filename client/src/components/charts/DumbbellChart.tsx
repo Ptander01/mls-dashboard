@@ -342,7 +342,7 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
   const dataMin = Math.min(...allValues, 0);
   const dataMax = Math.max(...allValues);
   const padding = (dataMax - dataMin) * 0.1 || 0.2;
-  const scaleMin = Math.max(0, dataMin - padding);
+  const scaleMin = dataMin - padding;
   const scaleMax = dataMax + padding;
 
   const xScale = (val: number) => {
