@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useCallback } from 'react';
+import { ReactNode, useEffect, useCallback, useRef, useState } from 'react';
 import { X, Maximize2 } from 'lucide-react';
 
 interface ChartModalProps {
@@ -13,11 +13,33 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
     if (e.key === 'Escape') onClose();
   }, [onClose]);
 
+  const modalCardRef = useRef<HTMLDivElement>(null);
+  const [animationDone, setAnimationDone] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       document.addEventListener('keydown', handleEsc);
       document.documentElement.style.overflow = 'hidden';
       document.body.style.overflow = 'hidden';
+
+      // Reset animation state when modal opens
+      setAnimationDone(false);
+
+      // After the CSS animation completes (350ms), trigger a resize so
+      // Recharts ResponsiveContainer recalculates dimensions
+      const timer = setTimeout(() => {
+        setAnimationDone(true);
+        window.dispatchEvent(new Event('resize'));
+      }, 400);
+
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('keydown', handleEsc);
+        document.documentElement.style.overflow = '';
+        document.body.style.overflow = '';
+      };
+    } else {
+      setAnimationDone(false);
     }
     return () => {
       document.removeEventListener('keydown', handleEsc);
@@ -25,6 +47,19 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
       document.body.style.overflow = '';
     };
   }, [isOpen, handleEsc]);
+
+  // ResizeObserver to handle any subsequent size changes
+  useEffect(() => {
+    if (!isOpen || !modalCardRef.current) return;
+
+    const observer = new ResizeObserver(() => {
+      // Dispatch resize event so Recharts ResponsiveContainer picks up changes
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    observer.observe(modalCardRef.current);
+    return () => observer.disconnect();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -69,6 +104,7 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
       >
         {/* Modal card */}
         <div
+          ref={modalCardRef}
           className="neu-raised rounded-2xl"
           style={{
             position: 'relative',
@@ -103,8 +139,8 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
             </button>
           </div>
 
-          {/* Content */}
-          <div style={{ padding: '1.5rem' }}>
+          {/* Content — key forces remount after animation to ensure proper sizing */}
+          <div style={{ padding: '1.5rem' }} key={animationDone ? 'ready' : 'animating'}>
             {children}
           </div>
         </div>
