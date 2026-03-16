@@ -2,17 +2,13 @@
  * TravelScatterChart — Travel Burden vs Away Performance Drop
  *
  * Cinematic recessed-impression scatter plot inspired by pressed-clay impact maps.
- * Each team is a physically "pressed into" crater with:
- *   - Thick beveled rim with directional lighting (top-left light source)
- *   - Deep inner bowl with shadow crescent and highlight crescent
- *   - Variable-spacing concentric rings that tighten toward center
- *   - Dark center pit with specular highlight
- *   - Soft cast shadow beneath
- *
- *   X-axis: Total away miles
- *   Y-axis: Home/Away PPG delta (home advantage)
- *   Crater depth (ring count): Squad depth index
- *   Crater diameter: PPG gap magnitude
+ * v3 upgrades:
+ *   - Deeper 3D lighting: stronger shadow crescents, brighter rim highlights,
+ *     inner shelf shadow at rim-bowl junction, darkened bowl floor
+ *   - Y-based z-ordering: craters higher on screen render first (behind),
+ *     lower craters render last (in front) for natural depth stacking
+ *   - Smart labels: 3-4 char city abbreviations with collision-aware placement
+ *     that tests 8 positions around each crater to find the least overlap
  */
 
 import { useState, useMemo } from 'react';
@@ -24,6 +20,44 @@ type ConferenceFilter = 'ALL' | 'EAST' | 'WEST';
 
 interface TravelScatterChartProps {
   metrics: TeamResilienceMetrics[];
+}
+
+// ─── Short label map ───
+const ABBREV: Record<string, string> = {
+  'Atlanta Utd': 'ATL',
+  'Austin FC': 'AUS',
+  'CF Montréal': 'MTL',
+  'Charlotte FC': 'CLT',
+  'Chicago Fire': 'CHI',
+  'Colorado Rapids': 'COL',
+  'Columbus Crew': 'CLB',
+  'D.C. United': 'DC',
+  'FC Cincinnati': 'CIN',
+  'FC Dallas': 'DAL',
+  'Houston Dynamo': 'HOU',
+  'Inter Miami': 'MIA',
+  'LA Galaxy': 'LAG',
+  'LAFC': 'LAFC',
+  'Minnesota Utd': 'MIN',
+  'Nashville SC': 'NSH',
+  'NE Revolution': 'NE',
+  'NY Red Bulls': 'NYR',
+  'NYCFC': 'NYC',
+  'Orlando City': 'ORL',
+  'Philadelphia Union': 'PHI',
+  'Portland Timbers': 'POR',
+  'Real Salt Lake': 'RSL',
+  'San Diego FC': 'SD',
+  'Seattle Sounders': 'SEA',
+  'SJ Earthquakes': 'SJ',
+  'Sporting KC': 'SKC',
+  'St. Louis City': 'STL',
+  'Toronto FC': 'TOR',
+  "Vancouver W'caps": 'VAN',
+};
+
+function abbrev(teamShort: string): string {
+  return ABBREV[teamShort] || teamShort.slice(0, 3).toUpperCase();
 }
 
 // ─── Insight headline generator ───
@@ -51,13 +85,12 @@ function generateScatterHeadline(metrics: TeamResilienceMetrics[]): string {
   return `Home advantage ${direction} with travel distance (R² = ${reg.r2.toFixed(2)}). ${mostTravel.teamShort} traveled the most (${(mostTravel.totalAwayMiles / 1000).toFixed(0)}k mi) with a ${mostTravel.ppgGap.toFixed(2)} PPG gap, while ${overperformer.teamShort} defies the trend — maintaining resilience despite ${(overperformer.totalAwayMiles / 1000).toFixed(0)}k miles.`;
 }
 
-// ─── Cinematic Crater Component ───
-// Light source: top-left at ~315° (10 o'clock)
-// This creates: highlight on top-left rim, shadow on bottom-right interior
-const LIGHT_ANGLE = -0.7; // radians, ~315°
+// ─── Light source constants ───
+const LIGHT_ANGLE = -0.7; // radians, ~315° (10 o'clock)
 const LX = Math.cos(LIGHT_ANGLE);
 const LY = Math.sin(LIGHT_ANGLE);
 
+// ─── Cinematic Crater Component (v3) ───
 function Crater({
   cx,
   cy,
@@ -65,7 +98,10 @@ function Crater({
   ringCount,
   teamColor,
   isDark,
-  teamShort,
+  label,
+  labelX,
+  labelY,
+  labelAnchor,
   labelColor,
   id,
 }: {
@@ -75,171 +111,208 @@ function Crater({
   ringCount: number;
   teamColor: string;
   isDark: boolean;
-  teamShort: string;
+  label: string;
+  labelX: number;
+  labelY: number;
+  labelAnchor: 'start' | 'middle' | 'end';
   labelColor: string;
   id: string;
 }) {
   const R = baseRadius;
-  const rimWidth = R * 0.18; // Thick beveled rim
+  const rimW = R * 0.2; // Slightly thicker rim for more pronounced bevel
 
   return (
     <g>
-      {/* ═══ DEFS — per-crater gradients ═══ */}
       <defs>
         {/* Cast shadow blur */}
         <filter id={`cs-${id}`} x="-60%" y="-40%" width="220%" height="220%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation={R * 0.12} />
+          <feGaussianBlur in="SourceGraphic" stdDeviation={R * 0.14} />
         </filter>
 
-        {/* Inner bowl blur (for shadow/highlight crescents) */}
-        <filter id={`ib-${id}`} x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation={R * 0.08} />
+        {/* Inner bowl blur */}
+        <filter id={`ib-${id}`} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation={R * 0.1} />
         </filter>
 
-        {/* Rim bevel gradient — simulates a thick raised lip around the crater */}
-        <radialGradient id={`rim-${id}`} cx="38%" cy="32%" r="62%">
-          <stop offset="0%" stopColor={isDark ? 'rgba(70,70,90,0.5)' : 'rgba(255,255,255,0.85)'} />
-          <stop offset="55%" stopColor={isDark ? 'rgba(45,45,60,0.3)' : 'rgba(240,238,235,0.6)'} />
-          <stop offset="100%" stopColor={isDark ? 'rgba(20,20,30,0.5)' : 'rgba(190,188,185,0.5)'} />
+        {/* Shelf shadow blur (rim-to-bowl junction) */}
+        <filter id={`sh-${id}`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation={R * 0.06} />
+        </filter>
+
+        {/* Rim bevel gradient */}
+        <radialGradient id={`rim-${id}`} cx="35%" cy="28%" r="65%">
+          <stop offset="0%" stopColor={isDark ? 'rgba(80,80,100,0.55)' : 'rgba(255,255,255,0.9)'} />
+          <stop offset="45%" stopColor={isDark ? 'rgba(50,50,65,0.35)' : 'rgba(245,243,240,0.7)'} />
+          <stop offset="100%" stopColor={isDark ? 'rgba(18,18,28,0.55)' : 'rgba(180,178,175,0.55)'} />
         </radialGradient>
 
-        {/* Inner bowl gradient — the recessed depression */}
-        <radialGradient id={`bowl-${id}`} cx="40%" cy="35%" r="65%">
-          <stop offset="0%" stopColor={isDark ? 'rgba(55,55,70,0.35)' : 'rgba(225,223,220,0.6)'} />
-          <stop offset="35%" stopColor={hexToRgba(teamColor, isDark ? 0.15 : 0.1)} />
-          <stop offset="70%" stopColor={isDark ? 'rgba(25,25,38,0.5)' : 'rgba(195,193,190,0.45)'} />
-          <stop offset="100%" stopColor={isDark ? 'rgba(12,12,20,0.65)' : 'rgba(175,173,170,0.4)'} />
+        {/* Inner bowl gradient — darker floor */}
+        <radialGradient id={`bowl-${id}`} cx="38%" cy="32%" r="68%">
+          <stop offset="0%" stopColor={isDark ? 'rgba(50,50,65,0.3)' : 'rgba(218,216,212,0.55)'} />
+          <stop offset="25%" stopColor={hexToRgba(teamColor, isDark ? 0.18 : 0.12)} />
+          <stop offset="60%" stopColor={isDark ? 'rgba(20,20,32,0.55)' : 'rgba(188,186,182,0.5)'} />
+          <stop offset="100%" stopColor={isDark ? 'rgba(8,8,15,0.7)' : 'rgba(165,163,160,0.45)'} />
         </radialGradient>
 
         {/* Center pit gradient */}
-        <radialGradient id={`pit-${id}`} cx="40%" cy="35%" r="60%">
-          <stop offset="0%" stopColor={hexToRgba(teamColor, isDark ? 0.3 : 0.2)} />
-          <stop offset="60%" stopColor={isDark ? darken(teamColor, 0.5) : darken(teamColor, 0.25)} />
-          <stop offset="100%" stopColor={isDark ? 'rgba(5,5,10,0.9)' : 'rgba(120,118,115,0.5)'} />
+        <radialGradient id={`pit-${id}`} cx="38%" cy="32%" r="60%">
+          <stop offset="0%" stopColor={hexToRgba(teamColor, isDark ? 0.35 : 0.25)} />
+          <stop offset="50%" stopColor={isDark ? darken(teamColor, 0.5) : darken(teamColor, 0.3)} />
+          <stop offset="100%" stopColor={isDark ? 'rgba(3,3,8,0.95)' : 'rgba(100,98,95,0.6)'} />
         </radialGradient>
 
-        {/* Clip for interior elements */}
+        {/* Clips */}
         <clipPath id={`clip-${id}`}>
-          <circle cx={cx} cy={cy} r={R - rimWidth * 0.5} />
+          <circle cx={cx} cy={cy} r={R - rimW * 0.4} />
         </clipPath>
-
-        {/* Clip for rim ring */}
         <clipPath id={`rimclip-${id}`}>
-          <circle cx={cx} cy={cy} r={R + rimWidth * 0.5} />
+          <circle cx={cx} cy={cy} r={R + rimW * 0.4} />
         </clipPath>
       </defs>
 
-      {/* ═══ 1. CAST SHADOW — soft ellipse offset toward bottom-right ═══ */}
+      {/* ═══ 1. CAST SHADOW ═══ */}
       <ellipse
-        cx={cx + R * 0.08}
-        cy={cy + R * 0.12}
-        rx={R + rimWidth + 4}
-        ry={R * 0.5 + rimWidth + 2}
-        fill={isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}
+        cx={cx + R * 0.1}
+        cy={cy + R * 0.15}
+        rx={R + rimW + 5}
+        ry={R * 0.55 + rimW + 3}
+        fill={isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.07)'}
         filter={`url(#cs-${id})`}
       />
 
       {/* ═══ 2. OUTER RIM — thick beveled ring ═══ */}
-      {/* Rim base fill */}
-      <circle
-        cx={cx}
-        cy={cy}
-        r={R + rimWidth * 0.3}
-        fill={`url(#rim-${id})`}
-      />
+      <circle cx={cx} cy={cy} r={R + rimW * 0.35} fill={`url(#rim-${id})`} />
 
-      {/* Rim highlight arc — top-left crescent catching light */}
+      {/* Rim highlight crescent — top-left, brighter */}
       <ellipse
-        cx={cx + LX * R * 0.12}
-        cy={cy + LY * R * 0.12}
-        rx={R * 0.85}
-        ry={R * 0.7}
-        fill={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.55)'}
+        cx={cx + LX * R * 0.15}
+        cy={cy + LY * R * 0.15}
+        rx={R * 0.88}
+        ry={R * 0.72}
+        fill={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.65)'}
         clipPath={`url(#rimclip-${id})`}
       />
 
-      {/* Rim shadow arc — bottom-right crescent in shadow */}
+      {/* Rim shadow crescent — bottom-right, darker */}
       <ellipse
-        cx={cx - LX * R * 0.2}
-        cy={cy - LY * R * 0.2}
-        rx={R * 0.9}
-        ry={R * 0.75}
-        fill={isDark ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.04)'}
+        cx={cx - LX * R * 0.22}
+        cy={cy - LY * R * 0.22}
+        rx={R * 0.92}
+        ry={R * 0.78}
+        fill={isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.06)'}
         clipPath={`url(#rimclip-${id})`}
       />
 
-      {/* Rim outer edge — thin bright line on light side */}
+      {/* Rim outer edge — bright line */}
       <circle
-        cx={cx}
-        cy={cy}
-        r={R + rimWidth * 0.3}
+        cx={cx} cy={cy} r={R + rimW * 0.35}
         fill="none"
-        stroke={isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)'}
-        strokeWidth={1.2}
+        stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.7)'}
+        strokeWidth={1.4}
       />
 
-      {/* ═══ 3. INNER BOWL — the recessed depression ═══ */}
+      {/* ═══ 3. RIM EDGE HIGHLIGHT ARC — cinematic bright arc on lit side ═══ */}
+      <path
+        d={(() => {
+          const arcR = R + rimW * 0.3;
+          const sa = LIGHT_ANGLE - 1.3;
+          const ea = LIGHT_ANGLE + 1.3;
+          const x1 = cx + Math.cos(sa) * arcR;
+          const y1 = cy + Math.sin(sa) * arcR;
+          const x2 = cx + Math.cos(ea) * arcR;
+          const y2 = cy + Math.sin(ea) * arcR;
+          return `M ${x1},${y1} A ${arcR},${arcR} 0 0,1 ${x2},${y2}`;
+        })()}
+        fill="none"
+        stroke={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.75)'}
+        strokeWidth={rimW * 0.7}
+        strokeLinecap="round"
+      />
+
+      {/* Inner rim edge shadow arc — dark arc on shadow side */}
+      <path
+        d={(() => {
+          const arcR = R - rimW * 0.1;
+          const sa = LIGHT_ANGLE + Math.PI - 1.1;
+          const ea = LIGHT_ANGLE + Math.PI + 1.1;
+          const x1 = cx + Math.cos(sa) * arcR;
+          const y1 = cy + Math.sin(sa) * arcR;
+          const x2 = cx + Math.cos(ea) * arcR;
+          const y2 = cy + Math.sin(ea) * arcR;
+          return `M ${x1},${y1} A ${arcR},${arcR} 0 0,1 ${x2},${y2}`;
+        })()}
+        fill="none"
+        stroke={isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.08)'}
+        strokeWidth={rimW * 0.5}
+        strokeLinecap="round"
+      />
+
+      {/* ═══ 4. INNER BOWL ═══ */}
+      <circle cx={cx} cy={cy} r={R - rimW * 0.35} fill={`url(#bowl-${id})`} />
+
+      {/* Shelf shadow — dark ring at the rim-to-bowl junction */}
       <circle
-        cx={cx}
-        cy={cy}
-        r={R - rimWidth * 0.3}
-        fill={`url(#bowl-${id})`}
+        cx={cx} cy={cy} r={R - rimW * 0.35}
+        fill="none"
+        stroke={isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)'}
+        strokeWidth={rimW * 0.5}
+        filter={`url(#sh-${id})`}
+        clipPath={`url(#clip-${id})`}
       />
 
       {/* Bowl shadow crescent — deep shadow on bottom-right interior */}
       <ellipse
-        cx={cx - LX * R * 0.3}
-        cy={cy - LY * R * 0.3}
-        rx={R * 0.85}
-        ry={R * 0.65}
-        fill={isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.08)'}
+        cx={cx - LX * R * 0.35}
+        cy={cy - LY * R * 0.35}
+        rx={R * 0.88}
+        ry={R * 0.68}
+        fill={isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.1)'}
         clipPath={`url(#clip-${id})`}
         filter={`url(#ib-${id})`}
       />
 
-      {/* Bowl highlight crescent — light hitting the upper-left inner wall */}
+      {/* Second shadow layer — deeper, tighter crescent for more depth */}
       <ellipse
-        cx={cx + LX * R * 0.25}
-        cy={cy + LY * R * 0.25}
-        rx={R * 0.55}
-        ry={R * 0.4}
-        fill={isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.3)'}
+        cx={cx - LX * R * 0.45}
+        cy={cy - LY * R * 0.45}
+        rx={R * 0.6}
+        ry={R * 0.45}
+        fill={isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}
+        clipPath={`url(#clip-${id})`}
+        filter={`url(#ib-${id})`}
+      />
+
+      {/* Bowl highlight crescent — light hitting upper-left inner wall */}
+      <ellipse
+        cx={cx + LX * R * 0.28}
+        cy={cy + LY * R * 0.28}
+        rx={R * 0.5}
+        ry={R * 0.38}
+        fill={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.35)'}
         clipPath={`url(#clip-${id})`}
       />
 
-      {/* ═══ 4. CONCENTRIC RINGS — variable spacing, tighter toward center ═══ */}
+      {/* ═══ 5. CONCENTRIC RINGS — variable spacing ═══ */}
       {Array.from({ length: ringCount }, (_, i) => {
-        // Exponential spacing: rings get tighter toward center (like topo contours descending)
         const t = (i + 1) / (ringCount + 1);
-        const ringR = (R - rimWidth) * (1 - Math.pow(1 - t, 1.6)); // Tighter at center
-        
-        // Rings deeper in the bowl are more opaque and slightly thicker
+        const ringR = (R - rimW) * (1 - Math.pow(1 - t, 1.7));
         const depth = i / Math.max(1, ringCount - 1);
-        const opacity = isDark
-          ? 0.1 + depth * 0.35
-          : 0.08 + depth * 0.25;
-        const strokeW = 0.6 + depth * 1.0;
+        const opacity = isDark ? 0.12 + depth * 0.4 : 0.1 + depth * 0.3;
+        const strokeW = 0.5 + depth * 1.2;
 
-        // Each ring has a subtle double-line effect: dark line + offset highlight
         return (
           <g key={i}>
             {/* Shadow side of ring groove */}
             <circle
-              cx={cx}
-              cy={cy}
-              r={ringR}
-              fill="none"
-              stroke={hexToRgba(isDark ? darken(teamColor, 0.2) : darken(teamColor, 0.1), opacity)}
+              cx={cx} cy={cy} r={ringR} fill="none"
+              stroke={hexToRgba(isDark ? darken(teamColor, 0.25) : darken(teamColor, 0.15), opacity)}
               strokeWidth={strokeW}
               clipPath={`url(#clip-${id})`}
             />
-            {/* Light side of ring groove — offset slightly toward light */}
+            {/* Light side of ring groove */}
             <circle
-              cx={cx + LX * 0.4}
-              cy={cy + LY * 0.4}
-              r={ringR}
-              fill="none"
-              stroke={hexToRgba(isDark ? lighten(teamColor, 0.2) : lighten(teamColor, 0.15), opacity * 0.4)}
+              cx={cx + LX * 0.5} cy={cy + LY * 0.5} r={ringR} fill="none"
+              stroke={hexToRgba(isDark ? lighten(teamColor, 0.25) : lighten(teamColor, 0.2), opacity * 0.45)}
               strokeWidth={strokeW * 0.5}
               clipPath={`url(#clip-${id})`}
             />
@@ -247,98 +320,140 @@ function Crater({
         );
       })}
 
-      {/* ═══ 5. CENTER PIT — the deepest point ═══ */}
-      {/* Pit depression */}
-      <circle
-        cx={cx}
-        cy={cy}
-        r={Math.max(3, R * 0.14)}
-        fill={`url(#pit-${id})`}
-      />
+      {/* ═══ 6. CENTER PIT ═══ */}
+      <circle cx={cx} cy={cy} r={Math.max(3.5, R * 0.15)} fill={`url(#pit-${id})`} />
       {/* Pit inner shadow ring */}
       <circle
-        cx={cx}
-        cy={cy}
-        r={Math.max(2.5, R * 0.12)}
+        cx={cx} cy={cy} r={Math.max(3, R * 0.13)}
         fill="none"
-        stroke={isDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.1)'}
-        strokeWidth={0.8}
+        stroke={isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.12)'}
+        strokeWidth={1}
       />
-      {/* Specular highlight — tiny bright dot catching light */}
+      {/* Specular highlight */}
       <circle
-        cx={cx + LX * R * 0.03}
-        cy={cy + LY * R * 0.03}
-        r={Math.max(1, R * 0.04)}
+        cx={cx + LX * R * 0.04}
+        cy={cy + LY * R * 0.04}
+        r={Math.max(1.2, R * 0.045)}
         fill="white"
-        fillOpacity={isDark ? 0.2 : 0.5}
+        fillOpacity={isDark ? 0.25 : 0.6}
       />
 
-      {/* ═══ 6. RIM EDGE HIGHLIGHT — bright arc on the lit side of the outer rim ═══ */}
-      {/* This is the key "cinematic" touch — a bright arc on the top-left rim edge */}
-      <path
-        d={(() => {
-          // Arc from ~280° to ~20° (the lit portion of the rim)
-          const arcR = R + rimWidth * 0.25;
-          const startAngle = LIGHT_ANGLE - 1.2;
-          const endAngle = LIGHT_ANGLE + 1.2;
-          const x1 = cx + Math.cos(startAngle) * arcR;
-          const y1 = cy + Math.sin(startAngle) * arcR;
-          const x2 = cx + Math.cos(endAngle) * arcR;
-          const y2 = cy + Math.sin(endAngle) * arcR;
-          return `M ${x1},${y1} A ${arcR},${arcR} 0 0,1 ${x2},${y2}`;
-        })()}
-        fill="none"
-        stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.65)'}
-        strokeWidth={rimWidth * 0.6}
-        strokeLinecap="round"
-      />
-
-      {/* Inner rim edge shadow — dark arc on the opposite (shadow) side */}
-      <path
-        d={(() => {
-          const arcR = R - rimWidth * 0.15;
-          const startAngle = LIGHT_ANGLE + Math.PI - 1.0;
-          const endAngle = LIGHT_ANGLE + Math.PI + 1.0;
-          const x1 = cx + Math.cos(startAngle) * arcR;
-          const y1 = cy + Math.sin(startAngle) * arcR;
-          const x2 = cx + Math.cos(endAngle) * arcR;
-          const y2 = cy + Math.sin(endAngle) * arcR;
-          return `M ${x1},${y1} A ${arcR},${arcR} 0 0,1 ${x2},${y2}`;
-        })()}
-        fill="none"
-        stroke={isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.06)'}
-        strokeWidth={rimWidth * 0.4}
-        strokeLinecap="round"
-      />
-
-      {/* ═══ 7. TEAM LABEL ═══ */}
-      {/* Label shadow for readability */}
+      {/* ═══ 7. LABEL — positioned by collision-aware placement ═══ */}
       <text
-        x={cx + 0.5}
-        y={cy - R - rimWidth - 4.5}
-        fill={isDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.08)'}
-        fontSize={10}
-        fontWeight={700}
+        x={labelX + 0.5}
+        y={labelY + 0.5}
+        fill={isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)'}
+        fontSize={9}
+        fontWeight={800}
         fontFamily="Space Grotesk"
-        textAnchor="middle"
-        letterSpacing="0.04em"
+        textAnchor={labelAnchor as 'start' | 'middle' | 'end'}
+        letterSpacing="0.06em"
       >
-        {teamShort}
+        {label}
       </text>
       <text
-        x={cx}
-        y={cy - R - rimWidth - 5}
+        x={labelX}
+        y={labelY}
         fill={labelColor}
-        fontSize={10}
-        fontWeight={700}
+        fontSize={9}
+        fontWeight={800}
         fontFamily="Space Grotesk"
-        textAnchor="middle"
-        letterSpacing="0.04em"
+        textAnchor={labelAnchor as 'start' | 'middle' | 'end'}
+        letterSpacing="0.06em"
       >
-        {teamShort}
+        {label}
       </text>
     </g>
   );
+}
+
+// ─── Label placement engine ───
+// Tests 8 candidate positions around each crater and picks the one with least overlap
+interface LabelPlacement {
+  x: number;
+  y: number;
+  anchor: string;
+  w: number;
+  h: number;
+}
+
+function computeLabelPlacements(
+  items: { cx: number; cy: number; r: number; label: string }[],
+  plotBounds: { left: number; top: number; right: number; bottom: number },
+): LabelPlacement[] {
+  const placed: { x: number; y: number; w: number; h: number }[] = [];
+  const results: LabelPlacement[] = [];
+  const FONT_W = 6.5; // approx width per char at 9px
+  const FONT_H = 11;
+
+  for (const item of items) {
+    const labelW = item.label.length * FONT_W;
+    const gap = 5;
+
+    // 8 candidate positions: top, bottom, left, right, and 4 diagonals
+    const candidates: { x: number; y: number; anchor: string }[] = [
+      { x: item.cx, y: item.cy - item.r - gap - 2, anchor: 'middle' },           // top
+      { x: item.cx, y: item.cy + item.r + gap + FONT_H, anchor: 'middle' },      // bottom
+      { x: item.cx + item.r + gap, y: item.cy + 3, anchor: 'start' },            // right
+      { x: item.cx - item.r - gap, y: item.cy + 3, anchor: 'end' },              // left
+      { x: item.cx + item.r * 0.7 + gap, y: item.cy - item.r * 0.5 - 2, anchor: 'start' },  // top-right
+      { x: item.cx - item.r * 0.7 - gap, y: item.cy - item.r * 0.5 - 2, anchor: 'end' },    // top-left
+      { x: item.cx + item.r * 0.7 + gap, y: item.cy + item.r * 0.5 + FONT_H, anchor: 'start' }, // bottom-right
+      { x: item.cx - item.r * 0.7 - gap, y: item.cy + item.r * 0.5 + FONT_H, anchor: 'end' },   // bottom-left
+    ];
+
+    let bestScore = Infinity;
+    let bestCandidate = candidates[0];
+
+    for (const cand of candidates) {
+      // Compute bounding box of this label
+      let lx = cand.x;
+      if (cand.anchor === 'middle') lx -= labelW / 2;
+      else if (cand.anchor === 'end') lx -= labelW;
+      const ly = cand.y - FONT_H;
+      const lw = labelW;
+      const lh = FONT_H + 2;
+
+      // Penalty: out of bounds
+      let score = 0;
+      if (lx < plotBounds.left) score += 50;
+      if (lx + lw > plotBounds.right) score += 50;
+      if (ly < plotBounds.top) score += 50;
+      if (ly + lh > plotBounds.bottom) score += 50;
+
+      // Penalty: overlap with other craters
+      for (const other of items) {
+        if (other === item) continue;
+        const dx = (lx + lw / 2) - other.cx;
+        const dy = (ly + lh / 2) - other.cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < other.r + 8) score += 30;
+      }
+
+      // Penalty: overlap with already-placed labels
+      for (const p of placed) {
+        const overlapX = Math.max(0, Math.min(lx + lw, p.x + p.w) - Math.max(lx, p.x));
+        const overlapY = Math.max(0, Math.min(ly + lh, p.y + p.h) - Math.max(ly, p.y));
+        if (overlapX > 0 && overlapY > 0) score += 40;
+      }
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestCandidate = cand;
+      }
+    }
+
+    // Compute final bbox for placed list
+    let lx = bestCandidate.x;
+    if (bestCandidate.anchor === 'middle') lx -= labelW / 2;
+    else if (bestCandidate.anchor === 'end') lx -= labelW;
+    const ly = bestCandidate.y - FONT_H;
+
+    placed.push({ x: lx, y: ly, w: labelW, h: FONT_H + 2 });
+    results.push({ x: bestCandidate.x, y: bestCandidate.y, anchor: bestCandidate.anchor, w: labelW, h: FONT_H + 2 });
+  }
+
+  return results;
 }
 
 export default function TravelScatterChart({ metrics }: TravelScatterChartProps) {
@@ -346,7 +461,6 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
   const isDark = theme === 'dark';
   const [conference, setConference] = useState<ConferenceFilter>('ALL');
 
-  // Filter by conference
   const filtered = useMemo(() => {
     if (conference === 'ALL') return metrics;
     const conf = conference === 'EAST' ? 'Eastern' : 'Western';
@@ -357,8 +471,8 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
 
   // ─── Chart dimensions ───
   const width = 1100;
-  const height = 680;
-  const margin = { top: 45, right: 50, bottom: 65, left: 75 };
+  const height = 700;
+  const margin = { top: 45, right: 55, bottom: 65, left: 75 };
   const plotW = width - margin.left - margin.right;
   const plotH = height - margin.top - margin.bottom;
 
@@ -390,7 +504,6 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
   const xScale = (val: number) => margin.left + ((val - xExtent.min) / (xExtent.max - xExtent.min)) * plotW;
   const yScale = (val: number) => margin.top + plotH - ((val - yExtent.min) / (yExtent.max - yExtent.min)) * plotH;
 
-  // Crater radius: 18–42px based on PPG gap magnitude
   const gapExtent = useMemo(() => {
     if (filtered.length === 0) return { min: 0, max: 1 };
     const vals = filtered.map(m => Math.abs(m.ppgGap));
@@ -403,21 +516,18 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
     return 18 + t * 24;
   };
 
-  // Ring count: 2–7 based on squad depth
   const ringCountScale = (depth: number) => {
     const range = depthExtent.max - depthExtent.min || 1;
     const t = (depth - depthExtent.min) / range;
     return Math.round(2 + t * 5);
   };
 
-  // ─── Regression line ───
   const regression = useMemo(() => {
     if (filtered.length < 3) return null;
     const pts = filtered.map(m => ({ x: m.totalAwayMiles, y: m.ppgGap }));
     return linearRegression(pts);
   }, [filtered]);
 
-  // ─── Grid ticks ───
   const xTicks = useMemo(() => {
     const step = (xExtent.max - xExtent.min) > 20000 ? 5000 : 2500;
     const ticks: number[] = [];
@@ -435,7 +545,6 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
     return ticks;
   }, [yExtent]);
 
-  // ─── Quadrant boundaries (median split) ───
   const medianX = useMemo(() => {
     if (filtered.length === 0) return (xExtent.min + xExtent.max) / 2;
     const sorted = [...filtered.map(m => m.totalAwayMiles)].sort((a, b) => a - b);
@@ -454,11 +563,11 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
   const gridColor = isDark ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.035)';
   const axisColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
   const textColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
-  const labelColor = isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)';
+  const labelColor = isDark ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.6)';
   const quadrantColor = isDark ? 'rgba(0,212,255,0.06)' : 'rgba(0,160,200,0.05)';
   const regressionColor = isDark ? 'rgba(0,212,255,0.3)' : 'rgba(0,160,200,0.25)';
 
-  // Surface texture: subtle dot grid
+  // Surface dots
   const surfaceDots = useMemo(() => {
     const dots: { x: number; y: number }[] = [];
     const spacing = 16;
@@ -472,11 +581,31 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
     return dots;
   }, [plotW, plotH, margin]);
 
-  // Sort craters so smaller ones render on top
-  const sortedFiltered = useMemo(() =>
-    [...filtered].sort((a, b) => Math.abs(b.ppgGap) - Math.abs(a.ppgGap)),
-    [filtered]
+  // ─── Z-ordering: sort by Y position (top of screen = behind, bottom = in front) ───
+  const zSorted = useMemo(() =>
+    [...filtered].sort((a, b) => {
+      const ya = yScale(a.ppgGap);
+      const yb = yScale(b.ppgGap);
+      return ya - yb; // smaller Y (higher on screen) renders first (behind)
+    }),
+    [filtered, yExtent]
   );
+
+  // ─── Compute label placements ───
+  const labelPlacements = useMemo(() => {
+    const items = zSorted.map(m => ({
+      cx: xScale(m.totalAwayMiles),
+      cy: yScale(m.ppgGap),
+      r: radiusScale(m.ppgGap) + radiusScale(m.ppgGap) * 0.2, // include rim
+      label: abbrev(m.teamShort),
+    }));
+    return computeLabelPlacements(items, {
+      left: margin.left + 5,
+      top: margin.top + 5,
+      right: margin.left + plotW - 5,
+      bottom: margin.top + plotH - 5,
+    });
+  }, [zSorted, xExtent, yExtent, gapExtent]);
 
   return (
     <div>
@@ -490,7 +619,6 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
             Each impression represents a team pressed into the surface. Ring depth = squad rotation depth. Crater size = PPG gap magnitude.
           </p>
         </div>
-        {/* Conference filter */}
         <div className="flex items-center gap-0 relative z-10">
           {(['ALL', 'EAST', 'WEST'] as ConferenceFilter[]).map((c, i) => (
             <button
@@ -529,11 +657,9 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full"
-          style={{ minWidth: '700px', maxHeight: '680px' }}
+          style={{ minWidth: '700px', maxHeight: '700px' }}
         >
-          {/* ═══ GLOBAL DEFS ═══ */}
           <defs>
-            {/* Subtle surface noise texture */}
             <filter id="clay-surface" x="0%" y="0%" width="100%" height="100%">
               <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" result="noise" />
               <feColorMatrix type="saturate" values="0" in="noise" result="gray" />
@@ -544,73 +670,34 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
             </filter>
           </defs>
 
-          {/* Background surface — matte clay feel */}
-          <rect
-            x={margin.left}
-            y={margin.top}
-            width={plotW}
-            height={plotH}
-            rx={6}
-            fill={isDark ? 'rgba(18,18,28,0.35)' : 'rgba(232,230,226,0.55)'}
-          />
-
-          {/* Surface texture overlay */}
-          <rect
-            x={margin.left}
-            y={margin.top}
-            width={plotW}
-            height={plotH}
-            rx={6}
+          {/* Background surface */}
+          <rect x={margin.left} y={margin.top} width={plotW} height={plotH} rx={6}
+            fill={isDark ? 'rgba(18,18,28,0.35)' : 'rgba(232,230,226,0.55)'} />
+          <rect x={margin.left} y={margin.top} width={plotW} height={plotH} rx={6}
             fill={isDark ? 'rgba(30,30,45,0.15)' : 'rgba(215,213,210,0.2)'}
-            filter="url(#clay-surface)"
-          />
+            filter="url(#clay-surface)" />
 
-          {/* Subtle pin-prick dot grid */}
+          {/* Dot grid */}
           {surfaceDots.map((d, i) => (
-            <circle
-              key={i}
-              cx={d.x}
-              cy={d.y}
-              r={0.5}
-              fill={isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'}
-            />
+            <circle key={i} cx={d.x} cy={d.y} r={0.5}
+              fill={isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'} />
           ))}
 
           {/* Grid lines */}
           {xTicks.map(t => (
-            <line
-              key={`xg-${t}`}
-              x1={xScale(t)} y1={margin.top}
-              x2={xScale(t)} y2={margin.top + plotH}
-              stroke={gridColor}
-              strokeDasharray="2,8"
-            />
+            <line key={`xg-${t}`} x1={xScale(t)} y1={margin.top} x2={xScale(t)} y2={margin.top + plotH}
+              stroke={gridColor} strokeDasharray="2,8" />
           ))}
           {yTicks.map(t => (
-            <line
-              key={`yg-${t}`}
-              x1={margin.left} y1={yScale(t)}
-              x2={margin.left + plotW} y2={yScale(t)}
-              stroke={gridColor}
-              strokeDasharray="2,8"
-            />
+            <line key={`yg-${t}`} x1={margin.left} y1={yScale(t)} x2={margin.left + plotW} y2={yScale(t)}
+              stroke={gridColor} strokeDasharray="2,8" />
           ))}
 
           {/* Quadrant dividers */}
-          <line
-            x1={xScale(medianX)} y1={margin.top}
-            x2={xScale(medianX)} y2={margin.top + plotH}
-            stroke={quadrantColor}
-            strokeDasharray="4,8"
-            strokeWidth={1}
-          />
-          <line
-            x1={margin.left} y1={yScale(medianY)}
-            x2={margin.left + plotW} y2={yScale(medianY)}
-            stroke={quadrantColor}
-            strokeDasharray="4,8"
-            strokeWidth={1}
-          />
+          <line x1={xScale(medianX)} y1={margin.top} x2={xScale(medianX)} y2={margin.top + plotH}
+            stroke={quadrantColor} strokeDasharray="4,8" strokeWidth={1} />
+          <line x1={margin.left} y1={yScale(medianY)} x2={margin.left + plotW} y2={yScale(medianY)}
+            stroke={quadrantColor} strokeDasharray="4,8" strokeWidth={1} />
 
           {/* Quadrant labels */}
           <text x={margin.left + 14} y={margin.top + 18}
@@ -630,7 +717,7 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
             fontSize={8.5} fontWeight={700} fontFamily="Space Grotesk" letterSpacing="0.1em"
           >LOW TRAVEL · LOW ADVANTAGE</text>
 
-          {/* Regression path — dotted constellation style */}
+          {/* Regression path */}
           {regression && (() => {
             const x1 = xScale(xExtent.min);
             const y1 = yScale(regression.slope * xExtent.min + regression.intercept);
@@ -642,101 +729,58 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
               const t = i / (dotCount - 1);
               return { x: x1 + (x2 - x1) * t, y: y1 + (y2 - y1) * t };
             });
-
             return (
               <g>
                 {dots.map((d, i) => (
-                  <circle
-                    key={i}
-                    cx={d.x}
-                    cy={d.y}
+                  <circle key={i} cx={d.x} cy={d.y}
                     r={i % 4 === 0 ? 1.8 : i % 2 === 0 ? 1.1 : 0.6}
-                    fill={regressionColor}
-                  />
+                    fill={regressionColor} />
                 ))}
-                <text
-                  x={x2 - 8}
-                  y={y2 - 14}
-                  fill={regressionColor}
-                  fontSize={10}
-                  fontWeight={600}
-                  fontFamily="Space Grotesk"
-                  textAnchor="end"
-                >
+                <text x={x2 - 8} y={y2 - 14} fill={regressionColor}
+                  fontSize={10} fontWeight={600} fontFamily="Space Grotesk" textAnchor="end">
                   R² = {regression.r2.toFixed(2)}
                 </text>
               </g>
             );
           })()}
 
-          {/* Axis lines */}
-          <line
-            x1={margin.left} y1={margin.top + plotH}
-            x2={margin.left + plotW} y2={margin.top + plotH}
-            stroke={axisColor}
-          />
-          <line
-            x1={margin.left} y1={margin.top}
-            x2={margin.left} y2={margin.top + plotH}
-            stroke={axisColor}
-          />
+          {/* Axes */}
+          <line x1={margin.left} y1={margin.top + plotH} x2={margin.left + plotW} y2={margin.top + plotH} stroke={axisColor} />
+          <line x1={margin.left} y1={margin.top} x2={margin.left} y2={margin.top + plotH} stroke={axisColor} />
 
-          {/* X-axis ticks & labels */}
           {xTicks.map(t => (
             <g key={`xt-${t}`}>
-              <line
-                x1={xScale(t)} y1={margin.top + plotH}
-                x2={xScale(t)} y2={margin.top + plotH + 5}
-                stroke={axisColor}
-              />
-              <text
-                x={xScale(t)} y={margin.top + plotH + 20}
-                fill={textColor} fontSize={10} fontFamily="Space Grotesk" textAnchor="middle"
-              >
+              <line x1={xScale(t)} y1={margin.top + plotH} x2={xScale(t)} y2={margin.top + plotH + 5} stroke={axisColor} />
+              <text x={xScale(t)} y={margin.top + plotH + 20} fill={textColor} fontSize={10} fontFamily="Space Grotesk" textAnchor="middle">
                 {t >= 1000 ? `${(t / 1000).toFixed(0)}k` : t}
               </text>
             </g>
           ))}
-
-          {/* Y-axis ticks & labels */}
           {yTicks.map(t => (
             <g key={`yt-${t}`}>
-              <line
-                x1={margin.left - 5} y1={yScale(t)}
-                x2={margin.left} y2={yScale(t)}
-                stroke={axisColor}
-              />
-              <text
-                x={margin.left - 10} y={yScale(t) + 4}
-                fill={textColor} fontSize={10} fontFamily="Space Grotesk" textAnchor="end"
-              >
+              <line x1={margin.left - 5} y1={yScale(t)} x2={margin.left} y2={yScale(t)} stroke={axisColor} />
+              <text x={margin.left - 10} y={yScale(t) + 4} fill={textColor} fontSize={10} fontFamily="Space Grotesk" textAnchor="end">
                 {t.toFixed(2)}
               </text>
             </g>
           ))}
 
-          {/* Axis labels */}
-          <text
-            x={margin.left + plotW / 2} y={height - 8}
-            fill={labelColor} fontSize={12} fontWeight={600} fontFamily="Space Grotesk" textAnchor="middle"
-          >
+          <text x={margin.left + plotW / 2} y={height - 8} fill={labelColor} fontSize={12} fontWeight={600} fontFamily="Space Grotesk" textAnchor="middle">
             Total Away Miles Traveled
           </text>
-          <text
-            x={16} y={margin.top + plotH / 2}
-            fill={labelColor} fontSize={12} fontWeight={600} fontFamily="Space Grotesk" textAnchor="middle"
-            transform={`rotate(-90, 16, ${margin.top + plotH / 2})`}
-          >
+          <text x={16} y={margin.top + plotH / 2} fill={labelColor} fontSize={12} fontWeight={600} fontFamily="Space Grotesk" textAnchor="middle"
+            transform={`rotate(-90, 16, ${margin.top + plotH / 2})`}>
             Home Advantage (PPG Delta)
           </text>
 
-          {/* ═══ CRATERS — render larger first, smaller on top ═══ */}
-          {sortedFiltered.map(m => {
+          {/* ═══ CRATERS — z-sorted by Y position ═══ */}
+          {zSorted.map((m, idx) => {
             const cx = xScale(m.totalAwayMiles);
             const cy = yScale(m.ppgGap);
             const r = radiusScale(m.ppgGap);
             const rings = ringCountScale(m.squadDepthIndex);
             const color = mutedTeamColor(m.teamId, isDark);
+            const lp = labelPlacements[idx];
 
             return (
               <Crater
@@ -747,7 +791,10 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
                 ringCount={rings}
                 teamColor={color}
                 isDark={isDark}
-                teamShort={m.teamShort}
+                label={abbrev(m.teamShort)}
+                labelX={lp?.x ?? cx}
+                labelY={lp?.y ?? (cy - r - 8)}
+                labelAnchor={lp?.anchor ?? 'middle'}
                 labelColor={labelColor}
                 id={m.teamId}
               />
