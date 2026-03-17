@@ -659,29 +659,10 @@ export function Extruded3DHorizontalBar(props: any) {
         <filter id={`${id}_shadow`} x="-25%" y="-20%" width="160%" height="150%">
           <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" />
         </filter>
-        {emphasized && (
-          <filter id={`${id}_glow`} x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-        )}
+
       </defs>
 
-      {/* Emphasis glow ring */}
-      {emphasized && (
-        <rect
-          x={barX - 2}
-          y={y - 2}
-          width={barWidth + 4}
-          height={h + 4}
-          rx={4}
-          fill="none"
-          stroke={fill || '#4A4A5A'}
-          strokeWidth={2}
-          strokeOpacity={0.6}
-          filter={`url(#${id}_glow)`}
-        />
-      )}
+
 
       {/* Cast shadow — same depth as vertical bars */}
       <rect
