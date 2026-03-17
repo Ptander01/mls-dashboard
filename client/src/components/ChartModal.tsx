@@ -22,11 +22,8 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
       document.documentElement.style.overflow = 'hidden';
       document.body.style.overflow = 'hidden';
 
-      // Reset animation state when modal opens
       setAnimationDone(false);
 
-      // After the CSS animation completes (350ms), trigger a resize so
-      // Recharts ResponsiveContainer recalculates dimensions
       const timer = setTimeout(() => {
         setAnimationDone(true);
         window.dispatchEvent(new Event('resize'));
@@ -48,12 +45,10 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
     };
   }, [isOpen, handleEsc]);
 
-  // ResizeObserver to handle any subsequent size changes
   useEffect(() => {
     if (!isOpen || !modalCardRef.current) return;
 
     const observer = new ResizeObserver(() => {
-      // Dispatch resize event so Recharts ResponsiveContainer picks up changes
       window.dispatchEvent(new Event('resize'));
     });
 
@@ -67,93 +62,77 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
     <div
       className="fixed inset-0 z-[9999]"
       onClick={onClose}
-      style={{
-        isolation: 'isolate',
-        overflowY: 'auto',
-      }}
+      style={{ isolation: 'isolate' }}
     >
-      {/* Backdrop — covers everything, fixed so it doesn't scroll */}
+      {/* Backdrop */}
       <div
         className="backdrop-blur-sm"
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          position: 'absolute',
+          inset: 0,
           background: 'rgba(0,0,0,0.8)',
-          pointerEvents: 'none',
         }}
       />
 
-      {/* Scrollable content wrapper — allows the card to be scrolled into view */}
+      {/* Modal card — absolute inset with padding, guaranteed to fit viewport */}
       <div
+        ref={modalCardRef}
+        onClick={e => e.stopPropagation()}
+        className="rounded-2xl"
         style={{
-          position: 'relative',
-          minHeight: '100%',
+          position: 'absolute',
+          top: '2rem',
+          left: '2rem',
+          right: '2rem',
+          bottom: '2rem',
           display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          padding: '2rem',
+          flexDirection: 'column',
+          animation: 'modal-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          background: 'var(--neu-bg-raised)',
+          boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
         }}
       >
-        {/* Modal card — sized to fit content, max constrained to viewport */}
+        {/* Header — pinned at top */}
         <div
-          ref={modalCardRef}
-          onClick={e => e.stopPropagation()}
-          className="rounded-2xl"
+          className="border-b border-white/5"
           style={{
-            position: 'relative',
-            width: '100%',
-            maxWidth: '100%',
-            maxHeight: 'calc(100vh - 4rem)',
+            flexShrink: 0,
             display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            animation: 'modal-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-            background: 'var(--neu-bg-raised)',
-            boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.75rem 1.25rem',
+            background: 'var(--card-bg, var(--background))',
+            borderRadius: '1rem 1rem 0 0',
           }}
         >
-          {/* Header — always visible at top */}
-          <div
-            className="border-b border-white/5"
+          <h2 className="text-base font-semibold text-foreground" style={{ fontFamily: 'Space Grotesk' }}>
+            {title}
+          </h2>
+          <button
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="p-2 rounded-lg hover:text-cyan transition-colors"
             style={{
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.75rem 1.25rem',
-              background: 'var(--card-bg, var(--background))',
+              background: 'var(--neu-bg-raised)',
+              boxShadow: '2px 2px 6px var(--neu-shadow-dark), -2px -2px 6px var(--neu-shadow-light)',
             }}
           >
-            <h2 className="text-base font-semibold text-foreground" style={{ fontFamily: 'Space Grotesk' }}>
-              {title}
-            </h2>
-            <button
-              onClick={(e) => { e.stopPropagation(); onClose(); }}
-              className="p-2 rounded-lg hover:text-cyan transition-colors"
-              style={{
-                background: 'var(--neu-bg-raised)',
-                boxShadow: '2px 2px 6px var(--neu-shadow-dark), -2px -2px 6px var(--neu-shadow-light)',
-              }}
-            >
-              <X size={18} />
-            </button>
-          </div>
+            <X size={18} />
+          </button>
+        </div>
 
-          {/* Content — scrollable within the card, fills remaining space */}
-          <div
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              padding: '1.25rem',
-              minHeight: 0,
-            }}
-            key={animationDone ? 'ready' : 'animating'}
-          >
-            {children}
-          </div>
+        {/* Content — scrollable, takes all remaining space */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            padding: '1.25rem',
+            minHeight: 0,
+            borderRadius: '0 0 1rem 1rem',
+          }}
+          key={animationDone ? 'ready' : 'animating'}
+        >
+          {children}
         </div>
       </div>
     </div>
