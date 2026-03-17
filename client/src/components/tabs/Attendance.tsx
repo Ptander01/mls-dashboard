@@ -569,7 +569,7 @@ export default function Attendance() {
     })).sort((a, b) => a.week - b.week);
   }, [filteredMatches]);
 
-  const WeeklyContent = ({ height = 240, fillParent = false }: { height?: number; fillParent?: boolean }) => {
+  const WeeklyContent = ({ height = 240 }: { height?: number }) => {
     const areaColor = effectiveTrendTeam ? trendColor : (isDark ? '#3A6A7A' : '#4A7A8A');
     // Merge league data with team data for the chart domain
     // When a team is selected, we show both the team area and a ghost league average
@@ -592,7 +592,7 @@ export default function Attendance() {
     const hasVariation = !showGhost && weeklyData.some(d => d.max !== d.min);
 
     return (
-      <div style={fillParent ? { height: 'calc(100vh - 16rem)' } : { height }}>
+      <div style={{ height }}>
         <ResponsiveContainer>
           <LineChart data={chartData} margin={{ top: 15, right: 120, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
@@ -1327,7 +1327,7 @@ export default function Attendance() {
           </div>
         </div>
         <CardInsightSection isOpen={showTrendInsights} insights={trendInsights} isDark={isDark} />
-        <WeeklyContent fillParent />
+        <WeeklyContent height={600} />
       </ChartModal>
       <ChartModal isOpen={maximized === 'gravity'} onClose={() => setMaximized(null)} title="Gravitational Pull — League-Wide Away Team Impact">
         <div className="flex items-center justify-between mb-3">
