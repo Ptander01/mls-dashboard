@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useCallback, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Maximize2 } from 'lucide-react';
 
 interface ChartModalProps {
@@ -58,7 +59,10 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
 
   if (!isOpen) return null;
 
-  return (
+  // Use createPortal to render at document.body, bypassing any ancestor
+  // transforms that would break position: fixed (e.g. tab animation wrappers
+  // with translateY(0px) still create a containing block).
+  return createPortal(
     <div
       className="fixed inset-0 z-[9999]"
       onClick={onClose}
@@ -68,19 +72,19 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
       <div
         className="backdrop-blur-sm"
         style={{
-          position: 'absolute',
+          position: 'fixed',
           inset: 0,
           background: 'rgba(0,0,0,0.8)',
         }}
       />
 
-      {/* Modal card — absolute inset with padding, guaranteed to fit viewport */}
+      {/* Modal card — fixed inset with padding, guaranteed to fit viewport */}
       <div
         ref={modalCardRef}
         onClick={e => e.stopPropagation()}
         className="rounded-2xl"
         style={{
-          position: 'absolute',
+          position: 'fixed',
           top: '2rem',
           left: '2rem',
           right: '2rem',
@@ -90,6 +94,7 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
           animation: 'modal-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
           background: 'var(--neu-bg-raised)',
           boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
+          overflow: 'hidden',
         }}
       >
         {/* Header — pinned at top */}
@@ -135,7 +140,8 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
