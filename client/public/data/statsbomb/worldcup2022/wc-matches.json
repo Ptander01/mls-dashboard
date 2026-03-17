@@ -1,0 +1,1090 @@
+[
+  {
+    "matchId": 3857286,
+    "date": "2022-11-20",
+    "kickOff": "18:00:00.000",
+    "homeTeam": {
+      "name": "Qatar"
+    },
+    "awayTeam": {
+      "name": "Ecuador"
+    },
+    "homeScore": 0,
+    "awayScore": 2,
+    "matchWeek": 1,
+    "stadium": "Al Bayt Stadium",
+    "referee": "Daniele Orsato",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857271,
+    "date": "2022-11-21",
+    "kickOff": "15:00:00.000",
+    "homeTeam": {
+      "name": "England"
+    },
+    "awayTeam": {
+      "name": "Iran"
+    },
+    "homeScore": 6,
+    "awayScore": 2,
+    "matchWeek": 1,
+    "stadium": "Sheikh Khalifa International Stadium",
+    "referee": "Raphael Claus",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857285,
+    "date": "2022-11-21",
+    "kickOff": "18:00:00.000",
+    "homeTeam": {
+      "name": "Senegal"
+    },
+    "awayTeam": {
+      "name": "Netherlands"
+    },
+    "homeScore": 0,
+    "awayScore": 2,
+    "matchWeek": 1,
+    "stadium": "Al Thumama Stadium",
+    "referee": "Wilton Pereira Sampaio",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857282,
+    "date": "2022-11-21",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "United States"
+    },
+    "awayTeam": {
+      "name": "Wales"
+    },
+    "homeScore": 1,
+    "awayScore": 1,
+    "matchWeek": 1,
+    "stadium": "Ahmad bin Ali Stadium",
+    "referee": "Abdulrahman Ibrahim Al Jassim",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857254,
+    "date": "2022-11-22",
+    "kickOff": "15:00:00.000",
+    "homeTeam": {
+      "name": "Denmark"
+    },
+    "awayTeam": {
+      "name": "Tunisia"
+    },
+    "homeScore": 0,
+    "awayScore": 0,
+    "matchWeek": 1,
+    "stadium": "Education City Stadium ",
+    "referee": "C\u00e9sar Arturo Ramos Palazuelos",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857265,
+    "date": "2022-11-22",
+    "kickOff": "18:00:00.000",
+    "homeTeam": {
+      "name": "Mexico"
+    },
+    "awayTeam": {
+      "name": "Poland"
+    },
+    "homeScore": 0,
+    "awayScore": 0,
+    "matchWeek": 1,
+    "stadium": "Stadium 974",
+    "referee": "Chris Beath",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857300,
+    "date": "2022-11-22",
+    "kickOff": "12:00:00.000",
+    "homeTeam": {
+      "name": "Argentina"
+    },
+    "awayTeam": {
+      "name": "Saudi Arabia"
+    },
+    "homeScore": 1,
+    "awayScore": 2,
+    "matchWeek": 1,
+    "stadium": "Lusail Stadium",
+    "referee": "Slavko Vin\u010di\u0107",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857279,
+    "date": "2022-11-22",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "France"
+    },
+    "awayTeam": {
+      "name": "Australia"
+    },
+    "homeScore": 4,
+    "awayScore": 1,
+    "matchWeek": 1,
+    "stadium": "Al Janoub Stadium   ",
+    "referee": "Victor Miguel de Freitas Gomes",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857268,
+    "date": "2022-11-23",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Belgium"
+    },
+    "awayTeam": {
+      "name": "Canada"
+    },
+    "homeScore": 1,
+    "awayScore": 0,
+    "matchWeek": 1,
+    "stadium": "Ahmad bin Ali Stadium",
+    "referee": "Janny Sikazwe",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857291,
+    "date": "2022-11-23",
+    "kickOff": "18:00:00.000",
+    "homeTeam": {
+      "name": "Spain"
+    },
+    "awayTeam": {
+      "name": "Costa Rica"
+    },
+    "homeScore": 7,
+    "awayScore": 0,
+    "matchWeek": 1,
+    "stadium": "Al Thumama Stadium",
+    "referee": null,
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857284,
+    "date": "2022-11-23",
+    "kickOff": "15:00:00.000",
+    "homeTeam": {
+      "name": "Germany"
+    },
+    "awayTeam": {
+      "name": "Japan"
+    },
+    "homeScore": 1,
+    "awayScore": 2,
+    "matchWeek": 1,
+    "stadium": "Sheikh Khalifa International Stadium",
+    "referee": "Ivan Arcides Barton Cisneros",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857277,
+    "date": "2022-11-23",
+    "kickOff": "12:00:00.000",
+    "homeTeam": {
+      "name": "Morocco"
+    },
+    "awayTeam": {
+      "name": "Croatia"
+    },
+    "homeScore": 0,
+    "awayScore": 0,
+    "matchWeek": 1,
+    "stadium": "Al Bayt Stadium",
+    "referee": "Fernando Andr\u00e9s Rapallini",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857290,
+    "date": "2022-11-24",
+    "kickOff": "12:00:00.000",
+    "homeTeam": {
+      "name": "Switzerland"
+    },
+    "awayTeam": {
+      "name": "Cameroon"
+    },
+    "homeScore": 1,
+    "awayScore": 0,
+    "matchWeek": 1,
+    "stadium": "Al Janoub Stadium   ",
+    "referee": "Facundo Tello Figueroa",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857298,
+    "date": "2022-11-24",
+    "kickOff": "18:00:00.000",
+    "homeTeam": {
+      "name": "Portugal"
+    },
+    "awayTeam": {
+      "name": "Ghana"
+    },
+    "homeScore": 3,
+    "awayScore": 2,
+    "matchWeek": 1,
+    "stadium": "Stadium 974",
+    "referee": "Ismail Elfath",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857287,
+    "date": "2022-11-24",
+    "kickOff": "15:00:00.000",
+    "homeTeam": {
+      "name": "Uruguay"
+    },
+    "awayTeam": {
+      "name": "South Korea"
+    },
+    "homeScore": 0,
+    "awayScore": 0,
+    "matchWeek": 1,
+    "stadium": "Education City Stadium ",
+    "referee": "Cl\u00e9ment Turpin",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857258,
+    "date": "2022-11-24",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Brazil"
+    },
+    "awayTeam": {
+      "name": "Serbia"
+    },
+    "homeScore": 2,
+    "awayScore": 0,
+    "matchWeek": 1,
+    "stadium": "Lusail Stadium",
+    "referee": "Alireza Faghani",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857301,
+    "date": "2022-11-25",
+    "kickOff": "15:00:00.000",
+    "homeTeam": {
+      "name": "Qatar"
+    },
+    "awayTeam": {
+      "name": "Senegal"
+    },
+    "homeScore": 1,
+    "awayScore": 3,
+    "matchWeek": 2,
+    "stadium": "Al Thumama Stadium",
+    "referee": "Antonio Miguel Mateu Lahoz",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857272,
+    "date": "2022-11-25",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "England"
+    },
+    "awayTeam": {
+      "name": "United States"
+    },
+    "homeScore": 0,
+    "awayScore": 0,
+    "matchWeek": 2,
+    "stadium": "Al Bayt Stadium",
+    "referee": "Jes\u00fas Valenzuela S\u00e1ez",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857273,
+    "date": "2022-11-25",
+    "kickOff": "12:00:00.000",
+    "homeTeam": {
+      "name": "Wales"
+    },
+    "awayTeam": {
+      "name": "Iran"
+    },
+    "homeScore": 0,
+    "awayScore": 2,
+    "matchWeek": 2,
+    "stadium": "Ahmad bin Ali Stadium",
+    "referee": "Mario Alberto Escobar Toca",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857274,
+    "date": "2022-11-25",
+    "kickOff": "18:00:00.000",
+    "homeTeam": {
+      "name": "Netherlands"
+    },
+    "awayTeam": {
+      "name": "Ecuador"
+    },
+    "homeScore": 1,
+    "awayScore": 1,
+    "matchWeek": 2,
+    "stadium": "Sheikh Khalifa International Stadium",
+    "referee": "Mustapha Ghorbal",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857289,
+    "date": "2022-11-26",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Argentina"
+    },
+    "awayTeam": {
+      "name": "Mexico"
+    },
+    "homeScore": 2,
+    "awayScore": 0,
+    "matchWeek": 2,
+    "stadium": "Lusail Stadium",
+    "referee": "Daniele Orsato",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857266,
+    "date": "2022-11-26",
+    "kickOff": "18:00:00.000",
+    "homeTeam": {
+      "name": "France"
+    },
+    "awayTeam": {
+      "name": "Denmark"
+    },
+    "homeScore": 2,
+    "awayScore": 1,
+    "matchWeek": 2,
+    "stadium": "Stadium 974",
+    "referee": "Szymon Marciniak",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857288,
+    "date": "2022-11-26",
+    "kickOff": "12:00:00.000",
+    "homeTeam": {
+      "name": "Tunisia"
+    },
+    "awayTeam": {
+      "name": "Australia"
+    },
+    "homeScore": 0,
+    "awayScore": 1,
+    "matchWeek": 2,
+    "stadium": "Al Janoub Stadium   ",
+    "referee": "Daniel Siebert",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857297,
+    "date": "2022-11-26",
+    "kickOff": "15:00:00.000",
+    "homeTeam": {
+      "name": "Poland"
+    },
+    "awayTeam": {
+      "name": "Saudi Arabia"
+    },
+    "homeScore": 2,
+    "awayScore": 0,
+    "matchWeek": 2,
+    "stadium": "Education City Stadium ",
+    "referee": "Wilton Pereira Sampaio",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857281,
+    "date": "2022-11-27",
+    "kickOff": "18:00:00.000",
+    "homeTeam": {
+      "name": "Croatia"
+    },
+    "awayTeam": {
+      "name": "Canada"
+    },
+    "homeScore": 4,
+    "awayScore": 1,
+    "matchWeek": 2,
+    "stadium": "Sheikh Khalifa International Stadium",
+    "referee": "Andr\u00e9s Matonte",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857283,
+    "date": "2022-11-27",
+    "kickOff": "15:00:00.000",
+    "homeTeam": {
+      "name": "Belgium"
+    },
+    "awayTeam": {
+      "name": "Morocco"
+    },
+    "homeScore": 0,
+    "awayScore": 2,
+    "matchWeek": 2,
+    "stadium": "Al Thumama Stadium",
+    "referee": "C\u00e9sar Arturo Ramos Palazuelos",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857263,
+    "date": "2022-11-27",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Spain"
+    },
+    "awayTeam": {
+      "name": "Germany"
+    },
+    "homeScore": 1,
+    "awayScore": 1,
+    "matchWeek": 2,
+    "stadium": "Al Bayt Stadium",
+    "referee": "Danny Desmond Makkelie",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857295,
+    "date": "2022-11-27",
+    "kickOff": "12:00:00.000",
+    "homeTeam": {
+      "name": "Japan"
+    },
+    "awayTeam": {
+      "name": "Costa Rica"
+    },
+    "homeScore": 0,
+    "awayScore": 1,
+    "matchWeek": 2,
+    "stadium": "Ahmad bin Ali Stadium",
+    "referee": "Michael Oliver",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857270,
+    "date": "2022-11-28",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Portugal"
+    },
+    "awayTeam": {
+      "name": "Uruguay"
+    },
+    "homeScore": 2,
+    "awayScore": 0,
+    "matchWeek": 2,
+    "stadium": "Lusail Stadium",
+    "referee": "Alireza Faghani",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857259,
+    "date": "2022-11-28",
+    "kickOff": "12:00:00.000",
+    "homeTeam": {
+      "name": "Cameroon"
+    },
+    "awayTeam": {
+      "name": "Serbia"
+    },
+    "homeScore": 3,
+    "awayScore": 3,
+    "matchWeek": 2,
+    "stadium": "Al Janoub Stadium   ",
+    "referee": "Mohamed Abdulla Hassan Mohd",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857299,
+    "date": "2022-11-28",
+    "kickOff": "15:00:00.000",
+    "homeTeam": {
+      "name": "South Korea"
+    },
+    "awayTeam": {
+      "name": "Ghana"
+    },
+    "homeScore": 2,
+    "awayScore": 3,
+    "matchWeek": 2,
+    "stadium": "Education City Stadium ",
+    "referee": "Anthony Taylor",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857269,
+    "date": "2022-11-28",
+    "kickOff": "18:00:00.000",
+    "homeTeam": {
+      "name": "Brazil"
+    },
+    "awayTeam": {
+      "name": "Switzerland"
+    },
+    "homeScore": 1,
+    "awayScore": 0,
+    "matchWeek": 2,
+    "stadium": "Stadium 974",
+    "referee": "Ivan Arcides Barton Cisneros",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857278,
+    "date": "2022-11-29",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Iran"
+    },
+    "awayTeam": {
+      "name": "United States"
+    },
+    "homeScore": 0,
+    "awayScore": 1,
+    "matchWeek": 3,
+    "stadium": "Al Thumama Stadium",
+    "referee": "Antonio Miguel Mateu Lahoz",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857267,
+    "date": "2022-11-29",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Ecuador"
+    },
+    "awayTeam": {
+      "name": "Senegal"
+    },
+    "homeScore": 1,
+    "awayScore": 2,
+    "matchWeek": 3,
+    "stadium": "Sheikh Khalifa International Stadium",
+    "referee": "Cl\u00e9ment Turpin",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857294,
+    "date": "2022-11-29",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Netherlands"
+    },
+    "awayTeam": {
+      "name": "Qatar"
+    },
+    "homeScore": 2,
+    "awayScore": 0,
+    "matchWeek": 3,
+    "stadium": "Al Bayt Stadium",
+    "referee": "Bakary Papa Gassama",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857261,
+    "date": "2022-11-29",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Wales"
+    },
+    "awayTeam": {
+      "name": "England"
+    },
+    "homeScore": 0,
+    "awayScore": 3,
+    "matchWeek": 3,
+    "stadium": "Ahmad bin Ali Stadium",
+    "referee": "Slavko Vin\u010di\u0107",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857275,
+    "date": "2022-11-30",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Tunisia"
+    },
+    "awayTeam": {
+      "name": "France"
+    },
+    "homeScore": 1,
+    "awayScore": 0,
+    "matchWeek": 3,
+    "stadium": "Education City Stadium ",
+    "referee": "Matthew Conger",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857260,
+    "date": "2022-11-30",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Saudi Arabia"
+    },
+    "awayTeam": {
+      "name": "Mexico"
+    },
+    "homeScore": 1,
+    "awayScore": 2,
+    "matchWeek": 3,
+    "stadium": "Lusail Stadium",
+    "referee": "Michael Oliver",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857264,
+    "date": "2022-11-30",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Poland"
+    },
+    "awayTeam": {
+      "name": "Argentina"
+    },
+    "homeScore": 0,
+    "awayScore": 2,
+    "matchWeek": 3,
+    "stadium": "Stadium 974",
+    "referee": "Danny Desmond Makkelie",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857257,
+    "date": "2022-11-30",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Australia"
+    },
+    "awayTeam": {
+      "name": "Denmark"
+    },
+    "homeScore": 1,
+    "awayScore": 0,
+    "matchWeek": 3,
+    "stadium": "Al Janoub Stadium   ",
+    "referee": "Mustapha Ghorbal",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857255,
+    "date": "2022-12-01",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Japan"
+    },
+    "awayTeam": {
+      "name": "Spain"
+    },
+    "homeScore": 2,
+    "awayScore": 1,
+    "matchWeek": 3,
+    "stadium": "Sheikh Khalifa International Stadium",
+    "referee": "Victor Miguel de Freitas Gomes",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857296,
+    "date": "2022-12-01",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Croatia"
+    },
+    "awayTeam": {
+      "name": "Belgium"
+    },
+    "homeScore": 0,
+    "awayScore": 0,
+    "matchWeek": 3,
+    "stadium": "Ahmad bin Ali Stadium",
+    "referee": "Anthony Taylor",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857292,
+    "date": "2022-12-01",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Costa Rica"
+    },
+    "awayTeam": {
+      "name": "Germany"
+    },
+    "homeScore": 2,
+    "awayScore": 4,
+    "matchWeek": 3,
+    "stadium": "Al Bayt Stadium",
+    "referee": "St\u00e9phanie Frappart",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857276,
+    "date": "2022-12-01",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Canada"
+    },
+    "awayTeam": {
+      "name": "Morocco"
+    },
+    "homeScore": 1,
+    "awayScore": 2,
+    "matchWeek": 3,
+    "stadium": "Al Thumama Stadium",
+    "referee": "Raphael Claus",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857262,
+    "date": "2022-12-02",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "South Korea"
+    },
+    "awayTeam": {
+      "name": "Portugal"
+    },
+    "homeScore": 2,
+    "awayScore": 1,
+    "matchWeek": 3,
+    "stadium": "Education City Stadium ",
+    "referee": "Facundo Tello Figueroa",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857280,
+    "date": "2022-12-02",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Cameroon"
+    },
+    "awayTeam": {
+      "name": "Brazil"
+    },
+    "homeScore": 1,
+    "awayScore": 0,
+    "matchWeek": 3,
+    "stadium": "Lusail Stadium",
+    "referee": "Ismail Elfath",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857256,
+    "date": "2022-12-02",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Serbia"
+    },
+    "awayTeam": {
+      "name": "Switzerland"
+    },
+    "homeScore": 2,
+    "awayScore": 3,
+    "matchWeek": 3,
+    "stadium": "Stadium 974",
+    "referee": "Fernando Andr\u00e9s Rapallini",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3857293,
+    "date": "2022-12-02",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Ghana"
+    },
+    "awayTeam": {
+      "name": "Uruguay"
+    },
+    "homeScore": 0,
+    "awayScore": 2,
+    "matchWeek": 3,
+    "stadium": "Al Janoub Stadium   ",
+    "referee": "Daniel Siebert",
+    "competitionStage": "Group Stage"
+  },
+  {
+    "matchId": 3869151,
+    "date": "2022-12-03",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Argentina"
+    },
+    "awayTeam": {
+      "name": "Australia"
+    },
+    "homeScore": 2,
+    "awayScore": 1,
+    "matchWeek": 4,
+    "stadium": "Ahmad bin Ali Stadium",
+    "referee": "Szymon Marciniak",
+    "competitionStage": "Round of 16"
+  },
+  {
+    "matchId": 3869117,
+    "date": "2022-12-03",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Netherlands"
+    },
+    "awayTeam": {
+      "name": "United States"
+    },
+    "homeScore": 3,
+    "awayScore": 1,
+    "matchWeek": 4,
+    "stadium": "Sheikh Khalifa International Stadium",
+    "referee": "Wilton Pereira Sampaio",
+    "competitionStage": "Round of 16"
+  },
+  {
+    "matchId": 3869118,
+    "date": "2022-12-04",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "England"
+    },
+    "awayTeam": {
+      "name": "Senegal"
+    },
+    "homeScore": 3,
+    "awayScore": 0,
+    "matchWeek": 4,
+    "stadium": "Al Bayt Stadium",
+    "referee": "Ivan Arcides Barton Cisneros",
+    "competitionStage": "Round of 16"
+  },
+  {
+    "matchId": 3869152,
+    "date": "2022-12-04",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "France"
+    },
+    "awayTeam": {
+      "name": "Poland"
+    },
+    "homeScore": 3,
+    "awayScore": 1,
+    "matchWeek": 4,
+    "stadium": "Al Thumama Stadium",
+    "referee": "Jes\u00fas Valenzuela S\u00e1ez",
+    "competitionStage": "Round of 16"
+  },
+  {
+    "matchId": 3869253,
+    "date": "2022-12-05",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Brazil"
+    },
+    "awayTeam": {
+      "name": "South Korea"
+    },
+    "homeScore": 4,
+    "awayScore": 1,
+    "matchWeek": 4,
+    "stadium": "Stadium 974",
+    "referee": "Cl\u00e9ment Turpin",
+    "competitionStage": "Round of 16"
+  },
+  {
+    "matchId": 3869219,
+    "date": "2022-12-05",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Japan"
+    },
+    "awayTeam": {
+      "name": "Croatia"
+    },
+    "homeScore": 1,
+    "awayScore": 1,
+    "matchWeek": 4,
+    "stadium": "Al Janoub Stadium   ",
+    "referee": "Ismail Elfath",
+    "competitionStage": "Round of 16"
+  },
+  {
+    "matchId": 3869220,
+    "date": "2022-12-06",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Morocco"
+    },
+    "awayTeam": {
+      "name": "Spain"
+    },
+    "homeScore": 0,
+    "awayScore": 0,
+    "matchWeek": 4,
+    "stadium": "Education City Stadium ",
+    "referee": "Fernando Andr\u00e9s Rapallini",
+    "competitionStage": "Round of 16"
+  },
+  {
+    "matchId": 3869254,
+    "date": "2022-12-06",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Portugal"
+    },
+    "awayTeam": {
+      "name": "Switzerland"
+    },
+    "homeScore": 6,
+    "awayScore": 1,
+    "matchWeek": 4,
+    "stadium": "Lusail Stadium",
+    "referee": "C\u00e9sar Arturo Ramos Palazuelos",
+    "competitionStage": "Round of 16"
+  },
+  {
+    "matchId": 3869321,
+    "date": "2022-12-09",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Netherlands"
+    },
+    "awayTeam": {
+      "name": "Argentina"
+    },
+    "homeScore": 2,
+    "awayScore": 2,
+    "matchWeek": 5,
+    "stadium": "Lusail Stadium",
+    "referee": "Antonio Miguel Mateu Lahoz",
+    "competitionStage": "Quarter-finals"
+  },
+  {
+    "matchId": 3869420,
+    "date": "2022-12-09",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Croatia"
+    },
+    "awayTeam": {
+      "name": "Brazil"
+    },
+    "homeScore": 1,
+    "awayScore": 1,
+    "matchWeek": 5,
+    "stadium": "Education City Stadium ",
+    "referee": "Michael Oliver",
+    "competitionStage": "Quarter-finals"
+  },
+  {
+    "matchId": 3869354,
+    "date": "2022-12-10",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "England"
+    },
+    "awayTeam": {
+      "name": "France"
+    },
+    "homeScore": 1,
+    "awayScore": 2,
+    "matchWeek": 5,
+    "stadium": "Al Bayt Stadium",
+    "referee": "Wilton Pereira Sampaio",
+    "competitionStage": "Quarter-finals"
+  },
+  {
+    "matchId": 3869486,
+    "date": "2022-12-10",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Morocco"
+    },
+    "awayTeam": {
+      "name": "Portugal"
+    },
+    "homeScore": 1,
+    "awayScore": 0,
+    "matchWeek": 5,
+    "stadium": "Al Thumama Stadium",
+    "referee": "Facundo Tello Figueroa",
+    "competitionStage": "Quarter-finals"
+  },
+  {
+    "matchId": 3869519,
+    "date": "2022-12-13",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "Argentina"
+    },
+    "awayTeam": {
+      "name": "Croatia"
+    },
+    "homeScore": 3,
+    "awayScore": 0,
+    "matchWeek": 6,
+    "stadium": "Lusail Stadium",
+    "referee": "Daniele Orsato",
+    "competitionStage": "Semi-finals"
+  },
+  {
+    "matchId": 3869552,
+    "date": "2022-12-14",
+    "kickOff": "21:00:00.000",
+    "homeTeam": {
+      "name": "France"
+    },
+    "awayTeam": {
+      "name": "Morocco"
+    },
+    "homeScore": 2,
+    "awayScore": 0,
+    "matchWeek": 6,
+    "stadium": "Al Bayt Stadium",
+    "referee": "C\u00e9sar Arturo Ramos Palazuelos",
+    "competitionStage": "Semi-finals"
+  },
+  {
+    "matchId": 3869684,
+    "date": "2022-12-17",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Croatia"
+    },
+    "awayTeam": {
+      "name": "Morocco"
+    },
+    "homeScore": 2,
+    "awayScore": 1,
+    "matchWeek": 7,
+    "stadium": "Sheikh Khalifa International Stadium",
+    "referee": "Abdulrahman Ibrahim Al Jassim",
+    "competitionStage": "3rd Place Final"
+  },
+  {
+    "matchId": 3869685,
+    "date": "2022-12-18",
+    "kickOff": "17:00:00.000",
+    "homeTeam": {
+      "name": "Argentina"
+    },
+    "awayTeam": {
+      "name": "France"
+    },
+    "homeScore": 3,
+    "awayScore": 3,
+    "matchWeek": 7,
+    "stadium": "Lusail Stadium",
+    "referee": "Szymon Marciniak",
+    "competitionStage": "Final"
+  }
+]
