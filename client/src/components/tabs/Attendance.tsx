@@ -576,21 +576,17 @@ export default function Attendance() {
     const showGhost = !!effectiveTrendTeam;
     const chartData = weeklyData; // primary data source (team or league avg)
 
-    // Compute Y domain — when a specific team is filtered, zoom to their range
-    // so week-to-week variation is visible instead of being squished flat
-    const teamMinVals = weeklyData.map(d => d.min).filter(v => v > 0);
+    // Compute Y domain — always start at 0 (the filled polygon represents the crowd mass).
+    // When a team is filtered, cap the max at the team's own max (not the league max)
+    // so there isn't a huge empty gap above their line.
     const teamMaxVals = weeklyData.map(d => d.max);
-    const teamMin = teamMinVals.length > 0 ? Math.min(...teamMinVals) : 0;
     const teamMax = teamMaxVals.length > 0 ? Math.max(...teamMaxVals) : 50000;
 
-    // When a team is selected: Y starts at ~80% of their min (to show variation)
-    // When no team: start at 0 to show full league context
-    const yMin = showGhost ? Math.max(0, Math.floor(teamMin * 0.8)) : 0;
-    const allMaxVals = [
-      ...teamMaxVals,
-      ...(showGhost ? leagueWeeklyData.map(d => d.max) : []),
-    ];
-    const yMax = allMaxVals.length > 0 ? Math.max(...allMaxVals) : 50000;
+    // When a team is selected: use their max + capacity (whichever is higher) as ceiling
+    // When no team: use the league-wide max
+    const yMax = showGhost
+      ? Math.max(teamMax, trendCapacity || 0)
+      : (teamMaxVals.length > 0 ? Math.max(...teamMaxVals, ...leagueWeeklyData.map(d => d.max)) : 50000);
 
     return (
       <div style={{ height }}>
@@ -599,7 +595,7 @@ export default function Attendance() {
             <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
             <XAxis dataKey="week" stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
             <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false}
-              domain={[yMin, Math.ceil(yMax * 1.1)]} />
+              domain={[0, Math.ceil(yMax * 1.1)]} />
             <Tooltip wrapperStyle={{ position: 'fixed', zIndex: 9999, pointerEvents: 'none' }} content={({ payload }) => {
               if (!payload?.length) return null;
               const d = payload[0]?.payload;
