@@ -227,11 +227,16 @@ export default function Attendance() {
   const handleBarClick = useCallback((d: any) => {
     suppressBarAnim.current = true;
     if (selectedTeam === d.id) {
+      // Toggle off — clear all tab-wide filtering
       setSelectedTeam(null);
       setTrendTeamOverride('');
+      setEmphasizedTeam(null);
     } else {
+      // Set tab-wide team filter: selectedTeam drives drill-downs,
+      // trendTeamOverride drives the weekly trend, emphasizedTeam drives pottery focus
       setSelectedTeam(d.id);
       setTrendTeamOverride(d.id);
+      setEmphasizedTeam(d.id);
     }
   }, [selectedTeam]);
 
@@ -713,10 +718,12 @@ export default function Attendance() {
     const remainingCount = isAbsolute ? gravitationalPull.length - 10 : 0;
 
     // Domain calculation
+    // ABSOLUTE mode: cap X-axis at the second-highest value (e.g. LAFC) so the top team
+    // (Miami) extends beyond the axis but doesn't push the entire scale off-screen.
     const secondHighest = gravitationalPull.length > 1 ? gravitationalPull[1].totalDelta : 0;
     const minVal = Math.min(...displayData.map(d => d.totalDelta));
     const xDomain: [number, number] = isAbsolute
-      ? [Math.min(minVal, 0), 'dataMax' as any]
+      ? [Math.min(minVal, 0), Math.round(secondHighest * 1.25)]
       : [Math.min(minVal * 1.05, 0), Math.round(secondHighest * 1.15)];
 
     // ABSOLUTE mode: find the top team for end-of-bar label
@@ -725,19 +732,19 @@ export default function Attendance() {
 
     const chartHeight = isAbsolute ? Math.max(350, 10 * 35) : height;
 
-    // Pottery focus click handler (COMPARE mode only)
+    // Global tab filtering click handler
     const handleBarClick = (d: any) => {
-      if (!isAbsolute) {
-        // Toggle pottery focus
-        if (emphasizedTeam === d.id) {
-          setEmphasizedTeam(null);
-        } else {
-          setEmphasizedTeam(d.id);
-        }
+      if (selectedTeam === d.id) {
+        // Toggle off — clear all tab-wide filtering
+        setSelectedTeam(null);
+        setTrendTeamOverride('');
+        setEmphasizedTeam(null);
+      } else {
+        // Set tab-wide team filter
+        setSelectedTeam(d.id);
+        setTrendTeamOverride(d.id);
+        if (!isAbsolute) setEmphasizedTeam(d.id);
       }
-      // Always set drill-down selection
-      setSelectedTeam(d.id);
-      setTrendTeamOverride(d.id);
     };
 
     return (
@@ -1174,24 +1181,27 @@ export default function Attendance() {
         </p>
       </NeuCard>
 
-      {/* Drill-Down Panels */}
-      {selectedTeam && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {/* Drill-Down Panels — always visible, show placeholder when no team selected */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <NeuCard delay={0.1} className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <Target size={14} style={{ color: mutedTeamColor(selectedTeam, isDark) }} />
+                  <Target size={14} style={{ color: selectedTeam ? mutedTeamColor(selectedTeam, isDark) : 'var(--muted-foreground)' }} />
                   <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-                    <span style={{ color: mutedTeamColor(selectedTeam, isDark) }}>{selectedTeamObj?.short}</span>
-                    <span className="text-muted-foreground"> — Away Impact</span>
+                    {selectedTeam ? (
+                      <><span style={{ color: mutedTeamColor(selectedTeam, isDark) }}>{selectedTeamObj?.short}</span>
+                      <span className="text-muted-foreground"> — Away Impact</span></>
+                    ) : (
+                      <span className="text-muted-foreground">Away Impact</span>
+                    )}
                   </h3>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5 ml-6">
-                  Attendance delta at each stadium when {selectedTeamObj?.short} visits
+                  {selectedTeam ? `Attendance delta at each stadium when ${selectedTeamObj?.short} visits` : 'Select a team from any chart above to see their away impact breakdown'}
                 </p>
               </div>
-              <MaximizeButton onClick={() => setMaximized('awayImpact')} />
+              {selectedTeam && <MaximizeButton onClick={() => setMaximized('awayImpact')} />}
             </div>
             <AwayImpactContent />
           </NeuCard>
@@ -1200,22 +1210,25 @@ export default function Attendance() {
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <Home size={14} style={{ color: mutedTeamColor(selectedTeam, isDark) }} />
+                  <Home size={14} style={{ color: selectedTeam ? mutedTeamColor(selectedTeam, isDark) : 'var(--muted-foreground)' }} />
                   <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-                    <span style={{ color: mutedTeamColor(selectedTeam, isDark) }}>{selectedTeamObj?.short}</span>
-                    <span className="text-muted-foreground"> — Home Response</span>
+                    {selectedTeam ? (
+                      <><span style={{ color: mutedTeamColor(selectedTeam, isDark) }}>{selectedTeamObj?.short}</span>
+                      <span className="text-muted-foreground"> — Home Response</span></>
+                    ) : (
+                      <span className="text-muted-foreground">Home Response</span>
+                    )}
                   </h3>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5 ml-6">
-                  How {selectedTeamObj?.short}'s home attendance responds to each visitor. Avg: <span className="text-cyan font-mono">{selectedHomeAvg.toLocaleString()}</span>
+                  {selectedTeam ? (<>How {selectedTeamObj?.short}'s home attendance responds to each visitor. Avg: <span className="text-cyan font-mono">{selectedHomeAvg.toLocaleString()}</span></>) : 'Select a team from any chart above to see their home response breakdown'}
                 </p>
               </div>
-              <MaximizeButton onClick={() => setMaximized('homeResponse')} />
+              {selectedTeam && <MaximizeButton onClick={() => setMaximized('homeResponse')} />}
             </div>
             <HomeResponseContent />
           </NeuCard>
         </div>
-      )}
 
       {/* Maximize Modals */}
       <ChartModal isOpen={maximized === 'home'} onClose={() => setMaximized(null)}
