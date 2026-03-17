@@ -12,7 +12,7 @@ import {
 import { Users, TrendingUp, TrendingDown, MapPin, Globe, Target, Home, BarChart3, Percent, Eye, X, Layers } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { InsightPanel } from '@/components/InsightPanel';
-import { attendanceHeadline, attendanceInsights, attendanceTrendCardInsights, capacityFillCardInsights, gravPullCardInsights, gravitationalPullHeadline } from '@/lib/insightEngine';
+import { attendanceHeadline, attendanceInsights, attendanceTrendCardInsights, capacityFillCardInsights, gravPullCardInsights, gravitationalPullHeadline, awayImpactCardInsights, homeResponseCardInsights } from '@/lib/insightEngine';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
 
 // ─── Stadium Capacities (expandable max for multi-use venues) ───
@@ -36,8 +36,10 @@ export default function Attendance() {
   const [showCapacityInsights, setShowCapacityInsights] = useState(false);
   const [showTrendInsights, setShowTrendInsights] = useState(false);
   const [showGravInsights, setShowGravInsights] = useState(false);
+  const [showAwayImpactInsights, setShowAwayImpactInsights] = useState(false);
+  const [showHomeResponseInsights, setShowHomeResponseInsights] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [gravMode, setGravMode] = useState<'COMPARE' | 'ABSOLUTE'>('COMPARE');
+  const [gravMode, setGravMode] = useState<'FULL SCALE' | 'FOCUSED'>('FOCUSED');
 
   const emphasizedTeam = potteryFocus.emphasizedTeam;
   const setEmphasizedTeam = (teamId: string | null) =>
@@ -193,6 +195,8 @@ export default function Attendance() {
   const capacityFillInsights = useMemo(() => capacityFillCardInsights(filteredTeams, filteredMatches), [filteredTeams, filteredMatches]);
   const trendInsights = useMemo(() => attendanceTrendCardInsights(filteredMatches, filteredTeams), [filteredMatches, filteredTeams]);
   const gravInsights = useMemo(() => gravPullCardInsights(filteredTeams, filteredMatches), [filteredTeams, filteredMatches]);
+  const awayImpactInsights = useMemo(() => selectedTeam ? awayImpactCardInsights(selectedTeam, MATCHES) : [], [selectedTeam]);
+  const homeResponseInsights = useMemo(() => selectedTeam ? homeResponseCardInsights(selectedTeam, MATCHES) : [], [selectedTeam]);
   const gravHeadline = useMemo(() => gravitationalPullHeadline(filteredTeams), [filteredTeams]);
 
   const selectedTeamObj = selectedTeam ? getTeam(selectedTeam) : null;
@@ -572,9 +576,18 @@ export default function Attendance() {
     const showGhost = !!effectiveTrendTeam;
     const chartData = weeklyData; // primary data source (team or league avg)
 
-    // Compute Y domain to encompass both datasets when ghost is shown
+    // Compute Y domain — when a specific team is filtered, zoom to their range
+    // so week-to-week variation is visible instead of being squished flat
+    const teamMinVals = weeklyData.map(d => d.min).filter(v => v > 0);
+    const teamMaxVals = weeklyData.map(d => d.max);
+    const teamMin = teamMinVals.length > 0 ? Math.min(...teamMinVals) : 0;
+    const teamMax = teamMaxVals.length > 0 ? Math.max(...teamMaxVals) : 50000;
+
+    // When a team is selected: Y starts at ~80% of their min (to show variation)
+    // When no team: start at 0 to show full league context
+    const yMin = showGhost ? Math.max(0, Math.floor(teamMin * 0.8)) : 0;
     const allMaxVals = [
-      ...weeklyData.map(d => d.max),
+      ...teamMaxVals,
       ...(showGhost ? leagueWeeklyData.map(d => d.max) : []),
     ];
     const yMax = allMaxVals.length > 0 ? Math.max(...allMaxVals) : 50000;
@@ -586,7 +599,7 @@ export default function Attendance() {
             <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
             <XAxis dataKey="week" stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
             <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false}
-              domain={[0, Math.ceil(yMax * 1.1)]} />
+              domain={[yMin, Math.ceil(yMax * 1.1)]} />
             <Tooltip wrapperStyle={{ position: 'fixed', zIndex: 9999, pointerEvents: 'none' }} content={({ payload }) => {
               if (!payload?.length) return null;
               const d = payload[0]?.payload;
@@ -709,28 +722,27 @@ export default function Attendance() {
   };
 
   const GravitationalPullContent = ({ height = 700 }: { height?: number }) => {
-    // ── ABSOLUTE mode: true linear scale, top 10 only, Inter Miami bar bleeds ──
-    // ── COMPARE mode: all 30 teams, capped domain, pottery focus lives here ──
-    const isAbsolute = gravMode === 'ABSOLUTE';
+    // ── FULL SCALE mode: true linear scale showing all teams including Miami's full bar ──
+    // ── FOCUSED mode: X-axis capped at ~LAFC, Miami bleeds off edge, pottery focus enabled ──
+    const isFullScale = gravMode === 'FULL SCALE';
 
-    // Data slicing
-    const displayData = isAbsolute ? gravitationalPull.slice(0, 10) : gravitationalPull;
-    const remainingCount = isAbsolute ? gravitationalPull.length - 10 : 0;
+    // Data slicing — FULL SCALE shows top 10, FOCUSED shows all 30
+    const displayData = isFullScale ? gravitationalPull.slice(0, 10) : gravitationalPull;
+    const remainingCount = isFullScale ? gravitationalPull.length - 10 : 0;
 
     // Domain calculation
-    // ABSOLUTE mode: cap X-axis at the second-highest value (e.g. LAFC) so the top team
-    // (Miami) extends beyond the axis but doesn't push the entire scale off-screen.
+    const topTeam = gravitationalPull[0];
     const secondHighest = gravitationalPull.length > 1 ? gravitationalPull[1].totalDelta : 0;
     const minVal = Math.min(...displayData.map(d => d.totalDelta));
-    const xDomain: [number, number] = isAbsolute
-      ? [Math.min(minVal, 0), Math.round(secondHighest * 1.25)]
-      : [Math.min(minVal * 1.05, 0), Math.round(secondHighest * 1.15)];
-
-    // ABSOLUTE mode: find the top team for end-of-bar label
-    const topTeam = gravitationalPull[0];
     const topMultiple = secondHighest > 0 ? (topTeam.totalDelta / secondHighest).toFixed(1) : '—';
 
-    const chartHeight = isAbsolute ? Math.max(350, 10 * 35) : height;
+    // FULL SCALE: show the entire range including Miami's outlier value
+    // FOCUSED: cap at ~1.25x the second-highest (LAFC) so the pack is visible and Miami bleeds off
+    const xDomain: [number, number] = isFullScale
+      ? [Math.min(minVal, 0), Math.round(topTeam.totalDelta * 1.08)]
+      : [Math.min(minVal * 1.05, 0), Math.round(secondHighest * 1.25)];
+
+    const chartHeight = isFullScale ? Math.max(350, 10 * 35) : height;
 
     // Global tab filtering click handler
     const handleBarClick = (d: any) => {
@@ -743,18 +755,18 @@ export default function Attendance() {
         // Set tab-wide team filter
         setSelectedTeam(d.id);
         setTrendTeamOverride(d.id);
-        if (!isAbsolute) setEmphasizedTeam(d.id);
+        if (!isFullScale) setEmphasizedTeam(d.id);
       }
     };
 
     return (
       <div style={{ height: chartHeight, position: 'relative' }}
-        className={isAbsolute ? 'overflow-visible' : 'overflow-hidden'}
+        className={isFullScale ? 'overflow-visible' : 'overflow-hidden'}
       >
         <ResponsiveContainer>
           <BarChart data={displayData} layout="vertical"
-            margin={{ top: 5, right: isAbsolute ? 120 : 60, bottom: 5, left: 5 }}
-            style={isAbsolute ? { overflow: 'visible' } as any : undefined}
+            margin={{ top: 5, right: isFullScale ? 120 : 60, bottom: 5, left: 5 }}
+            style={isFullScale ? { overflow: 'visible' } as any : undefined}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
             <XAxis type="number" stroke="var(--table-header-color)" fontSize={10} tickLine={false}
@@ -792,7 +804,7 @@ export default function Attendance() {
                   <div>Avg Delta/Game: <span className={d.avgDelta >= 0 ? 'text-emerald' : 'text-coral'}>
                     {d.avgDelta >= 0 ? '+' : ''}{d.avgDelta.toLocaleString()}</span></div>
                   <div style={{ color: 'var(--glass-text-muted)' }}>Away Games: {d.matches}</div>
-                  {isAbsolute && d.id === topTeam.id && (
+                  {isFullScale && d.id === topTeam.id && (
                     <div className="mt-1 pt-1 border-t" style={{ borderColor: 'var(--glass-border)' }}>
                       <span className="text-cyan font-semibold">{topMultiple}x</span>
                       <span style={{ color: 'var(--glass-text-muted)' }}> the next-closest team</span>
@@ -807,9 +819,9 @@ export default function Attendance() {
                 const teamId = props.payload?.id;
                 const isEmp = emphasizedTeam === teamId;
                 const isDemp = !!(emphasizedTeam && emphasizedTeam !== teamId);
-                return <Extruded3DHorizontalBar {...props}
-                  emphasized={!isAbsolute && isEmp}
-                  deemphasized={!isAbsolute && isDemp}
+                  return <Extruded3DHorizontalBar {...props}
+                  emphasized={!isFullScale && isEmp}
+                  deemphasized={!isFullScale && isDemp}
                   isDarkTheme={isDark}
                 />;
               }}
@@ -823,8 +835,8 @@ export default function Attendance() {
           </BarChart>
         </ResponsiveContainer>
 
-        {/* ABSOLUTE mode: end-of-bar label for top team */}
-        {isAbsolute && topTeam && (
+        {/* FULL SCALE mode: end-of-bar label for top team */}
+        {isFullScale && topTeam && (
           <div className="absolute top-2 right-2 text-right" style={{ fontFamily: 'JetBrains Mono' }}>
             <div className="text-[10px] font-semibold" style={{ color: topTeam.color }}>
               {topTeam.name}: +{topTeam.totalDelta.toLocaleString()}
@@ -835,11 +847,11 @@ export default function Attendance() {
           </div>
         )}
 
-        {/* ABSOLUTE mode: remaining teams hint */}
-        {isAbsolute && remainingCount > 0 && (
+        {/* FULL SCALE mode: remaining teams hint */}
+        {isFullScale && remainingCount > 0 && (
           <div className="text-center mt-1">
             <span className="text-[10px] text-muted-foreground italic">
-              + {remainingCount} more teams (switch to COMPARE to see all)
+              + {remainingCount} more teams (switch to FOCUSED to see all)
             </span>
           </div>
         )}
@@ -855,7 +867,11 @@ export default function Attendance() {
         </div>
       );
     }
+    // Find the boundary between positive and negative deltas for the separator
+    const positiveCount = awayImpactData.filter(d => d.delta >= 0).length;
+    const negativeCount = awayImpactData.length - positiveCount;
     return (
+      <>
       <div style={{ height }}>
         <ResponsiveContainer>
           <BarChart data={awayImpactData} layout="vertical" margin={{ top: 5, right: 30, bottom: 5, left: 5 }}>
@@ -902,6 +918,14 @@ export default function Attendance() {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      {positiveCount > 0 && negativeCount > 0 && (
+        <p className="text-[10px] text-muted-foreground text-center mt-1" style={{ fontFamily: 'JetBrains Mono' }}>
+          <span className="text-emerald">{positiveCount} cities</span> drew more fans than their own average when {selectedTeamObj?.short} visited
+          {' \u2014 '}
+          <span className="text-coral">{negativeCount}</span> drew fewer.
+        </p>
+      )}
+      </>
     );
   };
 
@@ -1024,7 +1048,7 @@ export default function Attendance() {
             <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
               {showFillRate ? 'Stadium Fill Rate by Team' : 'Average Home Attendance by Team'}
             </h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{showFillRate ? 'Percentage of stadium capacity filled on average — how well each club sells out' : 'Average fans per home match — dotted line shows stadium capacity'}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{showFillRate ? 'Stadium utilization as a percentage of capacity — reveals which clubs consistently sell out vs. those with room to grow. Click any bar to filter the entire tab.' : 'Teams ranked by average home attendance. The dotted line marks stadium capacity — bars that reach it indicate sellouts. Click any bar to filter the entire tab.'}</p>
             {!showFillRate && (
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="inline-block w-5 border-t-2 border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.25)' }} />
@@ -1065,7 +1089,7 @@ export default function Attendance() {
                 </span>
               )}
             </h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Weekly attendance over the season — filter by team to see individual trends</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{effectiveTrendTeam ? `${trendTeamObj?.short}'s home attendance week by week — the shaded area shows variation, dotted line marks capacity.` : 'League-wide weekly attendance across the season. Select a team from the dropdown or click a bar above to isolate one club.'}</p>
           </div>
           <div className="flex items-center gap-2">
             <select
@@ -1093,8 +1117,8 @@ export default function Attendance() {
       </NeuCard>
 
       {/* Gravitational Pull */}
-      <NeuCard delay={0.35} className={`p-4 ${gravMode === 'ABSOLUTE' ? 'z-10 relative' : ''}`}
-        overflowVisible={gravMode === 'ABSOLUTE'}
+      <NeuCard delay={0.35} className={`p-4 ${gravMode === 'FULL SCALE' ? 'z-10 relative' : ''}`}
+        overflowVisible={gravMode === 'FULL SCALE'}
       >
         <div className="flex items-center justify-between mb-2">
           <div>
@@ -1111,11 +1135,11 @@ export default function Attendance() {
           <div className="flex items-center gap-2">
             {/* ABSOLUTE / COMPARE toggle */}
             <div className="flex rounded-md overflow-hidden" style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }}>
-              {(['COMPARE', 'ABSOLUTE'] as const).map(mode => (
+              {(['FOCUSED', 'FULL SCALE'] as const).map(mode => (
                 <button key={mode}
                   onClick={() => {
                     setGravMode(mode);
-                    if (mode === 'ABSOLUTE') setEmphasizedTeam(null);
+                    if (mode === 'FULL SCALE') setEmphasizedTeam(null);
                   }}
                   className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
                   style={{
@@ -1125,7 +1149,7 @@ export default function Attendance() {
                     color: gravMode === mode ? 'var(--cyan)' : 'var(--table-header-color)',
                   }}
                 >
-                  {mode === 'COMPARE' ? <Layers size={10} /> : <Eye size={10} />}
+                  {mode === 'FOCUSED' ? <Layers size={10} /> : <Eye size={10} />}
                   {mode}
                 </button>
               ))}
@@ -1136,8 +1160,8 @@ export default function Attendance() {
         </div>
         <CardInsightSection isOpen={showGravInsights} insights={gravInsights} isDark={isDark} />
 
-        {/* Pottery Focus Badge (COMPARE mode) */}
-        {emphasizedTeam && gravMode === 'COMPARE' && (() => {
+        {/* Pottery Focus Badge (FOCUSED mode) */}
+        {emphasizedTeam && gravMode === 'FOCUSED' && (() => {
           const empTeam = getTeam(emphasizedTeam);
           return (
             <div className="flex items-center gap-2 mb-2 ml-6">
@@ -1175,9 +1199,9 @@ export default function Attendance() {
         )}
         <GravitationalPullContent />
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          {gravMode === 'COMPARE'
-            ? 'Click any team bar to highlight it (pottery focus) and drill down into their away impact.'
-            : 'Showing top 10 teams on a true linear scale. Switch to COMPARE to see all 30 teams.'}
+          {gravMode === 'FOCUSED'
+            ? 'Click any team bar to highlight it and drill down into their away impact below.'
+            : 'Showing top 10 teams on a true linear scale. Switch to FOCUSED to see all 30 teams with pottery focus.'}
         </p>
       </NeuCard>
 
@@ -1190,19 +1214,26 @@ export default function Attendance() {
                   <Target size={14} style={{ color: selectedTeam ? mutedTeamColor(selectedTeam, isDark) : 'var(--muted-foreground)' }} />
                   <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
                     {selectedTeam ? (
-                      <><span style={{ color: mutedTeamColor(selectedTeam, isDark) }}>{selectedTeamObj?.short}</span>
-                      <span className="text-muted-foreground"> — Away Impact</span></>
+                      <><span className="text-muted-foreground">City Excitement — </span>
+                      <span style={{ color: mutedTeamColor(selectedTeam, isDark) }}>{selectedTeamObj?.short}</span>
+                      <span className="text-muted-foreground"> on the Road</span></>
                     ) : (
-                      <span className="text-muted-foreground">Away Impact</span>
+                      <span className="text-muted-foreground">City Excitement — Away Impact</span>
                     )}
                   </h3>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5 ml-6">
-                  {selectedTeam ? `Attendance delta at each stadium when ${selectedTeamObj?.short} visits` : 'Select a team from any chart above to see their away impact breakdown'}
+                  {selectedTeam ? (<>How each city responds to the spectacle of <span style={{ color: mutedTeamColor(selectedTeam, isDark) }}>{selectedTeamObj?.short}</span> visiting — positive bars mean the host city drew more fans than their own season average.</>) : 'Select a team from any chart above to see how cities respond when they visit.'}
                 </p>
               </div>
-              {selectedTeam && <MaximizeButton onClick={() => setMaximized('awayImpact')} />}
+              {selectedTeam && (
+                <div className="flex items-center gap-2">
+                  <CardInsightToggle isOpen={showAwayImpactInsights} onToggle={() => setShowAwayImpactInsights(v => !v)} isDark={isDark} />
+                  <MaximizeButton onClick={() => setMaximized('awayImpact')} />
+                </div>
+              )}
             </div>
+            <CardInsightSection isOpen={showAwayImpactInsights} insights={awayImpactInsights} isDark={isDark} />
             <AwayImpactContent />
           </NeuCard>
 
@@ -1224,8 +1255,14 @@ export default function Attendance() {
                   {selectedTeam ? (<>How {selectedTeamObj?.short}'s home attendance responds to each visitor. Avg: <span className="text-cyan font-mono">{selectedHomeAvg.toLocaleString()}</span></>) : 'Select a team from any chart above to see their home response breakdown'}
                 </p>
               </div>
-              {selectedTeam && <MaximizeButton onClick={() => setMaximized('homeResponse')} />}
+              {selectedTeam && (
+                <div className="flex items-center gap-2">
+                  <CardInsightToggle isOpen={showHomeResponseInsights} onToggle={() => setShowHomeResponseInsights(v => !v)} isDark={isDark} />
+                  <MaximizeButton onClick={() => setMaximized('homeResponse')} />
+                </div>
+              )}
             </div>
+            <CardInsightSection isOpen={showHomeResponseInsights} insights={homeResponseInsights} isDark={isDark} />
             <HomeResponseContent />
           </NeuCard>
         </div>
@@ -1289,11 +1326,11 @@ export default function Attendance() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="flex rounded-md overflow-hidden" style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }}>
-              {(['COMPARE', 'ABSOLUTE'] as const).map(mode => (
+              {(['FOCUSED', 'FULL SCALE'] as const).map(mode => (
                 <button key={mode}
                   onClick={() => {
                     setGravMode(mode);
-                    if (mode === 'ABSOLUTE') setEmphasizedTeam(null);
+                    if (mode === 'FULL SCALE') setEmphasizedTeam(null);
                   }}
                   className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
                   style={{
@@ -1303,14 +1340,14 @@ export default function Attendance() {
                     color: gravMode === mode ? 'var(--cyan)' : 'var(--table-header-color)',
                   }}
                 >
-                  {mode === 'COMPARE' ? <Layers size={10} /> : <Eye size={10} />}
+                  {mode === 'FOCUSED' ? <Layers size={10} /> : <Eye size={10} />}
                   {mode}
                 </button>
               ))}
             </div>
             <CardInsightToggle isOpen={showGravInsights} onToggle={() => setShowGravInsights(v => !v)} isDark={isDark} />
           </div>
-          {emphasizedTeam && gravMode === 'COMPARE' && (() => {
+          {emphasizedTeam && gravMode === 'FOCUSED' && (() => {
             const empTeam = getTeam(emphasizedTeam);
             return (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold"
@@ -1334,9 +1371,9 @@ export default function Attendance() {
         <CardInsightSection isOpen={showGravInsights} insights={gravInsights} isDark={isDark} />
         <GravitationalPullContent height={800} />
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          {gravMode === 'COMPARE'
-            ? 'Click any team bar to highlight it (pottery focus) and drill down into their away impact.'
-            : 'Showing top 10 teams on a true linear scale. Switch to COMPARE to see all 30 teams.'}
+          {gravMode === 'FOCUSED'
+            ? 'Click any team bar to highlight it and drill down into their away impact below.'
+            : 'Showing top 10 teams on a true linear scale. Switch to FOCUSED to see all 30 teams with pottery focus.'}
         </p>
       </ChartModal>
       <ChartModal isOpen={maximized === 'awayImpact'} onClose={() => setMaximized(null)}

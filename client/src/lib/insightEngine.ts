@@ -1185,3 +1185,98 @@ export function gravPullCardInsights(teams: Team[], matches: Match[]): CardInsig
 
   return items.slice(0, 3);
 }
+
+/**
+ * Away Impact card insights — how cities respond when a specific team visits.
+ */
+export function awayImpactCardInsights(teamId: string, matches: Match[]): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+  if (!teamId) return items;
+
+  // Compute home averages for every team
+  const homeAvgs: Record<string, number> = {};
+  TEAMS.forEach(t => {
+    const hm = matches.filter(m => m.homeTeam === t.id && m.attendance > 0);
+    homeAvgs[t.id] = hm.length > 0 ? hm.reduce((s, m) => s + m.attendance, 0) / hm.length : 0;
+  });
+
+  // Compute per-host deltas
+  const byHost: Record<string, number[]> = {};
+  matches.filter(m => m.awayTeam === teamId && m.attendance > 0).forEach(m => {
+    if (!byHost[m.homeTeam]) byHost[m.homeTeam] = [];
+    byHost[m.homeTeam].push(m.attendance);
+  });
+
+  const hostDeltas = Object.entries(byHost).map(([hostId, atts]) => {
+    const avgAtt = atts.reduce((s, a) => s + a, 0) / atts.length;
+    const hostAvg = homeAvgs[hostId] || 0;
+    return { hostId, hostName: getTeam(hostId)?.short || hostId, delta: Math.round(avgAtt - hostAvg), avgAtt: Math.round(avgAtt), hostAvg: Math.round(hostAvg) };
+  }).sort((a, b) => b.delta - a.delta);
+
+  if (hostDeltas.length === 0) return items;
+
+  const teamName = getTeam(teamId)?.short || teamId;
+  const positiveCount = hostDeltas.filter(d => d.delta > 0).length;
+  const totalCities = hostDeltas.length;
+
+  if (positiveCount > 0) {
+    items.push({
+      text: `${positiveCount} of ${totalCities} cities drew more fans than their own season average when ${teamName} came to town. The biggest bump was at ${hostDeltas[0].hostName} (+${fmt(hostDeltas[0].delta)}).`,
+      accent: 'emerald',
+    });
+  }
+
+  const negativeDeltas = hostDeltas.filter(d => d.delta < 0);
+  if (negativeDeltas.length > 0) {
+    const worst = negativeDeltas[negativeDeltas.length - 1];
+    items.push({
+      text: `${negativeDeltas.length} stadiums actually saw lower turnout — ${worst.hostName} dropped ${fmt(Math.abs(worst.delta))} below their average.`,
+      accent: 'coral',
+    });
+  }
+
+  return items.slice(0, 3);
+}
+
+/**
+ * Home Response card insights — how a team's own fans respond to different visitors.
+ */
+export function homeResponseCardInsights(teamId: string, matches: Match[]): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+  if (!teamId) return items;
+
+  const homeMatches = matches.filter(m => m.homeTeam === teamId && m.attendance > 0);
+  if (homeMatches.length === 0) return items;
+
+  const avgHome = homeMatches.reduce((s, m) => s + m.attendance, 0) / homeMatches.length;
+  const byAway: Record<string, number[]> = {};
+  homeMatches.forEach(m => {
+    if (!byAway[m.awayTeam]) byAway[m.awayTeam] = [];
+    byAway[m.awayTeam].push(m.attendance);
+  });
+
+  const awayDeltas = Object.entries(byAway).map(([awayId, atts]) => {
+    const awayAvg = atts.reduce((s, a) => s + a, 0) / atts.length;
+    return { awayId, awayName: getTeam(awayId)?.short || awayId, delta: Math.round(awayAvg - avgHome), avgAtt: Math.round(awayAvg) };
+  }).sort((a, b) => b.delta - a.delta);
+
+  if (awayDeltas.length === 0) return items;
+
+  const teamName = getTeam(teamId)?.short || teamId;
+  const topDraw = awayDeltas[0];
+
+  if (topDraw.delta > 0) {
+    items.push({
+      text: `${topDraw.awayName} visiting ${teamName} drew the biggest crowd bump (+${fmt(topDraw.delta)} above the ${fmt(Math.round(avgHome))} home average). Rivalry or star power at work.`,
+      accent: 'amber',
+    });
+  }
+
+  const aboveAvg = awayDeltas.filter(d => d.delta > 0).length;
+  items.push({
+    text: `${aboveAvg} of ${awayDeltas.length} visiting teams pushed ${teamName}'s attendance above their season average. The rest drew below-average crowds.`,
+    accent: aboveAvg > awayDeltas.length / 2 ? 'emerald' : 'cyan',
+  });
+
+  return items.slice(0, 3);
+}
