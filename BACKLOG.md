@@ -29,24 +29,25 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 ---
 
-## Epic 6: Polish & Feedback (March 16)
+## Epic 6: Polish & Feedback (Completed)
 **Effort:** 1 Session
 **Goal:** Address UX feedback and mathematical corrections from the Sprint 1-4 review.
-**Files Touched:** `resilienceUtils.ts`, `Attendance.tsx`, `DeepDivePanel.tsx`, `insightEngine.ts`
+**Files Touched:** `resilienceUtils.ts`, `Attendance.tsx`, `DeepDivePanel.tsx`, `insightEngine.ts`, `ChartModal.tsx`
 **Dependencies:** Epics 1-5
 
 - **Task 6.1: Squad Depth Metric Fix**
-  - Replace inverted HHI with Gini coefficient on top-15 players to increase variance.
+  - [x] Replace inverted HHI with Gini coefficient on top-15 players to increase variance.
 - **Task 6.2: Attendance Tab UX Fixes**
-  - Make Away Impact/Home Response panels always visible.
-  - Implement global team filtering across the entire tab.
-  - Decrease bar chart hover effect.
-  - Fix tooltip positioning to allow overflow.
-  - Fix ABSOLUTE toggle to cap X-axis and let Miami bleed off edge.
+  - [x] Make Away Impact/Home Response panels always visible.
+  - [x] Implement global team filtering across the entire tab.
+  - [x] Decrease bar chart hover effect and match Gravitational Pull deemphasis to top bar chart pottery aesthetic.
+  - [x] Fix tooltip positioning to allow overflow.
+  - [x] Fix ABSOLUTE toggle to cap X-axis and let Miami bleed off edge (renamed to FOCUSED/FULL SCALE).
+  - [x] Fix modal header cut-off and ensure all maximize views are properly scrollable.
 - **Task 6.3: Age Ridgeline Redesign**
-  - Replace translucent lines with opaque layered area polygons (paper-stack aesthetic).
+  - [x] Replace translucent lines with opaque layered area polygons (paper-stack aesthetic).
 - **Task 6.4: Insight Engine Polish**
-  - Ensure all new insight cards are punchy, max 2 sentences, and start with specific numbers/teams.
+  - [x] Ensure all new insight cards are punchy, max 2 sentences, and start with specific numbers/teams.
 
 ## Epic 7: The Relief Scatter (Visual Overhaul)
 **Effort:** 1 Session
