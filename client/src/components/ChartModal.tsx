@@ -69,44 +69,44 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
       onClick={onClose}
       style={{
         isolation: 'isolate',
+        overflowY: 'auto',
       }}
     >
-      {/* Backdrop — covers everything */}
+      {/* Backdrop — covers everything, fixed so it doesn't scroll */}
       <div
         className="backdrop-blur-sm"
         style={{
-          position: 'absolute',
+          position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
           background: 'rgba(0,0,0,0.8)',
+          pointerEvents: 'none',
         }}
       />
 
-      {/* Centered modal container — uses inset padding to keep card within viewport */}
+      {/* Scrollable content wrapper — allows the card to be scrolled into view */}
       <div
-        onClick={e => e.stopPropagation()}
         style={{
-          position: 'absolute',
-          top: '2rem',
-          left: '2rem',
-          right: '2rem',
-          bottom: '2rem',
+          position: 'relative',
+          minHeight: '100%',
           display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          padding: '2rem',
         }}
       >
-        {/* Modal card — fills the available space */}
+        {/* Modal card — sized to fit content, max constrained to viewport */}
         <div
           ref={modalCardRef}
+          onClick={e => e.stopPropagation()}
           className="rounded-2xl"
           style={{
             position: 'relative',
             width: '100%',
-            height: '100%',
-            maxHeight: '100%',
+            maxWidth: '100%',
+            maxHeight: 'calc(100vh - 4rem)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -142,11 +142,11 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
             </button>
           </div>
 
-          {/* Content — scrollable, fills remaining space */}
+          {/* Content — scrollable within the card, fills remaining space */}
           <div
             style={{
               flex: 1,
-              overflow: 'auto',
+              overflowY: 'auto',
               padding: '1.25rem',
               minHeight: 0,
             }}

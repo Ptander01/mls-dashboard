@@ -592,7 +592,7 @@ export default function Attendance() {
     const hasVariation = !showGhost && weeklyData.some(d => d.max !== d.min);
 
     return (
-      <div style={fillParent ? { height: 'calc(100vh - 14rem)' } : { height }}>
+      <div style={fillParent ? { height: 'calc(100vh - 16rem)' } : { height }}>
         <ResponsiveContainer>
           <LineChart data={chartData} margin={{ top: 15, right: 120, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
