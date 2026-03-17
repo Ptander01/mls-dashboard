@@ -362,12 +362,11 @@ export function computeAllResilienceMetrics(
 export function dumbbellHeadline(metrics: TeamResilienceMetrics[]): string {
   if (metrics.length === 0) return '';
 
-  // Find team with largest PPG gap
   const sorted = [...metrics].sort((a, b) => b.ppgGap - a.ppgGap);
   const worst = sorted[0];
   const best = sorted[sorted.length - 1];
 
-  return `${worst.teamShort} suffers the steepest home-away drop (${worst.ppgGap.toFixed(2)} PPG gap), while ${best.teamShort} is the most road-resilient with just a ${Math.abs(best.ppgGap).toFixed(2)} gap.`;
+  return `${worst.ppgGap.toFixed(2)} PPG gap for ${worst.teamShort} — the steepest home–away drop in the league. ${best.teamShort} is the most road-resilient at just ${Math.abs(best.ppgGap).toFixed(2)}.`;
 }
 
 /**
@@ -378,10 +377,9 @@ export function resilienceHeadline(metrics: TeamResilienceMetrics[]): string {
 
   const top = metrics[0];
   const bottom = metrics[metrics.length - 1];
-  const greenCount = metrics.filter(m => m.resilienceTier === 'green').length;
   const redCount = metrics.filter(m => m.resilienceTier === 'red').length;
 
-  return `${top.teamShort} leads the Travel Resilience Index at ${top.resilienceScore.toFixed(1)}, combining strong away form with deep squad rotation. ${redCount} team${redCount !== 1 ? 's' : ''} fall${redCount === 1 ? 's' : ''} into the "Fragile" tier, with ${bottom.teamShort} at the bottom (${bottom.resilienceScore.toFixed(1)}).`;
+  return `${top.teamShort} tops the Resilience Index at ${top.resilienceScore.toFixed(1)}, combining away form and squad depth. ${redCount} team${redCount !== 1 ? 's' : ''} fall${redCount === 1 ? 's' : ''} into “Fragile” — ${bottom.teamShort} trails at ${bottom.resilienceScore.toFixed(1)}.`;
 }
 
 // ═══════════════════════════════════════════

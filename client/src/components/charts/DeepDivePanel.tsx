@@ -34,13 +34,11 @@ function squadDepthInsights(metrics: TeamResilienceMetrics[]): string {
   const sorted = [...metrics].sort((a, b) => b.squadDepthIndex - a.squadDepthIndex);
   const deepest = sorted[0];
   const shallowest = sorted[sorted.length - 1];
-  const avg = metrics.reduce((s, m) => s + m.squadDepthIndex, 0) / metrics.length;
-  return `${deepest.teamShort} has the deepest squad rotation (Gini index: ${deepest.squadDepthIndex.toFixed(1)}), distributing minutes most evenly across their top 15. ${shallowest.teamShort} relies heavily on a small core (${shallowest.squadDepthIndex.toFixed(1)}). League average: ${avg.toFixed(1)}.`;
+  return `${deepest.teamShort} leads with a ${deepest.squadDepthIndex.toFixed(1)} Gini index, distributing minutes most evenly across their top 15. ${shallowest.teamShort} sits at ${shallowest.squadDepthIndex.toFixed(1)} — the most top-heavy rotation in the league.`;
 }
 
 function salaryRoadInsights(metrics: TeamResilienceMetrics[], teams: Team[]): string {
   if (metrics.length < 5) return '';
-  // Find teams with high salary but poor away record
   const withBudget = metrics
     .map(m => {
       const budget = TEAM_BUDGETS[m.teamId];
@@ -58,18 +56,16 @@ function salaryRoadInsights(metrics: TeamResilienceMetrics[], teams: Team[]): st
     return bVal - aVal;
   })[0];
 
-  return `${topSpender.teamShort} leads spending ($${(topSpender.totalSalary / 1_000_000).toFixed(1)}M) with ${topSpender.awayPPG.toFixed(2)} away PPG. Best road value: ${bestRoadValue.teamShort} at ${bestRoadValue.awayPPG.toFixed(2)} PPG on just $${(bestRoadValue.totalSalary / 1_000_000).toFixed(1)}M.`;
+  return `$${(topSpender.totalSalary / 1_000_000).toFixed(1)}M buys ${topSpender.teamShort} just ${topSpender.awayPPG.toFixed(2)} away PPG. ${bestRoadValue.teamShort} gets ${bestRoadValue.awayPPG.toFixed(2)} PPG on $${(bestRoadValue.totalSalary / 1_000_000).toFixed(1)}M — the league’s best road-dollar value.`;
 }
 
 function ageDistributionInsight(players: Player[], teams: Team[]): string {
   const active = players.filter(p => p.minutes > 0);
   const u23 = active.filter(p => p.age < 23);
-  const mid = active.filter(p => p.age >= 23 && p.age < 30);
   const senior = active.filter(p => p.age >= 30);
   const u23Pct = ((u23.length / active.length) * 100).toFixed(0);
   const seniorPct = ((senior.length / active.length) * 100).toFixed(0);
 
-  // Find team with youngest and oldest squads
   const teamAges = teams.map(t => {
     const tp = active.filter(p => p.team === t.id);
     if (tp.length === 0) return { team: t, avgAge: 0 };
@@ -81,7 +77,7 @@ function ageDistributionInsight(players: Player[], teams: Team[]): string {
   const youngest = [...teamAges].sort((a, b) => a.avgAge - b.avgAge)[0];
   const oldest = [...teamAges].sort((a, b) => b.avgAge - a.avgAge)[0];
 
-  return `League-wide: ${u23Pct}% U23, ${seniorPct}% over 30. ${youngest?.team.short || 'N/A'} fields the youngest squad (avg ${youngest?.avgAge.toFixed(1)}), while ${oldest?.team.short || 'N/A'} skews oldest (${oldest?.avgAge.toFixed(1)}).`;
+  return `${u23Pct}% of active players are U23 and ${seniorPct}% are 30+. ${youngest?.team.short || 'N/A'} fields the youngest squad (${youngest?.avgAge.toFixed(1)} avg) while ${oldest?.team.short || 'N/A'} skews oldest at ${oldest?.avgAge.toFixed(1)}.`;
 }
 
 // ═══════════════════════════════════════════
@@ -412,11 +408,9 @@ function AgeRidgeline({ metrics, players, isDark }: { metrics: TeamResilienceMet
   const teamData = useMemo(() => {
     return metrics.map(m => {
       const teamPlayers = players.filter(p => p.team === m.teamId && p.minutes > 0);
-      // Create weighted samples: repeat ages proportional to minutes
       const totalMin = teamPlayers.reduce((s, p) => s + p.minutes, 0);
       const ages: number[] = [];
       for (const p of teamPlayers) {
-        // Use fractional representation — each player contributes proportional samples
         const weight = Math.max(1, Math.round((p.minutes / Math.max(1, totalMin)) * 50));
         for (let i = 0; i < weight; i++) ages.push(p.age);
       }
@@ -424,26 +418,24 @@ function AgeRidgeline({ metrics, players, isDark }: { metrics: TeamResilienceMet
         ? teamPlayers.reduce((s, p) => s + p.age * p.minutes, 0) / totalMin
         : 0;
       return { ...m, ages, avgAge };
-    }).sort((a, b) => a.avgAge - b.avgAge); // Sort youngest to oldest (bottom to top)
+    }).sort((a, b) => a.avgAge - b.avgAge); // Youngest at front (bottom), oldest at back (top)
   }, [metrics, players]);
 
   const chartWidth = 800;
-  const rowHeight = 38;
-  const overlapFactor = 0.65; // How much ridges overlap
+  const rowHeight = 28;
+  const overlapFactor = 0.42; // Less overlap for opaque stacked-paper look
   const labelWidth = 85;
   const rightPad = 30;
   const plotWidth = chartWidth - labelWidth - rightPad;
-  const topPad = 15;
+  const topPad = 20;
   const bottomPad = 35;
   const svgHeight = topPad + teamData.length * rowHeight * (1 - overlapFactor) + rowHeight + bottomPad;
 
-  // Age range for x-axis
   const ageMin = 16;
   const ageMax = 40;
   const bandwidth = 1.8;
   const densitySteps = 80;
 
-  // Compute all densities and find global max for normalization
   const densities = useMemo(() => {
     return teamData.map(td => kernelDensity(td.ages, bandwidth, ageMin, ageMax, densitySteps));
   }, [teamData]);
@@ -459,9 +451,8 @@ function AgeRidgeline({ metrics, players, isDark }: { metrics: TeamResilienceMet
   }, [densities]);
 
   const xScale = (age: number) => labelWidth + ((age - ageMin) / (ageMax - ageMin)) * plotWidth;
-  const maxRidgeHeight = rowHeight * 1.6;
+  const maxRidgeHeight = rowHeight * 1.8;
 
-  // Age bracket reference lines
   const ageBrackets = [
     { age: 23, label: 'U23' },
     { age: 30, label: '30+' },
@@ -470,21 +461,31 @@ function AgeRidgeline({ metrics, players, isDark }: { metrics: TeamResilienceMet
   const textColor = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)';
   const bracketColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
 
+  // Background fill for opaque paper layers
+  const bgFill = isDark ? '#1a1a2a' : '#eeedf5';
+
   return (
     <div className="w-full overflow-x-auto">
       <svg viewBox={`0 0 ${chartWidth} ${svgHeight}`} className="w-full" style={{ minWidth: '550px' }}>
         <defs>
           {teamData.map((td, i) => {
             const color = mutedTeamColor(td.teamId, isDark);
+            // Depth-based tint: back layers (oldest) are darker, front layers (youngest) are lighter
+            const depthFactor = i / Math.max(1, teamData.length - 1); // 0 = back, 1 = front
+            const baseOpacity = isDark ? 0.92 : 0.95;
             return (
               <linearGradient key={td.teamId} id={`ridge-grad-${td.teamId}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={lighten(color, 0.15)} stopOpacity={isDark ? 0.7 : 0.6} />
-                <stop offset="100%" stopColor={color} stopOpacity={isDark ? 0.15 : 0.08} />
+                <stop offset="0%" stopColor={lighten(color, 0.25 + depthFactor * 0.1)} stopOpacity={baseOpacity} />
+                <stop offset="40%" stopColor={lighten(color, 0.1)} stopOpacity={baseOpacity} />
+                <stop offset="100%" stopColor={darken(color, 0.05)} stopOpacity={baseOpacity * 0.95} />
               </linearGradient>
             );
           })}
           <filter id="ridge-shadow" x="-5%" y="-10%" width="110%" height="130%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" />
+          </filter>
+          <filter id="ridge-drop" x="-5%" y="-5%" width="110%" height="120%">
+            <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="rgba(0,0,0,0.15)" />
           </filter>
         </defs>
 
@@ -547,10 +548,12 @@ function AgeRidgeline({ metrics, players, isDark }: { metrics: TeamResilienceMet
           Player Age (minutes-weighted)
         </text>
 
-        {/* Ridgeline rows — render from back (oldest) to front (youngest) */}
-        {teamData.map((td, i) => {
-          const density = densities[i];
-          const baseY = topPad + (teamData.length - 1 - i) * rowHeight * (1 - overlapFactor) + rowHeight;
+        {/* Ridgeline rows — render from BACK (oldest, top of chart) to FRONT (youngest, bottom) */}
+        {/* Reverse iteration so front layers paint over back layers */}
+        {[...teamData].reverse().map((td, ri) => {
+          const origIndex = teamData.length - 1 - ri; // original index in teamData
+          const density = densities[origIndex];
+          const baseY = topPad + (teamData.length - 1 - origIndex) * rowHeight * (1 - overlapFactor) + rowHeight;
           const color = mutedTeamColor(td.teamId, isDark);
 
           // Build the ridge path
@@ -560,43 +563,48 @@ function AgeRidgeline({ metrics, players, isDark }: { metrics: TeamResilienceMet
             return `${px},${py}`;
           });
 
-          // Close the path along the baseline
+          // Closed polygon path
           const pathD = `M ${xScale(ageMin)},${baseY} L ${pathPoints.join(' L ')} L ${xScale(ageMax)},${baseY} Z`;
           const strokeD = `M ${pathPoints.join(' L ')}`;
 
           return (
             <g key={td.teamId}>
-              {/* Shadow beneath the ridge */}
+              {/* Cast shadow beneath the polygon — creates depth between layers */}
               <path
                 d={pathD}
-                fill={isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)'}
-                transform="translate(1.5, 2)"
+                fill={isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.06)'}
+                transform="translate(1, 2.5)"
                 filter="url(#ridge-shadow)"
               />
 
-              {/* Filled ridge area */}
+              {/* Opaque background fill — makes each layer a solid "sheet of paper" */}
+              <path
+                d={pathD}
+                fill={bgFill}
+              />
+
+              {/* Team-colored fill with near-full opacity */}
               <path
                 d={pathD}
                 fill={`url(#ridge-grad-${td.teamId})`}
               />
 
-              {/* Ridge outline — top edge only */}
+              {/* Top edge highlight — thin lighter line simulating paper edge catch-light */}
               <path
                 d={strokeD}
                 fill="none"
-                stroke={color}
-                strokeWidth={1.5}
-                strokeOpacity={isDark ? 0.6 : 0.5}
+                stroke={lighten(color, 0.45)}
+                strokeWidth={1.8}
+                strokeOpacity={isDark ? 0.5 : 0.7}
               />
 
-              {/* Highlight line along the top edge */}
+              {/* Very thin bright specular on the top edge */}
               <path
                 d={strokeD}
                 fill="none"
-                stroke={lighten(color, 0.4)}
-                strokeWidth={0.5}
-                strokeOpacity={isDark ? 0.2 : 0.3}
-                transform="translate(-0.5, -1)"
+                stroke={isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.5)'}
+                strokeWidth={0.6}
+                transform="translate(0, -0.8)"
               />
 
               {/* Team label */}
@@ -612,13 +620,13 @@ function AgeRidgeline({ metrics, players, isDark }: { metrics: TeamResilienceMet
                 {td.teamShort}
               </text>
 
-              {/* Average age marker */}
+              {/* Average age marker — sits on the ridge surface */}
               <circle
                 cx={xScale(td.avgAge)}
                 cy={baseY - (kernelDensity(td.ages, bandwidth, td.avgAge, td.avgAge, 0)[0]?.y || 0) / globalMaxDensity * maxRidgeHeight}
                 r={2.5}
                 fill={color}
-                fillOpacity={0.8}
+                fillOpacity={0.9}
                 stroke={lighten(color, 0.3)}
                 strokeWidth={0.8}
               />
