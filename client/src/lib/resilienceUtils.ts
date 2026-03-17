@@ -134,32 +134,37 @@ function calculatePPG(teamId: string, matches: Match[], isHome: boolean): { ppg:
 // ═══════════════════════════════════════════
 
 /**
- * Squad Depth Index — measures how evenly minutes are distributed among players.
- * Uses an inverted Herfindahl-Hirschman Index (HHI) of minutes shares.
- * Lower HHI = better depth. We normalize to 0–100 where 100 = excellent depth.
+ * Squad Depth Index — measures how evenly minutes are distributed among the top 15 players.
+ * Uses an inverted Gini coefficient of minutes shares.
+ * Gini = 0 means perfect equality, Gini = 1 means maximum inequality.
+ * We normalize to 0–100 where 100 = excellent depth (low Gini).
  */
 export function squadDepthIndex(teamId: string, players: Player[]): number {
-  const teamPlayers = players.filter(p => p.team === teamId && p.minutes > 0);
+  const teamPlayers = players
+    .filter(p => p.team === teamId && p.minutes > 0)
+    .sort((a, b) => b.minutes - a.minutes)
+    .slice(0, 15); // Focus on top 15 contributors
   if (teamPlayers.length < 2) return 0;
 
   const totalMinutes = teamPlayers.reduce((s, p) => s + p.minutes, 0);
   if (totalMinutes === 0) return 0;
 
-  // HHI = sum of squared market shares
-  const hhi = teamPlayers.reduce((s, p) => {
-    const share = p.minutes / totalMinutes;
-    return s + share * share;
-  }, 0);
+  // Sort ascending by minutes for Gini calculation
+  const sorted = [...teamPlayers].sort((a, b) => a.minutes - b.minutes);
+  const n = sorted.length;
 
-  // Minimum possible HHI for n players = 1/n (perfectly equal distribution)
-  // Maximum HHI = 1 (one player plays all minutes)
-  const n = teamPlayers.length;
-  const minHHI = 1 / n;
-  const maxHHI = 1;
+  // Gini coefficient: mean absolute difference / (2 * mean)
+  let sumAbsDiff = 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      sumAbsDiff += Math.abs(sorted[i].minutes - sorted[j].minutes);
+    }
+  }
+  const mean = totalMinutes / n;
+  const gini = sumAbsDiff / (2 * n * n * mean);
 
-  // Normalize: 0 (worst depth, HHI=1) to 100 (best depth, HHI=1/n)
-  if (maxHHI === minHHI) return 50;
-  const normalized = ((maxHHI - hhi) / (maxHHI - minHHI)) * 100;
+  // Normalize: Gini 0 → 100 (perfect depth), Gini 1 → 0 (worst depth)
+  const normalized = (1 - gini) * 100;
   return Math.max(0, Math.min(100, normalized));
 }
 

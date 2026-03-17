@@ -1,0 +1,9 @@
+Ridgeline Reference Image Notes:
+- Green paper-stack aesthetic: multiple opaque layered sheets stacked on top of each other
+- Each layer is a fully opaque polygon with flat matte fill (no transparency)
+- Thin lighter edge line on top surface of each polygon creates paper-edge illusion
+- Layers are staggered vertically so all are visible simultaneously
+- Oldest at back, youngest at front
+- Cast shadows between layers create depth
+- Color tints vary: darkest for back layers, lightest for front layers
+- Physical paper/card stock feel, not translucent data viz

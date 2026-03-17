@@ -248,7 +248,7 @@ export default function Attendance() {
               domain={showFillRate ? [0, Math.ceil(Math.max(...homeAvgData.map(d => d.fillPct), 100) * 1.15)] : [0, 'auto']}
               tickFormatter={showFillRate ? (v: number) => `${v}%` : undefined}
             />
-            <Tooltip content={({ payload }) => {
+            <Tooltip wrapperStyle={{ position: 'fixed', zIndex: 9999, pointerEvents: 'none' }} content={({ payload }) => {
               if (!payload?.length) return null;
               const d = payload[0].payload;
               const pct = d.capacity > 0 ? Math.round((d.avg / d.capacity) * 100) : 0;
@@ -582,7 +582,7 @@ export default function Attendance() {
             <XAxis dataKey="week" stroke="var(--table-header-color)" fontSize={10} tickLine={false} />
             <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false}
               domain={[0, Math.ceil(yMax * 1.1)]} />
-            <Tooltip content={({ payload }) => {
+            <Tooltip wrapperStyle={{ position: 'fixed', zIndex: 9999, pointerEvents: 'none' }} content={({ payload }) => {
               if (!payload?.length) return null;
               const d = payload[0]?.payload;
               if (!d) return null;
@@ -774,7 +774,7 @@ export default function Attendance() {
               }}
             />
             <ReferenceLine x={0} stroke="var(--border)" strokeWidth={1} />
-            <Tooltip content={({ payload }) => {
+            <Tooltip wrapperStyle={{ position: 'fixed', zIndex: 9999, pointerEvents: 'none' }} content={({ payload }) => {
               if (!payload?.length) return null;
               const d = payload[0].payload;
               return (
@@ -867,7 +867,7 @@ export default function Attendance() {
               }}
             />
             <ReferenceLine x={0} stroke="var(--border)" strokeWidth={1} />
-            <Tooltip content={({ payload }) => {
+            <Tooltip wrapperStyle={{ position: 'fixed', zIndex: 9999, pointerEvents: 'none' }} content={({ payload }) => {
               if (!payload?.length) return null;
               const d = payload[0].payload;
               return (
@@ -925,7 +925,7 @@ export default function Attendance() {
               }}
             />
             <ReferenceLine x={0} stroke="var(--border)" strokeWidth={1} />
-            <Tooltip content={({ payload }) => {
+            <Tooltip wrapperStyle={{ position: 'fixed', zIndex: 9999, pointerEvents: 'none' }} content={({ payload }) => {
               if (!payload?.length) return null;
               const d = payload[0].payload;
               return (

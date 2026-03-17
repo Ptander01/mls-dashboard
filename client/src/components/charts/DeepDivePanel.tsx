@@ -35,7 +35,7 @@ function squadDepthInsights(metrics: TeamResilienceMetrics[]): string {
   const deepest = sorted[0];
   const shallowest = sorted[sorted.length - 1];
   const avg = metrics.reduce((s, m) => s + m.squadDepthIndex, 0) / metrics.length;
-  return `${deepest.teamShort} has the deepest squad rotation (HHI index: ${deepest.squadDepthIndex.toFixed(1)}), distributing minutes most evenly. ${shallowest.teamShort} relies heavily on a small core (${shallowest.squadDepthIndex.toFixed(1)}). League average depth index: ${avg.toFixed(1)}.`;
+  return `${deepest.teamShort} has the deepest squad rotation (Gini index: ${deepest.squadDepthIndex.toFixed(1)}), distributing minutes most evenly across their top 15. ${shallowest.teamShort} relies heavily on a small core (${shallowest.squadDepthIndex.toFixed(1)}). League average: ${avg.toFixed(1)}.`;
 }
 
 function salaryRoadInsights(metrics: TeamResilienceMetrics[], teams: Team[]): string {
@@ -714,7 +714,7 @@ export default function DeepDivePanel({ metrics, players, teams }: DeepDivePanel
                   <h4 className="text-[12px] font-bold uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>
                     Squad Depth Breakdown
                   </h4>
-                  <span className="text-[9px] text-muted-foreground/50 ml-1">Minutes HHI Index — higher = more even rotation</span>
+                  <span className="text-[9px] text-muted-foreground/50 ml-1">Gini Index (top 15) — higher = more even rotation</span>
                 </div>
                 {depthInsight && (
                   <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed px-1" style={{ fontFamily: 'Space Grotesk' }}>

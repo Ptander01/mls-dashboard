@@ -768,10 +768,10 @@ input[type="range"]::-webkit-slider-thumb {
   filter: drop-shadow(0 -2px 6px rgba(0, 0, 0, 0.15));
 }
 
-/* Bar hover: subtle brightness lift (shadow is in SVG) */
+/* Bar hover: very subtle brightness lift — reduced per feedback */
 .recharts-bar-rectangle:hover g {
-  filter: brightness(1.12);
-  transition: filter 0.15s ease;
+  filter: brightness(1.04);
+  transition: filter 0.2s ease;
 }
 
 /* Reference lines get subtle depth */
