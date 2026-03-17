@@ -119,3 +119,30 @@ Rank, Club, Points, PPG, GP (Games Played), W (Wins), L (Losses), T (Draws), GF 
 
 ---
 
+
+---
+
+## StatsBomb Open Data (Harvested March 17)
+**Type:** Free, high-fidelity event data (JSON)
+**Storage:** Locally cached in `client/public/data/statsbomb/` to avoid CORS/API limits
+
+### 1. Messi Career Dataset
+- **Scope:** 602 matches (La Liga, Ligue 1, MLS, World Cup, Copa America, UCL)
+- **Volume:** 87,473 total events, 2,668 shots, 33,031 passes
+- **Key Files:**
+  - `messi-shots.json` (822 KB): Shot maps, xG, body part, outcome
+  - `messi-passes.json` (12 MB): Passing networks, recipients, assist flags
+  - `messi-heatmap.json` (9.4 MB): All touch locations
+- **Use Case:** "The Messi Experience" — a dedicated visualization of his career shots and passes on the 3D pitch.
+
+### 2. FIFA World Cup 2022 Dataset
+- **Scope:** All 64 matches (Group Stage to Final)
+- **Volume:** 161,642 total events, 1,494 shots, 68,515 passes
+- **Key Files:**
+  - `wc-matches.json`: Index of all 64 matches
+  - `wc-events-{matchId}.json`: Full event data per match
+- **Use Case:** "World Cup Explorer" — allows users to select any match (like the legendary ARG vs FRA final) and view shot maps and passing networks for both teams.
+
+### 3. Inter Miami 2023 Dataset
+- **Scope:** 6 matches from the 2023 season
+- **Use Case:** Initial proof-of-concept for MLS data integration.
