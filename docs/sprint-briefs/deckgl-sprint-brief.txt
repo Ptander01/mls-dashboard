@@ -1,0 +1,806 @@
+Here it is — the complete deck.gl sprint brief for all three components.
+
+deck.gl Sprint Brief — Three Cinematic 3D Components
+Target components:
+        1.      Travel Map globe → deck.gl MapView with TripsLayer + TerrainLayer
+        2.      Resilience Treemap → deck.gl ColumnLayer in OrthographicView
+        3.      Correlation Matrix → deck.gl ColumnLayer in OrthographicView
+Recommended sessions: Three sessions, one component each. Travel Map first since it establishes the shared infrastructure everything else builds on.
+
+Pre-Sprint Setup (Do Once, Used by All Three)
+Package Installation
+
+pnpm add @deck.gl/react @deck.gl/core @deck.gl/layers @deck.gl/geo-layers @deck.gl/aggregation-layers @deck.gl/extensions
+
+
+Do NOT add @deck.gl/mapbox yet — the travel map will use deck.gl’s standalone Map component with a free tile provider (no Mapbox API key required for the base map).
+Vite Config — Manual Chunk Splitting
+
+// vite.config.ts
+build: {
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        'three': ['three', '@react-three/fiber', '@react-three/drei'],
+        'deckgl': [
+          '@deck.gl/react',
+          '@deck.gl/core',
+          '@deck.gl/layers',
+          '@deck.gl/geo-layers',
+          '@deck.gl/aggregation-layers',
+          '@deck.gl/extensions'
+        ],
+        'framer': ['framer-motion'],
+        'recharts': ['recharts'],
+      }
+    }
+  }
+}
+
+
+Shared Lazy Loading Pattern
+All three deck.gl components use the same lazy loading pattern — they only download the deck.gl chunk when the user actually needs them:
+
+// Travel Map tab
+const DeckTravelMap = lazy(() => import('./DeckTravelMap'))
+
+// In TravelMap.tsx render:
+<Suspense fallback={<DeckMapSkeleton />}>
+  <DeckTravelMap />
+</Suspense>
+
+// Statistical Playground
+const DeckCorrelationMatrix = lazy(() =>
+  import('./DeckCorrelationMatrix')
+)
+{playgroundOpen && (
+  <Suspense fallback={<MatrixSkeleton />}>
+    <DeckCorrelationMatrix data={correlationData} />
+  </Suspense>
+)}
+
+// Resilience section
+const DeckResilienceTreemap = lazy(() =>
+  import('./DeckResilienceTreemap')
+)
+{travelTabActive && (
+  <Suspense fallback={<TreemapSkeleton />}>
+    <DeckResilienceTreemap data={resilienceData} />
+  </Suspense>
+)}
+
+
+Skeleton Components
+Each lazy component needs a skeleton placeholder shown during the 1-2 second download. Keep them simple — just a neumorphic card with a shimmer animation:
+
+function DeckMapSkeleton() {
+  return (
+    <div className="neu-card" style={{
+      height: 500,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <div style={{
+        width: '100%', height: '100%',
+        background: 'linear-gradient(90deg, var(--surface) 25%, var(--surface-raised) 50%, var(--surface) 75%)',
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 1.5s infinite',
+        borderRadius: 12,
+      }}/>
+    </div>
+  )
+}
+
+// Add to index.css:
+@keyframes shimmer {
+  0% { background-position: 200% 0 }
+  100% { background-position: -200% 0 }
+}
+
+
+Session 1 — Travel Map Rebuild
+File created: client/src/components/tabs/DeckTravelMap.tsx
+File modified: client/src/components/tabs/TravelMap.tsx (replace Three.js section with lazy DeckTravelMap)
+Free Base Map Setup
+Use carto-basemaps — no API key required, high quality dark and light styles:
+
+const MAP_STYLE_DARK =
+  'https://urldefense.com/v3/__https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json__;!!Bt8RZUm9aw!5jYZ6ygT7sGj9w-Zsc1CIMX8zVwS-DwYyrPA6UAEdYOV3xOdqLY0Vz624kgOjFRlyoMX_bKFU25tXL8$ '
+const MAP_STYLE_LIGHT =
+  'https://urldefense.com/v3/__https://basemaps.cartocdn.com/gl/positron-gl-style/style.json__;!!Bt8RZUm9aw!5jYZ6ygT7sGj9w-Zsc1CIMX8zVwS-DwYyrPA6UAEdYOV3xOdqLY0Vz624kgOjFRlyoMX_bKFqbvAluk$ '
+
+
+Initial View State
+Center on continental US, slight tilt for drama:
+
+const INITIAL_VIEW = {
+  longitude: -98.5,
+  latitude: 38.5,
+  zoom: 3.8,
+  pitch: 45,        // tilt — this is what creates the 3D feel
+  bearing: -12,     // slight rotation so the map isn't perfectly north-up
+  transitionDuration: 1000,
+}
+
+
+The pitch: 45 is critical — without tilt the map is flat and boring. 45 degrees gives you the isometric-ish view that makes arc height and stadium elevation visible.
+Lighting Configuration
+This is the piece your current Three.js map is missing. Define a directional light simulating late afternoon sun from the northwest:
+
+import { LightingEffect, DirectionalLight, AmbientLight } from '@deck.gl/core'
+
+const ambientLight = new AmbientLight({
+  color: [255, 255, 255],
+  intensity: 0.6,
+})
+
+const directionalLight = new DirectionalLight({
+  color: [255, 240, 200],   // slightly warm — golden hour feel
+  intensity: 2.0,
+  direction: [-2, -1, -3],  // from upper-left, angling down
+  _shadow: true,             // enables shadow casting between objects
+})
+
+const lightingEffect = new LightingEffect({
+  ambientLight,
+  directionalLight
+})
+
+
+Apply to the DeckGL component:
+
+<DeckGL effects={[lightingEffect]} .../>
+
+
+Every 3D geometry in the scene — stadium columns, arc tubes — now responds to this light. The Rockies rising in the terrain will cast shadows eastward. Stadium columns will be bright on their northwest faces and dark on their southeast faces. This is the Craig Taylor quality.
+TerrainLayer — North American Elevation
+
+import { TerrainLayer } from '@deck.gl/geo-layers'
+
+const terrainLayer = new TerrainLayer({
+  id: 'terrain',
+  // Mapbox terrain tiles — free tier, no auth required for basic usage
+  elevationData: 'https://urldefense.com/v3/__https://s3.amazonaws.com/elevation-tiles-prod/terrarium/*7Bz*7D/*7Bx*7D/*7By*7D.png__;JSUlJSUl!!Bt8RZUm9aw!5jYZ6ygT7sGj9w-Zsc1CIMX8zVwS-DwYyrPA6UAEdYOV3xOdqLY0Vz624kgOjFRlyoMX_bKFeMngfws$ ',
+  texture: null,   // no satellite texture — use base map from Carto
+  elevationDecoder: {
+    rScaler: 256,
+    gScaler: 1,
+    bScaler: 1/256,
+    offset: -32768,
+  },
+  color: [200, 190, 180],   // muted warm gray — visible but not distracting
+  opacity: 0.6,
+  maxZoom: 8,
+  minZoom: 0,
+})
+
+
+The terrain elevation will make the Rockies visibly rise. Western stadium columns will sit on elevated ground, Eastern stadiums on flat lowlands. This single layer does more to communicate Western travel burden than any annotation could.
+Stadium Column Layer
+Replace the current glowing orbs with proper 3D columns that rise from stadium locations. Column height encodes total away miles traveled:
+
+import { ColumnLayer } from '@deck.gl/layers'
+
+const stadiumLayer = new ColumnLayer({
+  id: 'stadiums',
+  data: teamsWithMetrics,  // from resilienceUtils.ts
+ 
+  diskResolution: 32,      // circular columns, smooth
+  radius: 18000,           // ~18km radius at zoom 3.8 looks right
+  extruded: true,
+ 
+  getPosition: d => [d.lng, d.lat],
+  getElevation: d => d.totalAwayMiles * 0.8,  // scale for visual impact
+ 
+  getFillColor: d => {
+    // Team color as RGB array
+    const hex = d.color.replace('#', '')
+    return [
+      parseInt(hex.slice(0,2), 16),
+      parseInt(hex.slice(2,4), 16),
+      parseInt(hex.slice(4,6), 16),
+      220  // slight transparency
+    ]
+  },
+ 
+  material: {
+    ambient: 0.3,
+    diffuse: 0.8,
+    shininess: 16,         // matte — not glossy
+    specularColor: [200, 200, 200]
+  },
+ 
+  pickable: true,
+  onClick: ({ object }) => setSelectedTeam(object.id),
+ 
+  transitions: {
+    getElevation: {
+      duration: 800,
+      easing: d3.easeCubicOut
+    }
+  }
+})
+
+
+TripsLayer — Animated Travel Arcs
+This is the showstopper. Travel routes animate as flowing particles synchronized to the matchweek scrubber:
+
+import { TripsLayer } from '@deck.gl/geo-layers'
+
+// Transform match data into trips format
+// Each trip = one away game journey
+const tripData = useMemo(() => {
+  return matches
+    .filter(m => m.week <= currentWeek)
+    .map(match => {
+      const awayTeam = teams.find(t => t.id === match.awayTeam)
+      const homeTeam = teams.find(t => t.id === match.homeTeam)
+      if (!awayTeam || !homeTeam) return null
+     
+      // Arc waypoints with timestamps
+      // Midpoint elevated to create arc height
+      const midLng = (awayTeam.lng + homeTeam.lng) / 2
+      const midLat = (awayTeam.lat + homeTeam.lat) / 2
+     
+      return {
+        vendor: match.awayTeam,
+        color: hexToRgb(awayTeam.color),
+        timestamps: [match.week * 100, match.week * 100 + 50, match.week * 100 + 100],
+        path: [
+          [awayTeam.lng, awayTeam.lat, 0],
+          [midLng, midLat, 150000],  // arc peak height in meters
+          [homeTeam.lng, homeTeam.lat, 0]
+        ]
+      }
+    })
+    .filter(Boolean)
+}, [matches, currentWeek])
+
+// Animate current time
+const [currentTime, setCurrentTime] = useState(0)
+useEffect(() => {
+  if (!isPlaying) return
+  const interval = setInterval(() => {
+    setCurrentTime(t => {
+      if (t >= currentWeek * 100 + 100) {
+        clearInterval(interval)
+        return t
+      }
+      return t + 2
+    })
+  }, 16)
+  return () => clearInterval(interval)
+}, [isPlaying, currentWeek])
+
+const tripsLayer = new TripsLayer({
+  id: 'trips',
+  data: tripData,
+  getPath: d => d.path,
+  getTimestamps: d => d.timestamps,
+  getColor: d => d.color,
+  opacity: 0.85,
+  widthMinPixels: 2,
+  rounded: true,
+  trailLength: 40,          // how long the fading trail is
+  currentTime: currentTime,
+  shadowEnabled: false,
+})
+
+
+ScatterplotLayer — Arrival Glow at Destinations
+When a trip arrives at a stadium, a brief glow pulse at the destination. Layer these as a ScatterplotLayer with opacity keyed to currentTime:
+
+import { ScatterplotLayer } from '@deck.gl/layers'
+
+const glowLayer = new ScatterplotLayer({
+  id: 'arrival-glow',
+  data: recentArrivals,  // matches where timestamp is within last 10 time units
+  getPosition: d => [d.homeTeam.lng, d.homeTeam.lat],
+  getRadius: d => 40000,
+  getFillColor: d => [...hexToRgb(d.awayTeam.color), 120],
+  radiusUnits: 'meters',
+  opacity: 0.6,
+ 
+  // PostProcessEffect for bloom glow
+  extensions: [new DataFilterExtension({ filterSize: 1 })],
+  getFilterValue: d => d.recency,  // 0-1, recent = 1
+  filterRange: [0.3, 1],
+})
+
+
+PostProcessing — Bloom Effect
+The Craig Taylor glow on stadium orbs comes from bloom post-processing. deck.gl supports this via _PostProcessEffect:
+
+import { _PostProcessEffect as PostProcessEffect } from '@deck.gl/core'
+import { bloom } from '@luma.gl/shadertools'
+
+const bloomEffect = new PostProcessEffect(bloom, {
+  threshold: 0.6,    // only bright elements bloom
+  intensity: 0.4,    // subtle — enough for glow, not overwhelming
+  color: [1, 1, 1],
+})
+
+// Add to effects array:
+<DeckGL effects={[lightingEffect, bloomEffect]} .../>
+
+
+Full DeckTravelMap Component Structure
+
+export default function DeckTravelMap() {
+  const { isDark } = useTheme()
+  const { filteredMatches } = useFilters()
+  const [currentWeek, setCurrentWeek] = useState(1)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
+  const [viewState, setViewState] = useState(INITIAL_VIEW)
+
+  const layers = [
+    terrainLayer,
+    stadiumLayer,
+    tripsLayer,
+    glowLayer,
+  ].filter(Boolean)
+
+  return (
+    <div style={{ position: 'relative', height: 500, borderRadius: 16, overflow: 'hidden' }}>
+      <DeckGL
+        viewState={viewState}
+        onViewStateChange={({ viewState }) => setViewState(viewState)}
+        controller={true}
+        layers={layers}
+        effects={[lightingEffect, bloomEffect]}
+      >
+        <Map
+          reuseMaps
+          mapStyle={isDark ? MAP_STYLE_DARK : MAP_STYLE_LIGHT}
+        />
+      </DeckGL>
+
+      {/* Timeline scrubber — same design as existing */}
+      <TravelTimeline
+        currentWeek={currentWeek}
+        onWeekChange={setCurrentWeek}
+        isPlaying={isPlaying}
+        onPlayToggle={() => setIsPlaying(p => !p)}
+      />
+
+      {/* Selected team overlay */}
+      {selectedTeam && (
+        <TeamFocusOverlay
+          teamId={selectedTeam}
+          onClose={() => setSelectedTeam(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+
+Session 2 — Resilience Treemap Rebuild
+File created: client/src/components/charts/DeckResilienceTreemap.tsx
+File modified: ResilienceIndexChart.tsx → replace with DeckResilienceTreemap
+The Core Concept
+Junyan Zhang’s layered brick aesthetic achieved through ColumnLayer in OrthographicView. Each team is one square column. Height = resilience score. Color = tier. The orthographic camera keeps everything perfectly square and page-aligned while WebGL lighting makes each column face respond to the directional light.
+OrthographicView Setup
+
+import { OrthographicView } from '@deck.gl/core'
+
+const view = new OrthographicView({
+  id: 'treemap',
+  flipY: false,
+})
+
+// Initial view state — top-down, centered on the grid
+const INITIAL_VIEW = {
+  target: [gridWidth / 2, gridHeight / 2, 0],
+  zoom: 0,
+  minZoom: -2,
+  maxZoom: 4,
+}
+
+
+Grid Layout
+Compute a fixed grid layout — 6 columns × 5 rows for 30 teams, sorted by resilience score descending left-to-right, top-to-bottom:
+
+function computeGridLayout(teams: TeamResilienceMetrics[]) {
+  const sorted = [...teams].sort((a, b) => b.resilienceScore - a.resilienceScore)
+  const cols = 6
+  const cellSize = 120   // px per cell
+  const gap = 8          // gap between cells
+ 
+  return sorted.map((team, i) => ({
+    ...team,
+    gridX: (i % cols) * (cellSize + gap) + cellSize / 2,
+    gridY: Math.floor(i / cols) * (cellSize + gap) + cellSize / 2,
+  }))
+}
+
+
+Unlike squarified treemap, this gives every team equal tile area — the data encoding is entirely in height and color, not area. This solves the “small tiles are illegible” problem from the current implementation.
+ColumnLayer — The Tiles
+
+import { ColumnLayer } from '@deck.gl/layers'
+
+const tileLayer = new ColumnLayer({
+  id: 'resilience-tiles',
+  data: gridLayout,
+ 
+  diskResolution: 4,      // SQUARE columns — this is the Zhang key setting
+  radius: 52,             // slightly smaller than half cell to create gaps
+  extruded: true,
+ 
+  getPosition: d => [d.gridX, d.gridY],
+ 
+  // Height = resilience score, scaled for visual drama
+  // Score range 37-88 maps to 40-200px height
+  getElevation: d => (d.resilienceScore / 100) * 200,
+ 
+  getFillColor: d => {
+    // Tier colors as RGBA arrays
+    const colors = {
+      excellent: [30, 52, 72, 240],    // deep steel blue
+      good:      [30, 58, 40, 240],    // deep forest green
+      vulnerable:[74, 62, 26, 240],    // deep olive
+      fragile:   [106, 34, 34, 240],   // deep brick red
+    }
+    return colors[d.tier] ?? colors.vulnerable
+  },
+ 
+  // PBR material — matte, not glossy, matches Zhang aesthetic
+  material: {
+    ambient: 0.25,
+    diffuse: 0.9,
+    shininess: 8,          // very matte
+    specularColor: [150, 140, 130]
+  },
+ 
+  pickable: true,
+  onClick: ({ object }) => setSelectedTeam(object.id),
+  onHover: ({ object }) => setHoveredTeam(object?.id ?? null),
+ 
+  // Animated height on load and filter change
+  transitions: {
+    getElevation: {
+      duration: 600,
+      easing: t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t  // ease in-out quad
+    }
+  }
+})
+
+
+Lighting for Zhang Aesthetic
+The Zhang reference has a strong directional light from upper-left casting hard shadows. Tile faces on the light side are bright, shadow faces are very dark — this creates the dramatic contrast you responded to:
+
+const treemapAmbient = new AmbientLight({
+  color: [255, 255, 255],
+  intensity: 0.3,   // lower ambient = more dramatic shadows
+})
+
+const treemapDirectional = new DirectionalLight({
+  color: [255, 248, 230],   // warm light
+  intensity: 3.0,            // strong — creates the dramatic face contrast
+  direction: [-1, -1, -2],   // from upper-left
+})
+
+const treemapLighting = new LightingEffect({
+  treemapAmbient,
+  treemapDirectional,
+})
+
+
+With intensity: 3.0 and ambient: 0.25, the shadow faces will be approximately 8x darker than the lit faces. That’s the Zhang ratio — look at how dark the right and bottom faces of his tiles are versus the top face.
+Text Labels on Tiles
+Render team names as billboard text above each tile using TextLayer:
+
+import { TextLayer } from '@deck.gl/layers'
+
+const labelLayer = new TextLayer({
+  id: 'tile-labels',
+  data: gridLayout,
+ 
+  getPosition: d => [d.gridX, d.gridY, (d.resilienceScore / 100) * 200 + 5],
+  getText: d => d.name,
+  getSize: 11,
+  getColor: [255, 255, 255, 180],
+  fontFamily: 'Space Grotesk',
+  fontWeight: 600,
+  characterSet: 'auto',
+ 
+  // Billboard = always faces camera regardless of tilt
+  billboard: true,
+ 
+  // Score below name
+  // Use a second TextLayer for scores
+})
+
+const scoreLayer = new TextLayer({
+  id: 'score-labels',
+  data: gridLayout,
+  getPosition: d => [d.gridX, d.gridY, (d.resilienceScore / 100) * 200 + 18],
+  getText: d => String(d.resilienceScore),
+  getSize: 16,
+  fontFamily: 'JetBrains Mono',
+  fontWeight: 700,
+  getColor: [255, 255, 255, 220],
+  billboard: true,
+})
+
+
+Camera Tilt Toggle
+Flat orthographic (page-aligned, like the current treemap) vs slight tilt (reveals column height, more cinematic). Toggle in header:
+
+const [showDepth, setShowDepth] = useState(true)
+
+const viewState = showDepth
+  ? { ...INITIAL_VIEW, pitch: 35, bearing: -20 }  // tilted — reveals height
+  : { ...INITIAL_VIEW, pitch: 0, bearing: 0 }      // flat — pure grid
+
+// Toggle button in card header:
+// "FLAT" / "3D" — default to 3D
+
+
+This is the key insight for the OrthographicView problem we discussed earlier: you CAN tilt the camera to see height, but you provide a FLAT toggle that snaps back to pure top-down for users who want the grid-aligned view. Both modes work, user chooses.
+Full Component Structure
+
+export default function DeckResilienceTreemap({
+  data
+}: {
+  data: TeamResilienceMetrics[]
+}) {
+  const { isDark } = useTheme()
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
+  const [hoveredTeam, setHoveredTeam] = useState<string | null>(null)
+  const [showDepth, setShowDepth] = useState(true)
+  const [colorMode, setColorMode] = useState<'SCORE' | 'TEAM'>('SCORE')
+ 
+  const gridLayout = useMemo(() => computeGridLayout(data), [data])
+ 
+  const layers = [tileLayer, labelLayer, scoreLayer]
+ 
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Header controls */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <ToggleGroup
+          options={['3D', 'FLAT']}
+          value={showDepth ? '3D' : 'FLAT'}
+          onChange={v => setShowDepth(v === '3D')}
+        />
+        <ToggleGroup
+          options={['SCORE', 'TEAM']}
+          value={colorMode}
+          onChange={v => setColorMode(v as 'SCORE' | 'TEAM')}
+        />
+      </div>
+     
+      {/* deck.gl canvas */}
+      <div style={{ height: 380, borderRadius: 12, overflow: 'hidden' }}>
+        <DeckGL
+          views={view}
+          viewState={viewState}
+          layers={layers}
+          effects={[treemapLighting]}
+          controller={true}
+          getTooltip={({ object }) => object && {
+            html: `<b>${object.name}</b><br/>Score: ${object.resilienceScore}<br/>${(object.totalAwayMiles/1000).toFixed(0)}k miles`,
+            style: { background: 'rgba(20,20,30,0.9)', color: 'white', borderRadius: 8 }
+          }}
+        />
+      </div>
+     
+      {/* Legend */}
+      <TierLegend />
+    </div>
+  )
+}
+
+
+Session 3 — Correlation Matrix Rebuild
+File created: client/src/components/DeckCorrelationMatrix.tsx
+File modified: StatsPlayground.tsx → replace SVG matrix with DeckCorrelationMatrix
+The Core Concept
+Same ColumnLayer + OrthographicView pattern as the treemap. Each cell in the correlation grid is one square column. Height = |r|. Color = blue (positive) or red (negative). The animation between Raw Counts and Per 90 modes is the centrepiece — columns rise and fall to new heights with a 600ms transition.
+Data Transform
+
+function correlationToColumnData(matrix: number[][], statNames: string[]) {
+  const columns: ColumnDatum[] = []
+  const n = statNames.length
+  const cellSize = 60   // px per cell in orthographic space
+  const gap = 4
+ 
+  matrix.forEach((row, i) => {
+    row.forEach((r, j) => {
+      columns.push({
+        id: `${i}-${j}`,
+        x: j * (cellSize + gap),
+        y: i * (cellSize + gap),
+        r: r,
+        absR: Math.abs(r),
+        isPositive: r >= 0,
+        isDiagonal: i === j,
+        rowLabel: statNames[i],
+        colLabel: statNames[j],
+      })
+    })
+  })
+ 
+  return columns
+}
+
+
+ColumnLayer Configuration
+
+const matrixLayer = new ColumnLayer({
+  id: 'correlation-matrix',
+  data: columnData,
+ 
+  diskResolution: 4,    // square prisms
+  radius: 26,           // slightly smaller than half cell
+  extruded: true,
+ 
+  getPosition: d => [d.x, d.y],
+ 
+  // Height encoding — diagonal cells are flat, others scale with |r|
+  getElevation: d => d.isDiagonal ? 2 : d.absR * 80,
+ 
+  getFillColor: d => {
+    if (d.isDiagonal) return [120, 120, 140, 180]  // neutral gray
+    if (d.isPositive) {
+      // Blue scale — deeper blue = stronger positive
+      const intensity = Math.floor(d.absR * 180)
+      return [40 - intensity * 0.1, 80, 180 + intensity * 0.4, 230]
+    } else {
+      // Red scale — deeper red = stronger negative
+      const intensity = Math.floor(d.absR * 180)
+      return [180 + intensity * 0.4, 50, 50, 230]
+    }
+  },
+ 
+  material: {
+    ambient: 0.3,
+    diffuse: 0.85,
+    shininess: 12,
+    specularColor: [200, 210, 255]
+  },
+ 
+  pickable: true,
+  onClick: ({ object }) => {
+    if (!object.isDiagonal) {
+      // Set scatter plot axes to this stat pair
+      setScatterAxes(object.rowLabel, object.colLabel)
+      scrollToScatter()
+    }
+  },
+ 
+  // THE KEY FEATURE — animated height transitions
+  transitions: {
+    getElevation: {
+      duration: 600,
+      easing: t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t
+    },
+    getFillColor: {
+      duration: 400,
+    }
+  }
+})
+
+
+Mode Toggle — Raw vs Per 90
+When mode changes, columnData recomputes from the new correlation matrix. The transitions config means deck.gl automatically animates every column to its new height:
+
+const [mode, setMode] = useState<'RAW' | 'PER90'>('PER90')
+
+const correlationMatrix = useMemo(() => {
+  const stats = mode === 'RAW' ? RAW_STATS : PER90_STATS
+  const filteredPlayers = mode === 'PER90'
+    ? players.filter(p => p.minutes > 200)
+    : players
+  return computeCorrelationMatrix(filteredPlayers, stats)
+}, [mode, players])
+
+const columnData = useMemo(() =>
+  correlationToColumnData(correlationMatrix, statNames),
+  [correlationMatrix]
+)
+
+
+When columnData changes, deck.gl sees new getElevation values and smoothly transitions each column. Switching from RAW to PER90 produces a wave of columns changing height simultaneously — the most visually satisfying moment in the whole component.
+Camera Tilt for Matrix
+Same FLAT/3D toggle as the treemap:
+
+const matrixViewState = showDepth
+  ? {
+      target: [gridWidth/2, gridHeight/2, 0],
+      zoom: 1.2,
+      pitch: 40,      // enough to see column heights clearly
+      bearing: 15,    // slight rotation so columns don't hide each other
+    }
+  : {
+      target: [gridWidth/2, gridHeight/2, 0],
+      zoom: 1.2,
+      pitch: 0,
+      bearing: 0,
+    }
+
+
+In FLAT mode the matrix looks like the current SVG version but with cleaner color encoding. In 3D mode it looks like an aerial view of a city block — tall columns where correlations are strong, flat ground where they’re weak.
+Axis Labels
+Row and column labels using TextLayer:
+
+// Column headers (top)
+const colLabelLayer = new TextLayer({
+  id: 'col-labels',
+  data: statNames.map((name, j) => ({
+    position: [j * (cellSize + gap), -20, 0],
+    text: name,
+  })),
+  getPosition: d => d.position,
+  getText: d => d.text,
+  getSize: 9,
+  getAngle: 45,    // angled like the current matrix
+  getColor: [120, 120, 140, 200],
+  fontFamily: 'JetBrains Mono',
+  billboard: false,  // NOT billboard — stays fixed relative to grid
+  getTextAnchor: 'start',
+})
+
+// Row labels (left side)
+const rowLabelLayer = new TextLayer({
+  id: 'row-labels',
+  data: statNames.map((name, i) => ({
+    position: [-30, i * (cellSize + gap), 0],
+    text: name,
+  })),
+  getPosition: d => d.position,
+  getText: d => d.text,
+  getSize: 9,
+  getColor: [120, 120, 140, 200],
+  fontFamily: 'JetBrains Mono',
+  billboard: false,
+  getTextAnchor: 'end',
+})
+
+
+Strongest Correlation Chips
+Keep the existing “strongest correlations” chip strip above the matrix — these are computed from the matrix data and don’t change with the 3D component. Wire the chip clicks to both set scatter axes AND highlight the corresponding column in the matrix:
+
+// When a chip is clicked:
+const handleChipClick = (rowStat: string, colStat: string) => {
+  setScatterAxes(rowStat, colStat)
+  setHighlightedCell(`${rowIndex}-${colIndex}`)
+  scrollToScatter()
+}
+
+// In ColumnLayer — highlighted cell gets extra height boost:
+getElevation: d => {
+  const base = d.isDiagonal ? 2 : d.absR * 80
+  return d.id === highlightedCell ? base * 1.3 : base
+}
+
+
+Session Sequencing Summary
+Session 1 — Travel Map (highest visibility, establishes deck.gl infrastructure)
+        ∙       Install packages, configure Vite chunks
+        ∙       Build DeckTravelMap with TerrainLayer, ColumnLayer stadiums, TripsLayer, LightingEffect, bloom
+        ∙       Lazy load behind Travel Map tab activation
+        ∙       Preserve existing timeline scrubber UI, wire to currentTime animation
+Session 2 — Resilience Treemap (replaces underwhelming current version)
+        ∙       Build DeckResilienceTreemap with ColumnLayer grid, OrthographicView, Zhang lighting
+        ∙       Fixed grid layout (6×5), not squarified
+        ∙       FLAT/3D camera toggle
+        ∙       Lazy load behind Travel Map tab activation (same chunk as Session 1)
+Session 3 — Correlation Matrix (upgrades functional existing version)
+        ∙       Build DeckCorrelationMatrix with ColumnLayer, OrthographicView
+        ∙       Animated height transitions on Raw/Per90 toggle
+        ∙       Chip click → column highlight → scatter axis change
+        ∙       Lazy load behind Statistical Playground open state
+Total new files: DeckTravelMap.tsx, DeckResilienceTreemap.tsx, DeckCorrelationMatrix.tsx
+Files modified: TravelMap.tsx, ResilienceIndexChart.tsx (or TravelMap.tsx where treemap is rendered), StatsPlayground.tsx, vite.config.ts
+Zero changes to: resilienceUtils.ts, insightEngine.ts, mlsData.ts, FilterContext.tsx, any existing chart components
+
+Critical Notes for Manus
+Test on mobile after each session. deck.gl WebGL is GPU-dependent. Some mobile browsers throttle WebGL contexts aggressively. If performance is poor on mobile, add useDevicePixels: false to the DeckGL component to render at 1x instead of device pixel ratio — this halves the GPU workload.
+The _shadow: true flag on DirectionalLight is expensive. If frame rate drops below 30fps, remove it first. The lighting quality degrades but performance recovers immediately.
+CARTO tile rate limits. The free CARTO basemap tiles have rate limits for production use. For a portfolio project the free tier is fine, but if the map tiles fail to load add a fallback: onError={() => setMapStyle(FALLBACK_STYLE)}.
+Terrain tiles need CORS headers. The AWS elevation tile endpoint should work but if you see CORS errors in the console, replace with Mapbox terrain tiles — those have reliable CORS configuration. You’ll need a free Mapbox token but the terrain tile endpoint is included in the free tier.​​​​​​​​​​​​​​​​

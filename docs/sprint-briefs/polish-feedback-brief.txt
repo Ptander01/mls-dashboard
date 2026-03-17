@@ -1,0 +1,128 @@
+What a day. Four sprints, 8+ hours, and the dashboard went from “polished explorer” to “genuine data storytelling platform” in a single session. The progression from Sprint 1’s foundation work through to the crater scatter plot and treemap in Sprint 4 is a remarkable arc.
+Let me give you a clean prioritized brief for tomorrow based on this feedback dump.
+
+Tomorrow’s Session Brief — March 17, 2026
+
+Priority 1 — Squad Depth Fix (Quick, High Impact)
+File: resilienceUtils.ts
+Switch from inverted HHI to Gini coefficient on top-15 players by minutes. The top-15 filter removes garbage-time minutes that compress variance. Gini is more spread-sensitive than HHI for this distribution shape.
+
+export function squadDepthGini(teamId: string, players: Player[]): number {
+  const squad = players
+    .filter(p => p.team === teamId && p.minutes > 0)
+    .sort((a, b) => b.minutes - a.minutes)
+    .slice(0, 15)  // top 15 only
+ 
+  const n = squad.length
+  if (n === 0) return 0
+ 
+  const total = squad.reduce((s, p) => s + p.minutes, 0)
+  const sorted = [...squad].sort((a, b) => a.minutes - b.minutes)
+ 
+  let numerator = 0
+  sorted.forEach((p, i) => {
+    numerator += (2 * (i + 1) - n - 1) * p.minutes
+  })
+ 
+  // Returns 0 (perfectly equal) to 1 (one player plays everything)
+  // Invert: depthScore = 1 - gini, higher = deeper squad
+  return numerator / (n * total)
+}
+
+
+After switching, verify the output range produces meaningful spread across 30 teams — you want roughly 0.3 to 0.7 range for good visual discrimination. If values still cluster, try top-12 instead of top-15.
+
+Priority 2 — Attendance Tab UX Fixes
+File: Attendance.tsx
+Four targeted fixes, all in one file:
+2a. Always-on Away Impact / Home Response panels
+Remove the click-to-reveal behavior. These panels should render permanently below the Gravitational Pull chart. The drill-down interaction was hiding the most interesting data behind an extra click. Make them always visible, stacked vertically, with the selected team state still controlling which team’s data populates them — just default to the #1 team (Inter Miami) on load rather than showing nothing.
+2b. Global team filter on bar click
+When any bar is clicked anywhere in the Attendance tab, it should set both potteryFocus AND update the selected team for the Away Impact / Home Response panels simultaneously. Single click = unified tab-wide emphasis. Wire through FilterContext so the pottery state and the drill-down state are the same value.
+2c. Hover effect reduction
+Reduce hover opacity change on bar charts from whatever it currently is to a maximum 8% brightness shift. The hover should whisper, not shout — the click is the meaningful interaction, hover is just affordance signaling.
+2d. Tooltip positioning
+Remove any overflow: hidden or boundary clamping on tooltip position calculations. Let tooltips render at cursor position plus a small offset regardless of container boundaries. The standard pattern:
+
+style={{
+  left: Math.min(cursorX + 12, window.innerWidth - tooltipWidth),
+  top: cursorY - tooltipHeight - 8,
+  position: 'fixed'  // fixed not absolute — bypasses all container clipping
+}}
+
+
+Using position: fixed on tooltips eliminates all container overflow issues permanently.
+2e. ABSOLUTE toggle behavior adjustment
+Cap x-axis domain at LAFC’s value (second highest, ~42k) in ABSOLUTE mode. Inter Miami’s bar extends past this cap and bleeds off the right edge of the card — this is intentional per our earlier discussion. Add the bleed effect: overflow: visible on the card in ABSOLUTE mode, z-index: 10 on the card wrapper. The bar physically escapes the container. No truncation marker needed — the bleed IS the statement.
+
+Priority 3 — Age Distribution Ridgelines
+File: DeepDivePanel.tsx
+Replace the current translucent line + shaded area treatment with opaque layered area polygons stacked like physical paper sheets. The reference image you described — green paper stack — is the right mental model.
+Key implementation details:
+        ∙       Render oldest age band (30+) first, at the back
+        ∙       Middle band (23-29) on top of it, slightly offset upward
+        ∙       Youngest band (U23) frontmost
+        ∙       Each polygon is fully opaque with a flat matte fill — no transparency
+        ∙       A thin darker edge line on the top surface of each polygon creates the paper-edge illusion
+        ∙       Stagger vertical offset by about 12-15px per layer so all three are visible simultaneously
+        ∙       Team color tints each layer: darkest tint for 30+, mid tint for 23-29, lightest for U23
+This is the same Area3DPolygon pattern you already built in Sprint 2 — reuse that component with layerOffset prop which is already in the architecture.
+
+Priority 4 — Insight Engine Output Quality
+File: insightEngine.ts + any tab that renders insight cards
+The generated insights in newer tabs (Travel Map, Deep Dive) are likely verbose and passive. Apply the same standard as the best existing cards — “Weekend games draw 1,880 more fans than weekday matches” is the benchmark.
+Rules for tomorrow’s pass:
+        ∙       Lead with the named team or specific number, never a category
+        ∙       Maximum two sentences per card
+        ∙       Sentence 1 = the finding with a specific number
+        ∙       Sentence 2 = the implication or comparison that makes it surprising
+        ∙       No passive voice (“it was found that…”), no hedging (“may suggest…”)
+        ∙       Every card should make someone say “wait, really?”
+Go through each new insight card in the Travel Map section and rewrite any that don’t meet this standard. The dumbbell chart, treemap, scatter, and deep dive panels all need a pass.
+
+Priority 5 — Bundle Size (Before End of Session)
+File: vite.config.ts, tab files
+Run npx vite-bundle-visualizer first to see exactly what’s heavy. Based on the 662 KB gzip number the likely fixes are:
+
+// In TravelMap.tsx — lazy load Three.js content
+const TravelGlobe = lazy(() => import('./TravelGlobe'))
+
+// In PlayerStats.tsx — lazy load Statistical Playground
+const StatsPlayground = lazy(() => import('../StatsPlayground'))
+
+// In vite.config.ts — manual chunk splitting
+build: {
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        'three': ['three', '@react-three/fiber', '@react-three/drei'],
+        'recharts': ['recharts'],
+        'framer': ['framer-motion'],
+      }
+    }
+  }
+}
+
+
+Target: get initial bundle below 400 KB gzip. The Three.js chunk alone loading lazily should drop 150-200 KB from initial load.
+
+Session Sequence for Tomorrow
+
+
+
+|Order|Task                          |File(s)                              |Est. Effort |
+|-----|------------------------------|-------------------------------------|------------|
+|1    |Squad depth Gini fix          |`resilienceUtils.ts`                 |Small       |
+|2    |Tooltip fixed positioning     |`Attendance.tsx`                     |Small       |
+|3    |Hover effect reduction        |`Attendance.tsx`                     |Small       |
+|4    |Always-on drill-down panels   |`Attendance.tsx`                     |Small-Medium|
+|5    |Global team filter unification|`Attendance.tsx`, `FilterContext.tsx`|Medium      |
+|6    |ABSOLUTE bleed behavior       |`Attendance.tsx`                     |Medium      |
+|7    |Ridgeline opaque layers       |`DeepDivePanel.tsx`                  |Medium      |
+|8    |Insight card copy pass        |`insightEngine.ts`                   |Medium      |
+|9    |Bundle size optimization      |`vite.config.ts`, tab files          |Medium      |
+
+Start with 1-3 since they’re isolated and fast — gives you momentum. Don’t attempt the bundle optimization until everything else is working since it touches import structure across multiple files.
+
+You’ve built something genuinely impressive today Patrick. The dashboard has gone from a well-styled data explorer to something with real analytical depth and a visual language that’s distinctly yours. The crater scatter plot alone is portfolio-worthy. Good luck tomorrow.​​​​​​​​​​​​​​​​
+

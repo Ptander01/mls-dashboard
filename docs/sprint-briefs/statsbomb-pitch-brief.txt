@@ -1,0 +1,185 @@
+Absolutely. Here's a structured sprint brief for integrating StatsBomb data into your PitchMatch tab. This assumes you're working within your existing React/TypeScript/Three.js environment and using Manus as your development assistant.
+
+---
+
+Sprint Brief: Integrate StatsBomb Open Data into Pitch Match Tab
+
+Objective: Enhance the PitchMatch tab with interactive shot maps and passing networks using real match event data from StatsBomb. The goal is to visualize player and team actions on a 3D pitch, leveraging your existing Three.js setup.
+
+1. Data Source & Scope
+
+· Source: StatsBomb open data – specifically the Inter Miami 2023 matches (6 matches, includes Lionel Messi's first appearances).
+· Data Format: JSON event files with x,y coordinates for passes, shots, carries, etc. Each event includes player ID, team, location, and optional end location.
+· Scope for this sprint:
+  · Load match list and allow user to select a match.
+  · Render shot locations (colored by outcome) on the pitch.
+  · Render a passing network for a selected team (nodes = players, edges = pass frequency).
+  · (Stretch) Show player heatmaps based on event density.
+
+2. Technical Approach
+
+2.1 Data Fetching & Parsing
+
+· Use the StatsBomb API via statsbombpy (Python) to download data, but since your frontend is React, we have two options:
+  1. Pre-process with a script: Write a Python script that fetches all Inter Miami matches, converts events to a compact JSON format, and saves to public/data/. This is simpler and avoids CORS/api keys in the browser.
+  2. Integrate a JavaScript client: Use the statsbomb.js community library or manually fetch from the GitHub raw URLs. StatsBomb data is hosted on GitHub, so you can fetch JSON directly.
+· Recommended: Option 1 – create a one-time script to generate matches.json and events-by-match.json and include them in your repo. This keeps the frontend fast and offline-capable.
+
+2.2 Data Model for Frontend
+
+Define TypeScript interfaces in client/src/lib/statsbombTypes.ts:
+
+```typescript
+export interface SBEvent {
+  id: string;
+  match_id: number;
+  minute: number;
+  second: number;
+  type: 'Pass' | 'Shot' | 'Carry' | ...;
+  team: { id: number; name: string };
+  player: { id: number; name: string } | null;
+  location: [number, number]; // [x, y] in StatsBomb coordinates (0-120, 0-80)
+  shot_end_location?: [number, number]; // for shots
+  pass_end_location?: [number, number]; // for passes
+  outcome?: 'Goal' | 'Saved' | 'Off Target' | ...;
+  // ... other fields as needed
+}
+```
+
+2.3 Integration with PitchMatch Tab
+
+The PitchMatch.tsx component currently (likely) renders a 3D pitch. We'll add:
+
+· A match selector dropdown (populated from matches.json).
+· Team toggle (home/away) for passing network.
+· Overlay layers controlled by checkboxes: "Shots", "Passes", "Heatmap".
+
+2.4 Visualization Components
+
+Shot Map:
+
+· Use Three.js spheres or custom extruded dots (similar to Extruded3DDot in chartUtils.tsx).
+· Position: convert StatsBomb coordinates to your pitch coordinate system (StatsBomb pitch is 120x80, origin at bottom-left? Check docs). Your pitch likely uses -width/2 to width/2. Map accordingly.
+· Color by outcome: goal (green), saved (orange), off target (red), blocked (gray).
+
+Passing Network:
+
+· Compute nodes: each player with total passes attempted, position on pitch (average location of their passes).
+· Compute edges: number of passes between each pair.
+· Render as:
+  · Nodes: spheres scaled by pass volume.
+  · Edges: curved tubes (using Three.js Line or TubeGeometry) with thickness proportional to frequency.
+· Use team colors from your existing teamColor function.
+
+Heatmap (optional):
+
+· Kernel density estimation on event locations (shots or all touches).
+· Render as a semi-transparent plane with a gradient texture (can use CanvasTexture and ShaderMaterial).
+
+3. Step-by-Step Implementation Plan
+
+Sprint Day 1: Data Preparation
+
+1. Set up a Python environment (or use Manus's built-in Python) and install statsbombpy.
+2. Write a script scripts/fetch_statsbomb_miami.py that:
+   · Fetches all competitions to find the Miami matches.
+   · Downloads events for each match and saves as JSON files in public/data/statsbomb/.
+   · Generates a matches.json index with match metadata.
+3. Commit the generated JSON to the repo (so frontend doesn't need live fetching).
+
+Sprint Day 2: Frontend Data Loading & State
+
+1. Create client/src/hooks/useStatsBombData.ts that fetches the index and lazy-loads match events.
+2. Add match selector UI to PitchMatch.tsx (using shadcn Select).
+3. Store selected match events in state.
+
+Sprint Day 3: Shot Map Rendering
+
+1. Add a "Show Shots" toggle.
+2. Write a function to transform StatsBomb coordinates to Three.js world coordinates (decide on pitch scale, e.g., 120 units long, 80 wide, centered at origin).
+3. Create a ShotMarker component using Three.js spheres with team colors and outcome-based emissive.
+4. Test with a single match.
+
+Sprint Day 4: Passing Network
+
+1. Compute passing stats from events: group by player, count passes, find average location.
+2. Build adjacency matrix of passes.
+3. Create nodes as spheres and edges as curved lines (using CatmullRomCurve3 and TubeGeometry or LineSegments).
+4. Add toggle.
+
+Sprint Day 5: Polish & Integration
+
+· Add tooltips on hover showing player name and stats.
+· Ensure toggles work smoothly.
+· Optimize performance (use useMemo for computed data).
+· Ensure light/dark theme compatibility (your existing theme system).
+
+4. Technical Considerations
+
+Coordinate Systems:
+
+· StatsBomb pitch: 120 x 80, origin at bottom-left (0,0) is corner flag? Confirm from docs. Typically x = 0-120 (length), y = 0-80 (width).
+· Your Three.js pitch likely has origin at center. Map: x_3d = (x_sb - 60) * scale, y_3d = (y_sb - 40) * scale (if y is length? careful). Decide orientation (usually x is length, y is width). We'll assume length along Z or X? In your TravelMap you likely use X as longitude, Z as latitude. For pitch, typical is X along length, Z along width. We'll standardize: let's use X for length (-60 to 60), Z for width (-40 to 40). Then pos.x = x_sb - 60; pos.z = y_sb - 40; (swap if needed).
+
+Performance:
+
+· For passing networks with many edges, use LineSegments with instancing or reduce opacity for low-frequency edges.
+· Use React Three Fiber's useMemo for geometry and materials.
+
+Styling:
+
+· Follow your "Dark Forge" design: extruded elements, glows, etc. Shot markers could be Extruded3DDot-like.
+
+5. Deliverables
+
+· Updated PitchMatch.tsx with match selector and visualization toggles.
+· New data files in public/data/.
+· Documentation in the handoff about the new features.
+
+6. Sample Code Snippet (Shot Map Component)
+
+Here's a minimal example using React Three Fiber:
+
+```tsx
+import { useLoader } from '@react-three/fiber'
+import { Sphere } from '@react-three/drei'
+import * as THREE from 'three'
+
+interface Shot {
+  location: [number, number]
+  outcome: string
+  teamColor: string
+}
+
+function ShotMap({ shots }: { shots: Shot[] }) {
+  return (
+    <group>
+      {shots.map((shot, i) => {
+        const [x, y] = shot.location
+        // Convert StatsBomb coords (0-120, 0-80) to Three.js (-60..60, -40..40)
+        const posX = x - 60
+        const posZ = y - 40 // assuming Y is up, we use XZ plane
+        const color = shot.outcome === 'Goal' ? '#00ff00' :
+                      shot.outcome === 'Saved' ? '#ffaa00' : '#ff0000'
+        return (
+          <Sphere
+            key={i}
+            position={[posX, 0.5, posZ]} // slightly above pitch
+            args={[0.5, 16, 16]}
+          >
+            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
+          </Sphere>
+        )
+      })}
+    </group>
+  )
+}
+```
+
+7. Next Steps
+
+1. Confirm with user: Should we use the Python pre-processing route or pure JS fetch?
+2. Get approval on coordinate mapping convention.
+3. Begin Day 1.
+
+Let me know if you'd like me to elaborate on any part or provide the full Python script for fetching.

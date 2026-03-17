@@ -1,0 +1,368 @@
+Here’s the complete brief:
+
+Crater Scatter Rewrite Brief — Monochromatic Relief + Team Color System
+File: client/src/components/charts/TravelScatterChart.tsx
+
+The Visual Target
+Vaughn Horseman’s CodeGarden 2013 relief sculpture — pressed circular impressions into a flat matte surface, connected by dotted paths, depth encoded purely through shadow and geometry. Monochromatic by default. No chrome, no metallic treatment, no competing visual elements. The surface itself has physical texture.
+
+Part 1 — Background Surface
+Remove the current dark/neutral chart background. Replace with a textured matte surface using an SVG feTurbulence filter:
+
+// Add to SVG defs — apply to background rect only
+<filter id="surfaceTexture">
+  <feTurbulence
+    type="fractalNoise"
+    baseFrequency="0.65"
+    numOctaves="3"
+    seed="2"
+    result="noise"
+  />
+  <feColorMatrix
+    type="saturate"
+    values="0"
+    in="noise"
+    result="grayNoise"
+  />
+  <feBlend
+    in="SourceGraphic"
+    in2="grayNoise"
+    mode="multiply"
+    result="textured"
+  />
+  <feComposite in="textured" in2="SourceGraphic" operator="in"/>
+</filter>
+
+// Background rect
+<rect
+  width="100%" height="100%"
+  fill={isDark ? '#1a1a24' : '#f0ede8'}  // warm off-white light / deep warm dark
+  filter="url(#surfaceTexture)"
+  opacity="1"
+/>
+// Texture overlay at very low opacity
+<rect
+  width="100%" height="100%"
+  fill="url(#surfaceTexture)"
+  opacity="0.04"  // subtle — just enough to feel like material
+/>
+
+
+The warm off-white (#f0ede8) in light mode is crucial — it reads as plaster or gesso, not a screen. Avoid pure white or cool grays.
+
+Part 2 — Simplified Crater Geometry
+Remove entirely: Chrome knob treatment, metallic gradients, specular highlights, layered shadow crescents, shelf shadow at rim-bowl junction, team color tint in pit, directional lighting simulation.
+Keep: Circular depression, concentric rings, cast shadow, label.
+New crater structure — four elements only:
+
+function CraterImpression({ cx, cy, radius, ringCount, fillColor, isColored, isDark }) {
+  const rimColor = isDark ? '#2a2835' : '#d4cfc8'
+  const pitColor = isDark ? '#0d0d18' : '#b8b0a6'
+  const ringColor = isDark ? '#1e1c2a' : '#c8c2ba'
+  const shadowColor = isDark ? 'rgba(0,0,0,0.5)' : 'rgba(100,90,80,0.25)'
+ 
+  // The actual fill — gray in TERRAIN mode, team color in TEAMS mode
+  const activeFill = isColored ? fillColor : pitColor
+
+  return (
+    <g>
+      {/* 1. Cast shadow — soft ellipse offset below-right */}
+      <ellipse
+        cx={cx + radius * 0.15}
+        cy={cy + radius * 0.2}
+        rx={radius * 1.1}
+        ry={radius * 0.4}
+        fill={shadowColor}
+        filter="url(#craterShadow)"
+      />
+
+      {/* 2. Outer rim — slightly raised lip */}
+      <circle
+        cx={cx} cy={cy} r={radius}
+        fill={rimColor}
+      />
+
+      {/* 3. Depression — inward gradient from rim to pit */}
+      <circle
+        cx={cx} cy={cy} r={radius * 0.92}
+        fill={`url(#depression-${cx}-${cy})`}
+      />
+      <radialGradient id={`depression-${cx}-${cy}`} cx="42%" cy="38%">
+        <stop offset="0%" stopColor={rimColor} stopOpacity="0.6"/>
+        <stop offset="40%" stopColor={activeFill} stopOpacity="0.8"/>
+        <stop offset="100%" stopColor={activeFill} stopOpacity="1"/>
+      </radialGradient>
+
+      {/* 4. Concentric rings — subtle recessed lines */}
+      {Array.from({ length: ringCount }).map((_, i) => (
+        <circle
+          key={i}
+          cx={cx} cy={cy}
+          r={radius * 0.85 * ((ringCount - i) / ringCount)}
+          fill="none"
+          stroke={ringColor}
+          strokeWidth={0.8}
+          strokeOpacity={0.6 - i * 0.1}
+        />
+      ))}
+
+      {/* Center pit — darkest point */}
+      <circle
+        cx={cx} cy={cy} r={radius * 0.12}
+        fill={isDark ? '#050508' : '#8a8078'}
+        opacity={isColored ? 0.6 : 1}
+      />
+    </g>
+  )
+}
+
+// Shared shadow filter in defs
+<filter id="craterShadow" x="-20%" y="-20%" width="140%" height="140%">
+  <feGaussianBlur stdDeviation="3" result="blur"/>
+  <feOffset dx="2" dy="4" in="blur"/>
+</filter>
+
+
+Part 3 — Data Encoding
+Three variables, three geometric channels — clean and unambiguous:
+
+
+
+|Data variable        |Visual encoding    |Range                             |
+|---------------------|-------------------|----------------------------------|
+|Travel miles (X axis)|Horizontal position|Standard linear scale             |
+|PPG delta (Y axis)   |Vertical position  |Signed, zero-centered             |
+|Squad depth (Gini)   |Ring count         |2 rings (shallow) → 6 rings (deep)|
+|PPG gap magnitude    |Crater radius      |Min 18px → Max 42px               |
+
+Ring count computed from Gini score:
+
+const ringCount = Math.round(2 + (depthGini * 8))  // 2–6 rings
+// After Gini fix: expect range ~0.15 to 0.65 across teams
+// Maps to 3–7 rings — adjust multiplier after seeing real values
+
+
+Crater radius computed from absolute PPG gap:
+
+const craterRadius = 18 + (Math.abs(ppgDelta) / maxPPGDelta) * 24
+
+
+Part 4 — Color Toggle System
+State:
+
+const [colorMode, setColorMode] = useState<'TERRAIN' | 'TEAMS'>('TERRAIN')
+const [hoveredTeam, setHoveredTeam] = useState<string | null>(null)
+const [lockedTeam, setLockedTeam] = useState<string | null>(null)
+
+
+Toggle button in chart header — same styling as existing ABSOLUTE/COMPARE toggle:
+
+<div className="toggle-group">
+  <button
+    className={`toggle-btn ${colorMode === 'TERRAIN' ? 'active' : ''}`}
+    onClick={() => setColorMode('TERRAIN')}
+  >
+    TERRAIN
+  </button>
+  <button
+    className={`toggle-btn ${colorMode === 'TEAMS' ? 'active' : ''}`}
+    onClick={() => setColorMode('TEAMS')}
+  >
+    TEAMS
+  </button>
+</div>
+
+
+Per-crater color resolution:
+
+function getCraterFill(teamId: string, teamColor: string): {
+  isColored: boolean,
+  fillColor: string
+} {
+  // Locked team always colored
+  if (lockedTeam === teamId)
+    return { isColored: true, fillColor: teamColor }
+ 
+  // Hovered team colored (only if nothing locked)
+  if (!lockedTeam && hoveredTeam === teamId)
+    return { isColored: true, fillColor: teamColor }
+ 
+  // TEAMS mode — all colored, deemphasize non-focused
+  if (colorMode === 'TEAMS') {
+    const isDeemphasized = (lockedTeam || hoveredTeam) &&
+      teamId !== (lockedTeam ?? hoveredTeam)
+    return {
+      isColored: true,
+      fillColor: isDeemphasized
+        ? (isDark ? '#2a2835' : '#c8c2ba')  // pottery gray
+        : teamColor
+    }
+  }
+ 
+  // Default TERRAIN — no color
+  return { isColored: false, fillColor: '' }
+}
+
+
+Click interaction:
+
+// On crater click
+const handleCraterClick = (teamId: string) => {
+  setLockedTeam(prev => prev === teamId ? null : teamId)
+}
+
+// On crater hover
+const handleCraterHover = (teamId: string | null) => {
+  setHoveredTeam(teamId)
+}
+
+
+Part 5 — Color Flood Animation
+When isColored transitions from false to true on a crater, animate the fill flooding in from center outward. Use a CSS transition on the radial gradient or a Framer Motion animate on the fill opacity:
+
+// Wrap the depression circle in motion.circle
+<motion.circle
+  cx={cx} cy={cy} r={radius * 0.92}
+  fill={`url(#depression-${teamId})`}
+  initial={false}
+  animate={{
+    opacity: isColored ? 1 : 0.7,
+  }}
+  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+/>
+
+// For the staggered wave effect in TEAMS mode toggle:
+// Delay each crater by its index * 0.03s
+transition={{
+  duration: 0.4,
+  delay: teamIndex * 0.03,
+  ease: [0.22, 1, 0.36, 1]
+}}
+
+
+The 0.03s stagger across 30 teams = 0.9s total wave duration — fast enough to feel responsive, slow enough to see the cascade.
+
+Part 6 — Dotted Connection Paths
+The Horseman reference has dotted lines connecting related nodes. For the scatter, render the regression path as a dotted SVG path using strokeDasharray:
+
+// Regression trend path — constellation style
+<path
+  d={regressionPathD}  // computed from linearRegression output
+  fill="none"
+  stroke={isDark ? 'rgba(180,170,160,0.3)' : 'rgba(100,90,80,0.25)'}
+  strokeWidth={1.5}
+  strokeDasharray="2 6"  // short dash, long gap — more like dots than dashes
+  strokeLinecap="round"
+/>
+
+
+strokeDasharray="2 6" produces the dotted constellation feel from the reference. strokeDasharray="4 4" is more dashed — use 2 6 to match Horseman.
+
+Part 7 — Labels
+Clean, minimal, monospaced:
+
+<text
+  x={cx}
+  y={cy - craterRadius - 6}
+  textAnchor="middle"
+  fontFamily="JetBrains Mono"
+  fontSize={9}
+  fontWeight={500}
+  letterSpacing="0.08em"
+  fill={isDark ? 'rgba(200,195,190,0.7)' : 'rgba(80,70,60,0.65)'}
+>
+  {teamAbbr}  // 3-4 chars: ATL, NYR, CLT, PHI etc
+</text>
+
+
+No background pill, no border — just the text floating above the crater. The monospace font and letter-spacing gives it the technical data label feel from the Horseman reference.
+
+Part 8 — Insight Card Update
+The current insight card text is good structurally but needs the punchier format. Update travelResilienceHeadline for the scatter:
+
+// Current (too hedged):
+"No clear travel penalty league-wide (R² = 0.07) — but NY Red Bulls
+shows the largest home advantage gap (1.35 PPG)."
+
+// Target format — same content, more direct:
+`R² = ${r2.toFixed(2)} — travel alone doesn't predict performance.
+${outlierTeam.name} defies the trend: ${outlierTeam.miles.toLocaleString()}
+miles traveled, ${outlierTeam.ppgDelta > 0 ? '+' : ''}${outlierTeam.ppgDelta.toFixed(2)}
+home advantage.`
+
+
+Part 9 — What NOT to Change
+Keep the existing chart structure, axis scales, conference filter toggle, and resilienceUtils.ts data pipeline intact. This is a visual layer replacement only — no data logic changes. The TravelScatterChart component interface stays the same.
+
+Session Scope
+Single focused session. All changes contained within TravelScatterChart.tsx. Zero changes to data layer, FilterContext, or other components. Start with Part 1 (background texture) and Part 2 (simplified crater) to establish the visual baseline before adding the color system. Verify light mode and dark mode before moving to animation.
+The test for success: screenshot the TERRAIN mode result and compare against the Horseman reference. If the craters read as physical impressions pressed into a surface rather than digital UI elements, it’s working. If they still look like speaker cones or dials, simplify further.​​​​​​​​​​​​​​​​
+
+Would it be cool to have the short labels like ‘ATL’ also be recessed in the graph or written on like text for contrast against the texture?
+
+Yes — and that’s actually the detail that would push it from “nice visualization” to “coherent physical object.” Right now labels float above craters as screen text, which breaks the material illusion the moment your eye hits them.
+There are two directions that both work, and they feel quite different:
+Recessed / embossed text — the letters are pressed INTO the surface like a stamp or die-cut. This is the most consistent with the Horseman aesthetic since everything in that reference is a relief effect. Technically it’s achieved with a duplicate text element offset 1-2px down-right in a darker color (the shadow cast by the depression) and the main text in a lighter color (the raised edge catching light). No actual 3D — just two text layers creating the illusion of depth. The result feels like text machined into metal or pressed into clay.
+Handwritten / scratched text — thin, slightly irregular letterforms that look like they were scribed into the surface with a stylus. You’d use a thin stroke weight on a condensed monospace font, maybe with a very subtle SVG feTurbulence displacement filter applied to the text path to give it micro-irregularity. This is harder to execute cleanly but has a more organic, tactile quality.
+The recessed approach is the right call for your dashboard — it’s consistent with your existing neumorphic language (which is fundamentally about inset/outset shadows creating depth), it’s achievable cleanly in SVG, and it matches the Horseman reference most directly.
+Here’s the exact SVG implementation:
+
+function RecessedLabel({ x, y, text, isDark }) {
+  const shadowColor = isDark
+    ? 'rgba(0,0,0,0.8)'
+    : 'rgba(80,70,60,0.45)'
+  const highlightColor = isDark
+    ? 'rgba(255,255,255,0.12)'
+    : 'rgba(255,255,255,0.9)'
+  const baseColor = isDark
+    ? 'rgba(140,130,120,0.6)'
+    : 'rgba(110,100,90,0.7)'
+
+  const style = {
+    fontFamily: 'JetBrains Mono',
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: '0.12em',
+    textAnchor: 'middle' as const,
+  }
+
+  return (
+    <g>
+      {/* Shadow layer — offset down-right, dark */}
+      {/* Creates the illusion of a depression casting shadow */}
+      <text
+        x={x + 0.8} y={y + 1.0}
+        fill={shadowColor}
+        {...style}
+      >
+        {text}
+      </text>
+
+      {/* Highlight layer — offset up-left, light */}
+      {/* Creates the illusion of a raised edge catching light */}
+      <text
+        x={x - 0.5} y={y - 0.5}
+        fill={highlightColor}
+        {...style}
+      >
+        {text}
+      </text>
+
+      {/* Base layer — the actual letterform color */}
+      <text
+        x={x} y={y}
+        fill={baseColor}
+        {...style}
+      >
+        {text}
+      </text>
+    </g>
+  )
+}
+
+
+Three text layers, two pixel offsets. The shadow offset (0.8px right, 1.0px down) is slightly larger than the highlight offset (0.5px left, 0.5px up) because real recessed geometry casts more shadow than it catches highlight — that asymmetry is what makes it read as genuinely pressed in rather than raised out.
+One additional touch worth adding
+Place the label inside the crater depression rather than above it. Center it at cy + craterRadius * 0.55 — sitting in the lower half of the bowl. This does two things: it removes the floating label above the crater which breaks the physical metaphor, and it makes the text feel like it was stamped into the bottom of the impression. Smaller craters (lower PPG gap) have less room but at 9px monospace font even an 18px radius crater has enough space for 3-4 characters.
+The combined effect — recessed text sitting inside a pressed crater on a textured plaster surface — is exactly the Horseman aesthetic. Every element is part of the same physical material rather than data elements layered on top of a background.
+Add this to the crater rewrite brief as Part 2b, right after the crater geometry spec and before the color system. It’s a small addition but it completes the material consistency of the whole chart.​​​​​​​​​​​​​​​​
