@@ -711,12 +711,12 @@ input[type="range"]::-webkit-slider-thumb {
 @keyframes modal-enter {
   0% {
     opacity: 0;
-    transform: perspective(1200px) translateZ(200px) scale(0.9);
-    filter: blur(6px);
+    transform: scale(0.95);
+    filter: blur(4px);
   }
   100% {
     opacity: 1;
-    transform: perspective(1200px) translateZ(0) scale(1);
+    transform: scale(1);
     filter: blur(0);
   }
 }
