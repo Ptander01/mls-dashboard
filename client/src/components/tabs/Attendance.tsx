@@ -588,13 +588,8 @@ export default function Attendance() {
       ? Math.max(teamMax, trendCapacity || 0)
       : (teamMaxVals.length > 0 ? Math.max(...teamMaxVals, ...leagueWeeklyData.map(d => d.max)) : 50000);
 
-    // Compute the team's season average for the reference line
-    const seasonAvg = showGhost && weeklyData.length > 0
-      ? Math.round(weeklyData.reduce((s, d) => s + d.avg, 0) / weeklyData.length)
-      : 0;
-
-    // For single team: check if min/max are actually different from avg (i.e. multiple games per week)
-    const hasVariation = weeklyData.some(d => d.max !== d.min);
+    // For league view: check if min/max are actually different from avg (multiple games per week)
+    const hasVariation = !showGhost && weeklyData.some(d => d.max !== d.min);
 
     return (
       <div style={{ height }}>
@@ -613,17 +608,18 @@ export default function Attendance() {
                 <div className="glass-sm p-2 text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
                   <div className="font-semibold" style={{ color: areaColor }}>Week {d.week}</div>
                   <div>Attendance: <span className="text-amber">{d.avg?.toLocaleString()}</span></div>
-                  {showGhost && seasonAvg > 0 && (
-                    <div style={{ color: d.avg >= seasonAvg ? 'var(--emerald)' : 'var(--coral)' }}>
-                      {d.avg >= seasonAvg ? '+' : ''}{(d.avg - seasonAvg).toLocaleString()} vs season avg ({seasonAvg.toLocaleString()})
-                    </div>
-                  )}
-                  {/* Only show min/max when there's actual variation (multiple games per week) */}
-                  {hasVariation && d.max !== d.min && (
+                  {/* League view: show the spread */}
+                  {!showGhost && d.max !== d.min && (
                     <>
-                      <div style={{ color: 'var(--glass-text-muted)' }}>Max: {d.max?.toLocaleString()}</div>
-                      <div style={{ color: 'var(--glass-text-muted)' }}>Min: {d.min?.toLocaleString()}</div>
+                      <div style={{ color: 'var(--glass-text-muted)' }}>High: {d.max?.toLocaleString()}</div>
+                      <div style={{ color: 'var(--glass-text-muted)' }}>Low: {d.min?.toLocaleString()}</div>
                     </>
+                  )}
+                  {/* Team view: show capacity context */}
+                  {showGhost && trendCapacity > 0 && (
+                    <div style={{ color: 'var(--glass-text-muted)' }}>
+                      {Math.round((d.avg / trendCapacity) * 100)}% of capacity ({trendCapacity.toLocaleString()})
+                    </div>
                   )}
                   {leagueWeek && (
                     <div style={{ color: 'var(--glass-text-muted)', borderTop: '1px solid var(--table-border)', paddingTop: 3, marginTop: 3 }}>
@@ -700,30 +696,22 @@ export default function Attendance() {
                     baselineY={baselineY}
                     areaColor={areaColor}
                   />
-                  {/* Variable MIN/MAX braille dots — only show when there's actual variation */}
+                  {/* League view: show min/max spread as braille dots */}
                   {hasVariation && minPts.length >= 2 && (
                     <BrailleVariableLine
                       points={minPts.map((p: any) => ({ x: p.x, y: p.y }))}
-                      label={`Min`}
+                      label={`Low`}
                       labelColor={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'}
                     />
                   )}
                   {hasVariation && maxPts.length >= 2 && (
                     <BrailleVariableLine
                       points={maxPts.map((p: any) => ({ x: p.x, y: p.y }))}
-                      label={`Max`}
+                      label={`High`}
                       labelColor={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'}
                     />
                   )}
-                  {/* Season average braille dots — only when a specific team is selected */}
-                  {showGhost && seasonAvg > 0 && yAxis && (
-                    <BrailleReferenceDots
-                      y={yAxis.scale(seasonAvg)} xStart={chartLeft} xEnd={chartRight}
-                      label={`Season Avg ${(seasonAvg / 1000).toFixed(1)}k`}
-                      labelColor={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'}
-                    />
-                  )}
-                  {/* Capacity braille dots — only when a specific team is selected */}
+                  {/* Team view: capacity braille dots only */}
                   {effectiveTrendTeam && capYPx != null && trendCapacity > 0 && (
                     <BrailleReferenceDots
                       y={capYPx} xStart={chartLeft} xEnd={chartRight}
@@ -1108,7 +1096,7 @@ export default function Attendance() {
                 </span>
               )}
             </h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{effectiveTrendTeam ? `${trendTeamObj?.short}'s home gate week by week. Dotted line marks capacity, faint area shows the league average for context.` : 'League-wide home attendance across the season. Select a team from the dropdown or click a bar above to isolate one club.'}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{effectiveTrendTeam ? `${trendTeamObj?.short}'s home gate week by week. Dotted line = capacity, faint background = league average.` : 'League-wide home attendance across the season — dotted lines show the high and low each week. Select a team to isolate one club.'}</p>
           </div>
           <div className="flex items-center gap-2">
             <select
