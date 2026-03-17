@@ -1,0 +1,104 @@
+[
+  {
+    "matchId": 3877060,
+    "date": "2023-08-27",
+    "kickOff": "02:39:00.000",
+    "homeTeam": {
+      "name": "New York Red Bulls"
+    },
+    "awayTeam": {
+      "name": "Inter Miami"
+    },
+    "homeScore": 0,
+    "awayScore": 2,
+    "matchWeek": 28,
+    "stadium": "Red Bull Arena (New Jersey)",
+    "referee": "Allen Chapman",
+    "competitionStage": "Regular Season"
+  },
+  {
+    "matchId": 3877072,
+    "date": "2023-08-31",
+    "kickOff": "02:39:00.000",
+    "homeTeam": {
+      "name": "Inter Miami"
+    },
+    "awayTeam": {
+      "name": "Nashville SC"
+    },
+    "homeScore": 0,
+    "awayScore": 0,
+    "matchWeek": 29,
+    "stadium": "DRV PNK Stadium",
+    "referee": "Chris Penso",
+    "competitionStage": "Regular Season"
+  },
+  {
+    "matchId": 3877090,
+    "date": "2023-09-04",
+    "kickOff": "05:09:00.000",
+    "homeTeam": {
+      "name": "LAFC"
+    },
+    "awayTeam": {
+      "name": "Inter Miami"
+    },
+    "homeScore": 1,
+    "awayScore": 3,
+    "matchWeek": 30,
+    "stadium": "BMO Stadium",
+    "referee": "Ted Unkel",
+    "competitionStage": "Regular Season"
+  },
+  {
+    "matchId": 3877115,
+    "date": "2023-09-21",
+    "kickOff": "02:39:00.000",
+    "homeTeam": {
+      "name": "Inter Miami"
+    },
+    "awayTeam": {
+      "name": "Toronto FC"
+    },
+    "homeScore": 4,
+    "awayScore": 0,
+    "matchWeek": 33,
+    "stadium": "DRV PNK Stadium",
+    "referee": "Drew Fischer",
+    "competitionStage": "Regular Season"
+  },
+  {
+    "matchId": 3877170,
+    "date": "2023-10-08",
+    "kickOff": "02:39:00.000",
+    "homeTeam": {
+      "name": "Inter Miami"
+    },
+    "awayTeam": {
+      "name": "Cincinnati"
+    },
+    "homeScore": 0,
+    "awayScore": 1,
+    "matchWeek": 37,
+    "stadium": "DRV PNK Stadium",
+    "referee": "Rubiel Vazquez",
+    "competitionStage": "Regular Season"
+  },
+  {
+    "matchId": 3877194,
+    "date": "2023-10-22",
+    "kickOff": "01:09:00.000",
+    "homeTeam": {
+      "name": "Charlotte"
+    },
+    "awayTeam": {
+      "name": "Inter Miami"
+    },
+    "homeScore": 1,
+    "awayScore": 0,
+    "matchWeek": 38,
+    "stadium": "Bank of America Stadium",
+    "referee": "Guido Gonzalez",
+    "competitionStage": "Regular Season"
+  }
+]
