@@ -636,23 +636,24 @@ export function Extruded3DHorizontalBar(props: any) {
     ? (isDarkTheme ? POTTERY_DARK : POTTERY_LIGHT)
     : (fill || '#4A4A5A');
   const id = `hbar3d_${gradientCounter++}`;
-  const highlightColor = lighten(baseColor, deemphasized ? 0.15 : 0.4);
-  const shadowColor = darken(baseColor, deemphasized ? 0.2 : 0.5);
-  const sideColor = darken(baseColor, deemphasized ? 0.15 : 0.35);
+  // Match the same highlight/shadow depth as Extruded3DBarWithCeiling — pottery
+  // color alone handles the deemphasis, not transparency or reduced extrusion
+  const highlightColor = lighten(baseColor, 0.4);
+  const shadowColor = darken(baseColor, 0.5);
+  const sideColor = darken(baseColor, 0.35);
 
-  // Reduced extrusion for deemphasized bars
-  const extrudeScale = deemphasized ? 0.6 : 1;
-  const extrudeX = Math.round(2 * extrudeScale);
-  const extrudeY = Math.round(3 * extrudeScale);
-  const opacity = deemphasized ? 0.55 : 1;
+  // Full extrusion for all bars — deemphasized bars keep their 3D physicality
+  const extrudeX = 2;
+  const extrudeY = 3;
 
   return (
-    <g opacity={opacity} style={{ transition: 'opacity 0.3s ease' }}>
+    <g style={{ transition: 'opacity 0.3s ease' }}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={highlightColor} stopOpacity={0.92} />
-          <stop offset="15%" stopColor={baseColor} stopOpacity={0.88} />
-          <stop offset="85%" stopColor={baseColor} stopOpacity={0.85} />
+          <stop offset="0%" stopColor={highlightColor} stopOpacity={0.95} />
+          <stop offset="8%" stopColor={lighten(baseColor, 0.15)} stopOpacity={0.92} />
+          <stop offset="50%" stopColor={baseColor} stopOpacity={0.88} />
+          <stop offset="92%" stopColor={darken(baseColor, 0.15)} stopOpacity={0.88} />
           <stop offset="100%" stopColor={shadowColor} stopOpacity={0.92} />
         </linearGradient>
         <filter id={`${id}_shadow`} x="-25%" y="-20%" width="160%" height="150%">
@@ -682,14 +683,14 @@ export function Extruded3DHorizontalBar(props: any) {
         />
       )}
 
-      {/* Cast shadow — enhanced for topographic depth */}
+      {/* Cast shadow — same depth as vertical bars */}
       <rect
         x={barX + 5}
         y={y + 6}
         width={barWidth + 2}
         height={h + 2}
         rx={3}
-        fill={`rgba(0,0,0,${deemphasized ? 0.2 : 0.45})`}
+        fill="rgba(0,0,0,0.45)"
         filter={`url(#${id}_shadow)`}
       />
       {/* Ambient ground shadow */}
@@ -699,22 +700,22 @@ export function Extruded3DHorizontalBar(props: any) {
         width={barWidth}
         height={5}
         rx={2.5}
-        fill={`rgba(0,0,0,${deemphasized ? 0.08 : 0.15})`}
+        fill="rgba(0,0,0,0.15)"
         filter={`url(#${id}_shadow)`}
       />
 
-      {/* Bottom face (extrusion depth) */}
+      {/* Bottom face (extrusion depth) — full opacity like vertical bars */}
       <path
         d={`M${barX},${y + h} L${barX + extrudeX},${y + h + extrudeY} L${barX + barWidth + extrudeX},${y + h + extrudeY} L${barX + barWidth},${y + h} Z`}
         fill={sideColor}
-        fillOpacity={deemphasized ? 0.35 : 0.65}
+        fillOpacity={0.6}
       />
 
       {/* Right side face */}
       <path
         d={`M${barX + barWidth},${y} L${barX + barWidth + extrudeX},${y + extrudeY} L${barX + barWidth + extrudeX},${y + h + extrudeY} L${barX + barWidth},${y + h} Z`}
         fill={sideColor}
-        fillOpacity={deemphasized ? 0.3 : 0.5}
+        fillOpacity={0.7}
       />
 
       {/* Front face */}
@@ -728,6 +729,13 @@ export function Extruded3DHorizontalBar(props: any) {
         fill={`url(#${id})`}
       />
 
+      {/* Top face — subtle lit surface like vertical bars */}
+      <path
+        d={`M${barX},${y} L${barX + extrudeX},${y - extrudeY + 1} L${barX + barWidth + extrudeX},${y - extrudeY + 1} L${barX + barWidth},${y} Z`}
+        fill={highlightColor}
+        fillOpacity={0.18}
+      />
+
       {/* Top highlight */}
       <rect
         x={barX + 1}
@@ -736,7 +744,7 @@ export function Extruded3DHorizontalBar(props: any) {
         height={Math.min(2, h * 0.1)}
         rx={1}
         fill={highlightColor}
-        fillOpacity={deemphasized ? 0.2 : 0.5}
+        fillOpacity={0.55}
       />
     </g>
   );
