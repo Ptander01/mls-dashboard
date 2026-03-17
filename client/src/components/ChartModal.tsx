@@ -105,6 +105,7 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
           style={{
             position: 'relative',
             width: '100%',
+            height: '100%',
             maxHeight: '100%',
             display: 'flex',
             flexDirection: 'column',
@@ -141,13 +142,15 @@ export function ChartModal({ isOpen, onClose, title, children }: ChartModalProps
             </button>
           </div>
 
-          {/* Content — scrollable, fills remaining space */}
+          {/* Content — fills remaining space, children should use h-full */}
           <div
             style={{
               flex: 1,
               overflow: 'auto',
               padding: '1.25rem',
               minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
             }}
             key={animationDone ? 'ready' : 'animating'}
           >
