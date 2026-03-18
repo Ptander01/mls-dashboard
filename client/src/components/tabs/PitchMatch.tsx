@@ -8,6 +8,7 @@ import { PLAYERS, getTeam } from '@/lib/mlsData';
 import NeuCard from '@/components/NeuCard';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
 import { Flame, Crosshair, Share2 } from 'lucide-react';
+import StaggerContainer, { StaggerItem } from '@/components/StaggerContainer';
 
 const PITCH_BG = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/pitch-bg-SCSoxY6mUL64vxkYMYHLEF.webp';
 
@@ -283,16 +284,16 @@ export default function PitchMatch() {
   );
 
   return (
-    <div className="space-y-6 mt-4">
+    <StaggerContainer className="space-y-6 mt-4">
       {/* Tab Header Card — elevated command center */}
-      <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
+      <StaggerItem><NeuCard variant="raised" animate={false} className="p-5">
         <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
           <span className="font-semibold text-foreground">Pitch Match</span> — Dive into tactical match data on a virtual pitch. The heatmap shows player positioning intensity, the shot map plots every attempt with xG-scaled markers (goals highlighted), and the passing network reveals team shape and key link-up play. Select a team to see their tactical fingerprint.
         </p>
-      </NeuCard>
+      </NeuCard></StaggerItem>
 
       {/* View Selector */}
-      <div className="flex items-center gap-3">
+      <StaggerItem><div className="flex items-center gap-3">
         {([
           { id: 'heatmap' as PitchView, label: 'Player Heatmap', icon: Flame },
           { id: 'shotmap' as PitchView, label: 'Shot Map', icon: Crosshair },
@@ -309,9 +310,9 @@ export default function PitchMatch() {
             </button>
           );
         })}
-      </div>
+      </div></StaggerItem>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+      <StaggerItem><div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         {/* Team/Player Selector */}
         <NeuCard delay={0.05} className="p-4 lg:col-span-1">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Select Team</h4>
@@ -433,8 +434,7 @@ export default function PitchMatch() {
             </div>
           )}
         </NeuCard>
-      </div>
-
+       </div></StaggerItem>
       {/* Maximize Modal */}
       <ChartModal isOpen={maximized === 'pitch'} onClose={() => setMaximized(null)}
         title={view === 'heatmap' ? `Heatmap — ${selPlayerData?.name || teamPlayers[0]?.name || 'Team'}` :
@@ -442,6 +442,6 @@ export default function PitchMatch() {
                `Passing Network — ${getTeam(selectedTeam)?.short || 'Team'}`}>
         <PitchVisualization isModal />
       </ChartModal>
-    </div>
+    </StaggerContainer>
   );
 }

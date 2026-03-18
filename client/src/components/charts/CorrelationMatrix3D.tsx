@@ -14,7 +14,7 @@
  *   - 3D Legend on the right side with raised/recessed indicators
  */
 
-import { useRef, useState, useMemo, useCallback, useEffect } from 'react';
+import { useRef, useState, useMemo, useCallback, useEffect, memo } from 'react';
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { OrthographicCamera, Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -635,7 +635,7 @@ function Scene({ matrix, activeStats, isDark, hoveredCell, onHover, onCellClick 
 // MAIN EXPORT COMPONENT
 // ═══════════════════════════════════════════
 
-export default function CorrelationMatrix3D({
+function CorrelationMatrix3DInner({
   matrix,
   activeStats,
   isDark,
@@ -692,3 +692,8 @@ export default function CorrelationMatrix3D({
     </div>
   );
 }
+
+const CorrelationMatrix3D = memo(CorrelationMatrix3DInner, (prev, next) =>
+  prev.matrix === next.matrix && prev.activeStats === next.activeStats && prev.isDark === next.isDark
+);
+export default CorrelationMatrix3D;

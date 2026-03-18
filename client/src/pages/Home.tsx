@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import FilterPanel from '@/components/FilterPanel';
+import TabSkeleton from '@/components/TabSkeleton';
 import { useFilters } from '@/contexts/FilterContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Users, DollarSign, BarChart3, Map, Target, Sun, Moon, Filter } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 // Lazy-loaded tab components
 const PlayerStats = lazy(() => import('@/components/tabs/PlayerStats'));
@@ -21,19 +23,33 @@ const tabs = [
   { id: 'pitch', label: 'Pitch Match', icon: Target },
 ];
 
-/** Skeleton fallback shown while a tab chunk is loading */
-function TabSkeleton() {
-  return (
-    <div className="flex flex-col gap-4 py-8 animate-pulse">
-      <div className="h-8 rounded-lg w-48" style={{ background: 'var(--neu-bg-pressed)' }} />
-      <div className="grid grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-24 rounded-xl" style={{ background: 'var(--neu-bg-pressed)' }} />
-        ))}
-      </div>
-      <div className="h-64 rounded-xl" style={{ background: 'var(--neu-bg-pressed)' }} />
-    </div>
-  );
+/** Tab content transition variants */
+const tabVariants = {
+  initial: { opacity: 0, scale: 0.98, filter: 'blur(4px)' },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    filter: 'blur(0px)',
+    transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.98,
+    filter: 'blur(4px)',
+    transition: { duration: 0.15, ease: [0.4, 0, 1, 1] as const },
+  },
+};
+
+/** Render the active tab component */
+function TabContent({ activeTab }: { activeTab: string }) {
+  switch (activeTab) {
+    case 'players': return <PlayerStats />;
+    case 'budget': return <TeamBudget />;
+    case 'attendance': return <Attendance />;
+    case 'travel': return <TravelMap />;
+    case 'pitch': return <PitchMatch />;
+    default: return null;
+  }
 }
 
 // Exploded Z-axis assembly animation component
@@ -148,7 +164,6 @@ function ThemeToggle() {
 export default function Home() {
   const [activeTab, setActiveTab] = useState('players');
   const [loaded, setLoaded] = useState(false);
-  const [tabTransition, setTabTransition] = useState(false);
   const { isFilterActive, filteredPlayers, filteredTeams } = useFilters();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -160,11 +175,7 @@ export default function Home() {
 
   const handleTabChange = (tabId: string) => {
     if (tabId === activeTab) return;
-    setTabTransition(true);
-    setTimeout(() => {
-      setActiveTab(tabId);
-      setTabTransition(false);
-    }, 150);
+    setActiveTab(tabId);
   };
 
   return (
@@ -295,24 +306,21 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Content Area */}
+      {/* Content Area with AnimatePresence crossfade */}
       <main className="px-4 xl:px-6 2xl:px-8 pb-8 max-w-[2400px] mx-auto">
-        <div
-          key={activeTab}
-          style={{
-            opacity: tabTransition ? 0 : 1,
-            transform: tabTransition ? 'translateY(15px)' : 'translateY(0)',
-            transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-          }}
-        >
-          <Suspense fallback={<TabSkeleton />}>
-            {activeTab === 'players' && <PlayerStats />}
-            {activeTab === 'budget' && <TeamBudget />}
-            {activeTab === 'attendance' && <Attendance />}
-            {activeTab === 'travel' && <TravelMap />}
-            {activeTab === 'pitch' && <PitchMatch />}
-          </Suspense>
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            variants={tabVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <Suspense fallback={<TabSkeleton />}>
+              <TabContent activeTab={activeTab} />
+            </Suspense>
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Filter Panel */}

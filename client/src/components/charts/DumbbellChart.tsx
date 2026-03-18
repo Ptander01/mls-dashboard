@@ -12,7 +12,7 @@
  * Symbology: STANDARD (green=home, red=away) | TEAM HUE (team primary color gradient)
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { lighten, darken, hexToRgba } from '@/lib/chartUtils';
 import type { TeamResilienceMetrics } from '@/lib/resilienceUtils';
@@ -289,7 +289,7 @@ function ChromeKnob({
   );
 }
 
-export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartProps) {
+function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [mode, setMode] = useState<MetricMode>('PPG');
@@ -594,3 +594,8 @@ export default function DumbbellChart({ metrics, height = 700 }: DumbbellChartPr
     </div>
   );
 }
+
+const DumbbellChart = memo(DumbbellChartInner, (prev, next) =>
+  prev.metrics === next.metrics && prev.height === next.height
+);
+export default DumbbellChart;

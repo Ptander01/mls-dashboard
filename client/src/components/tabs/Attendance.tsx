@@ -14,6 +14,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { InsightPanel } from '@/components/InsightPanel';
 import { attendanceHeadline, attendanceInsights, attendanceTrendCardInsights, capacityFillCardInsights, gravPullCardInsights, gravitationalPullHeadline, awayImpactCardInsights, homeResponseCardInsights } from '@/lib/insightEngine';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
+import StaggerContainer, { StaggerItem } from '@/components/StaggerContainer';
 
 // ─── Stadium Capacities (expandable max for multi-use venues) ───
 const STADIUM_CAPACITY: Record<string, number> = {
@@ -995,17 +996,17 @@ export default function Attendance() {
   };
 
   return (
-    <div className="space-y-6 mt-4">
+    <StaggerContainer className="space-y-6 mt-4">
       {/* Tab Header Card — elevated command center */}
-      <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
+      <StaggerItem><NeuCard variant="raised" animate={false} className="p-5">
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           <span className="font-semibold text-foreground">Attendance</span> — Explore match-day attendance across all MLS venues. The bar chart ranks teams by average home attendance (toggle to fill rate to see stadium utilization). The dotted white line shows stadium capacity. The trend chart tracks weekly attendance patterns, and the drill-down panels reveal how specific away teams affect turnout.
         </p>
         <InsightPanel insights={attInsights} isDark={isDark} onToggle={setIsAnalyzing} />
-      </NeuCard>
+      </NeuCard></StaggerItem>
 
       {/* League-Wide Totals */}
-      <div>
+      <StaggerItem><div>
         <div className="flex items-center gap-2 mb-3 px-1">
           <div className="w-1 h-4 rounded-full bg-cyan" style={{ boxShadow: '0 0 6px var(--cyan)' }} />
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>League-Wide Totals</h2>
@@ -1046,10 +1047,10 @@ export default function Attendance() {
           <AnimatedCounter value={filteredMatches.length} className="text-2xl text-purple-400" />
         </NeuCard>
         </div>
-      </div>
+      </div></StaggerItem>
 
       {/* Home Attendance with Fill Rate Toggle */}
-      <NeuCard delay={0.15} className="p-4">
+      <StaggerItem><NeuCard animate={false} className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
@@ -1082,10 +1083,10 @@ export default function Attendance() {
         </div>
         <CardInsightSection isOpen={showCapacityInsights} insights={capacityFillInsights} isDark={isDark} />
         <HomeBarContent />
-      </NeuCard>
+      </NeuCard></StaggerItem>
 
       {/* Weekly Trend with Team Filter */}
-      <NeuCard delay={0.25} className="p-4">
+      <StaggerItem><NeuCard animate={false} className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
@@ -1121,10 +1122,10 @@ export default function Attendance() {
         </div>
         <CardInsightSection isOpen={showTrendInsights} insights={trendInsights} isDark={isDark} />
         <WeeklyContent />
-      </NeuCard>
+      </NeuCard></StaggerItem>
 
       {/* Gravitational Pull */}
-      <NeuCard delay={0.35} className={`p-4 ${gravMode === 'FULL SCALE' ? 'z-10 relative' : ''}`}
+      <StaggerItem><NeuCard animate={false} className={`p-4 ${gravMode === 'FULL SCALE' ? 'z-10 relative' : ''}`}
         overflowVisible={gravMode === 'FULL SCALE'}
       >
         <div className="flex items-center justify-between mb-2">
@@ -1210,10 +1211,10 @@ export default function Attendance() {
             ? 'Click any team bar to highlight it and drill down into their away impact below.'
             : 'Showing top 10 teams on a true linear scale. Switch to FOCUSED to see all 30 teams with pottery focus.'}
         </p>
-      </NeuCard>
+      </NeuCard></StaggerItem>
 
       {/* Drill-Down Panels — always visible, show placeholder when no team selected */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <StaggerItem><div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <NeuCard delay={0.1} className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div>
@@ -1272,7 +1273,7 @@ export default function Attendance() {
             <CardInsightSection isOpen={showHomeResponseInsights} insights={homeResponseInsights} isDark={isDark} />
             <HomeResponseContent />
           </NeuCard>
-        </div>
+        </div></StaggerItem>
 
       {/* Maximize Modals */}
       <ChartModal isOpen={maximized === 'home'} onClose={() => setMaximized(null)}
@@ -1391,6 +1392,6 @@ export default function Attendance() {
         title={`${selectedTeamObj?.short || 'Team'} — Home Response to Each Visitor`}>
         <HomeResponseContent height={600} />
       </ChartModal>
-    </div>
+    </StaggerContainer>
   );
 }

@@ -13,7 +13,7 @@
  *   - Orthographic camera — no perspective distortion
  */
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, memo } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { Html, Text } from '@react-three/drei';
 import * as THREE from 'three';
@@ -196,7 +196,7 @@ function generateInsights(metrics: TeamResilienceMetrics[]): TeamInsightItem[] {
    3D RING COMPONENT
    ═══════════════════════════════════════════════════════════ */
 
-function Ring({ position, ringRadius, tubeRadius, label, isDark, teamColor, showColor, tooltip }: {
+function Ring({ position, ringRadius, tubeRadius, label, isDark, teamColor, showColor, tooltip, teamId, hoveredTeam, onHoverTeam }: {
   position: [number, number, number];
   ringRadius: number;
   tubeRadius: number;
@@ -205,9 +205,13 @@ function Ring({ position, ringRadius, tubeRadius, label, isDark, teamColor, show
   teamColor: string;
   showColor: boolean;
   tooltip: TooltipData;
+  teamId: string;
+  hoveredTeam: string | null;
+  onHoverTeam: (id: string | null) => void;
 }) {
   const meshRef = useRef<THREE.Group>(null);
-  const [hovered, setHovered] = useState(false);
+  const hovered = hoveredTeam === teamId;
+  const dimmed = hoveredTeam !== null && hoveredTeam !== teamId;
 
   // Wall height proportional to ring size for shadow casting
   const wallHeight = ringRadius * 0.25 + 0.06;
@@ -235,11 +239,20 @@ function Ring({ position, ringRadius, tubeRadius, label, isDark, teamColor, show
     return geo;
   }, [ringRadius, wallThickness]);
 
-  // Subtle hover scale
+  // Subtle hover scale + dim animation
   useFrame(() => {
     if (meshRef.current) {
-      const target = hovered ? 1.06 : 1;
-      meshRef.current.scale.lerp(new THREE.Vector3(target, target, target), 0.12);
+      const targetScale = hovered ? 1.06 : 1;
+      meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.12);
+      // Smooth opacity transition for dimming
+      const targetOpacity = dimmed ? 0.15 : 1;
+      meshRef.current.traverse((child) => {
+        if ((child as THREE.Mesh).material && 'opacity' in (child as THREE.Mesh).material) {
+          const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          mat.transparent = true;
+          mat.opacity += (targetOpacity - mat.opacity) * 0.15;
+        }
+      });
     }
   });
 
@@ -253,8 +266,8 @@ function Ring({ position, ringRadius, tubeRadius, label, isDark, teamColor, show
       <group
         ref={meshRef}
         position={[0, wallHeight / 2, 0]}
-        onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
-        onPointerOut={() => setHovered(false)}
+        onPointerOver={(e) => { e.stopPropagation(); onHoverTeam(teamId); }}
+        onPointerOut={() => onHoverTeam(null)}
       >
         {/* Outer wall */}
         <mesh geometry={outerGeo} castShadow receiveShadow>
@@ -278,12 +291,16 @@ function Ring({ position, ringRadius, tubeRadius, label, isDark, teamColor, show
       >
         <div style={{
           fontSize: '9px',
-          fontWeight: 700,
+          fontWeight: hovered ? 800 : 700,
           fontFamily: 'Space Grotesk, sans-serif',
-          color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(60,55,50,0.55)',
+          color: hovered
+            ? (isDark ? 'rgba(255,255,255,0.95)' : 'rgba(30,30,30,0.95)')
+            : (isDark ? 'rgba(255,255,255,0.5)' : 'rgba(60,55,50,0.55)'),
           letterSpacing: '0.06em',
           whiteSpace: 'nowrap',
           textShadow: isDark ? 'none' : '0 1px 2px rgba(255,255,255,0.8)',
+          opacity: dimmed ? 0.15 : 1,
+          transition: 'opacity 0.2s ease, color 0.2s ease',
         }}>
           {label}
         </div>
@@ -392,6 +409,7 @@ function GridLines({ xTicks, yTicks, xScale, yScale, worldW, worldH, isDark }: {
       {lines.map((pair, i) => {
         const geo = new THREE.BufferGeometry().setFromPoints(pair);
         return (
+          // @ts-expect-error R3F line primitive uses geometry prop
           <line key={i} geometry={geo}>
             <lineBasicMaterial
               color={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
@@ -667,6 +685,7 @@ function ScatterScene({ rings, xTicks, yTicks, xScale, yScale, regression, xExte
   showColor: boolean;
   showInsights: boolean;
 }) {
+  const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
   const surfaceColor = isDark ? '#3a3a50' : '#ffffff';
 
   return (
@@ -733,6 +752,9 @@ function ScatterScene({ rings, xTicks, yTicks, xScale, yScale, regression, xExte
             teamColor={r.teamColor}
             showColor={showColor}
             tooltip={r.tooltip}
+            teamId={r.teamId}
+            hoveredTeam={hoveredTeam}
+            onHoverTeam={setHoveredTeam}
           />
         ))}
 
@@ -787,7 +809,7 @@ function ScatterScene({ rings, xTicks, yTicks, xScale, yScale, regression, xExte
    MAIN EXPORT COMPONENT
    ═══════════════════════════════════════════════════════════ */
 
-export default function TravelScatterChart({ metrics }: TravelScatterChartProps) {
+function TravelScatterChartInner({ metrics }: TravelScatterChartProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [conference, setConference] = useState<ConferenceFilter>('ALL');
@@ -1031,3 +1053,8 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
     </div>
   );
 }
+
+const TravelScatterChart = memo(TravelScatterChartInner, (prev, next) =>
+  prev.metrics === next.metrics
+);
+export default TravelScatterChart;

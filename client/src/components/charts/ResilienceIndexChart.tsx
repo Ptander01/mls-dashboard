@@ -17,7 +17,7 @@
  *                (Away Perf, Congestion Resistance, Long-Haul Record)
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { lighten, darken, mutedTeamColor } from '@/lib/chartUtils';
 import type { TeamResilienceMetrics } from '@/lib/resilienceUtils';
@@ -497,7 +497,7 @@ function ComponentTile3D({
 // MAIN COMPONENT
 // ═══════════════════════════════════════════
 
-export default function ResilienceIndexChart({ metrics }: ResilienceIndexChartProps) {
+function ResilienceIndexChartInner({ metrics }: ResilienceIndexChartProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [viewMode, setViewMode] = useState<ViewMode>('INDEX');
@@ -672,3 +672,8 @@ export default function ResilienceIndexChart({ metrics }: ResilienceIndexChartPr
     </div>
   );
 }
+
+const ResilienceIndexChart = memo(ResilienceIndexChartInner, (prev, next) =>
+  prev.metrics === next.metrics
+);
+export default ResilienceIndexChart;

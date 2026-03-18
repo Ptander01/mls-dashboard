@@ -22,6 +22,7 @@ import AnimatedCounter from '@/components/AnimatedCounter';
 import { ChartModal, MaximizeButton } from '@/components/ChartModal';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
 import type { CardInsightItem } from '@/components/CardInsight';
+import StaggerContainer, { StaggerItem } from '@/components/StaggerContainer';
 import { Play, Pause, SkipForward, SkipBack, MapPin, Plane, Route, RotateCcw } from 'lucide-react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -1037,16 +1038,16 @@ export default function TravelMap() {
   }, []);
 
   return (
-    <div className="space-y-6 mt-4">
+    <StaggerContainer className="space-y-6 mt-4">
       {/* Tab Header Card — elevated command center */}
-      <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
+      <StaggerItem><NeuCard variant="raised" animate={false} className="p-5">
         <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
           <span className="font-semibold text-foreground">Travel Map</span> — Visualize the travel burden across MLS clubs. The interactive map shows each team's location and travel routes. Select a team to see their away schedule, total miles traveled, and longest trips. Conference-heavy schedules mean Western teams often face significantly more travel than Eastern counterparts.
         </p>
-      </NeuCard>
+      </NeuCard></StaggerItem>
 
       {/* League-Wide Totals */}
-      <div>
+      <StaggerItem><div>
         <div className="flex items-center gap-2 mb-3 px-1">
           <div className="w-1 h-4 rounded-full bg-cyan" style={{ boxShadow: '0 0 6px var(--cyan)' }} />
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>League-Wide Totals</h2>
@@ -1082,10 +1083,10 @@ export default function TravelMap() {
           <AnimatedCounter value={weekMatches.length} className="text-2xl text-purple-400" />
         </NeuCard>
         </div>
-      </div>
+      </div></StaggerItem>
 
       {/* 3D Map */}
-      <NeuCard delay={0.15} className="p-4 overflow-hidden">
+      <StaggerItem><NeuCard animate={false} className="p-4 overflow-hidden">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
@@ -1202,19 +1203,19 @@ export default function TravelMap() {
             );
           })}
         </div>
-      </NeuCard>
+      </NeuCard></StaggerItem>
 
       {/* ═══ PERFORMANCE & RESILIENCE ANALYSIS ═══ */}
-      <div className="mt-6 mb-2">
+      <StaggerItem><div className="mt-6 mb-2">
         <h2 className="text-base font-bold tracking-wide" style={{ fontFamily: 'Space Grotesk' }}>
           Performance & Resilience Analysis
         </h2>
         <p className="text-[10px] text-muted-foreground mt-0.5">
           How does travel burden affect on-field results? Explore home/away splits and composite resilience scores.
         </p>
-      </div>
+      </div></StaggerItem>
 
-      <div className="space-y-4">
+      <StaggerItem><div className="space-y-4">
         {/* Chart A — Dumbbell Gap (full width) */}
         <NeuCard className="p-5">
           <div className="flex items-center justify-between mb-1">
@@ -1258,7 +1259,7 @@ export default function TravelMap() {
           </div>
           <DeepDivePanel metrics={resilienceMetrics} players={filteredPlayers} teams={filteredTeams} />
         </NeuCard>
-      </div>
+      </div></StaggerItem>
 
       {/* Maximize Modal */}
       <ChartModal isOpen={maximized === 'map'} onClose={() => setMaximized(null)} title={`League Travel Map — Matchweek ${currentWeek}`}>
@@ -1267,6 +1268,6 @@ export default function TravelMap() {
           <TooltipOverlay info={tooltip} position={tooltipPos} />
         </div>
       </ChartModal>
-    </div>
+    </StaggerContainer>
   );
 }

@@ -11,7 +11,7 @@
  * the automotive correlation reference image the user shared.
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart3, Grid3X3, FlaskConical, Activity, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -741,7 +741,7 @@ interface StatsPlaygroundProps {
   onAxisChange?: (xKey: string, yKey: string) => void;
 }
 
-export default function StatsPlayground({ players, onAxisChange }: StatsPlaygroundProps) {
+function StatsPlaygroundInner({ players, onAxisChange }: StatsPlaygroundProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [isOpen, setIsOpen] = useState(false);
@@ -937,3 +937,8 @@ export default function StatsPlayground({ players, onAxisChange }: StatsPlaygrou
     </NeuCard>
   );
 }
+
+const StatsPlayground = memo(StatsPlaygroundInner, (prev, next) =>
+  prev.players === next.players
+);
+export default StatsPlayground;

@@ -10,7 +10,7 @@
  * Integrates insight generator functions from resilienceUtils.ts and insightEngine.ts.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 import { mutedTeamColor, lighten, darken, hexToRgba, linearRegression } from '@/lib/chartUtils';
@@ -197,6 +197,7 @@ function SquadDepthBars({ metrics, isDark }: { metrics: TeamResilienceMetrics[];
 // ═══════════════════════════════════════════
 
 function SalaryRoadScatter({ metrics, isDark }: { metrics: TeamResilienceMetrics[]; isDark: boolean }) {
+  const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
   const data = useMemo(() => {
     return metrics
       .map(m => {
@@ -328,22 +329,39 @@ function SalaryRoadScatter({ metrics, isDark }: { metrics: TeamResilienceMetrics
         )}
 
         {/* Dot shadows */}
-        {data.map(d => (
-          <ellipse
-            key={`ss-${d.teamId}`}
-            cx={xScale(d.dpConcentration) + 2}
-            cy={yScale(d.awayPPG) + 6}
-            rx={8} ry={3}
-            fill={isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.08)'}
-            filter="url(#salary-shadow)"
-          />
-        ))}
+        {data.map(d => {
+          const dimmed = hoveredTeam !== null && hoveredTeam !== d.teamId;
+          return (
+            <ellipse
+              key={`ss-${d.teamId}`}
+              cx={xScale(d.dpConcentration) + 2}
+              cy={yScale(d.awayPPG) + 6}
+              rx={8} ry={3}
+              fill={isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.08)'}
+              filter="url(#salary-shadow)"
+              style={{ opacity: dimmed ? 0.15 : 1, transition: 'opacity 0.2s ease' }}
+            />
+          );
+        })}
 
         {/* Dots */}
         {data.map(d => {
           const color = mutedTeamColor(d.teamId, isDark);
+          const isHovered = hoveredTeam === d.teamId;
+          const dimmed = hoveredTeam !== null && !isHovered;
           return (
-            <g key={`sd-${d.teamId}`}>
+            <g
+              key={`sd-${d.teamId}`}
+              style={{
+                opacity: dimmed ? 0.15 : 1,
+                transition: 'opacity 0.2s ease, transform 0.2s ease',
+                transformOrigin: `${xScale(d.dpConcentration)}px ${yScale(d.awayPPG)}px`,
+                transform: isHovered ? 'scale(1.25)' : 'scale(1)',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={() => setHoveredTeam(d.teamId)}
+              onMouseLeave={() => setHoveredTeam(null)}
+            >
               <circle
                 cx={xScale(d.dpConcentration)}
                 cy={yScale(d.awayPPG)}
@@ -365,9 +383,9 @@ function SalaryRoadScatter({ metrics, isDark }: { metrics: TeamResilienceMetrics
                 x={xScale(d.dpConcentration)}
                 y={yScale(d.awayPPG) - 10}
                 fill={labelColor}
-                fontSize={8.5}
+                fontSize={isHovered ? 10 : 8.5}
                 fontFamily="Space Grotesk"
-                fontWeight={500}
+                fontWeight={isHovered ? 700 : 500}
                 textAnchor="middle"
               >
                 {d.teamShort}
@@ -653,7 +671,7 @@ function AgeRidgeline({ metrics, players, isDark }: { metrics: TeamResilienceMet
 // MAIN DEEP DIVE PANEL
 // ═══════════════════════════════════════════
 
-export default function DeepDivePanel({ metrics, players, teams }: DeepDivePanelProps) {
+function DeepDivePanelInner({ metrics, players, teams }: DeepDivePanelProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [isExpanded, setIsExpanded] = useState(false);
@@ -800,3 +818,8 @@ export default function DeepDivePanel({ metrics, players, teams }: DeepDivePanel
     </div>
   );
 }
+
+const DeepDivePanel = memo(DeepDivePanelInner, (prev, next) =>
+  prev.metrics === next.metrics && prev.players === next.players && prev.teams === next.teams
+);
+export default DeepDivePanel;

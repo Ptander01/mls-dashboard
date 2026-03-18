@@ -13,7 +13,7 @@
  * Cards sorted by resilience score descending (rank 1–12).
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 import { mutedTeamColor, lighten, darken, hexToRgba } from '@/lib/chartUtils';
@@ -169,7 +169,7 @@ function RadarChart({
   );
 }
 
-export default function RadarTeamCards({ metrics }: RadarTeamCardsProps) {
+function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [isExpanded, setIsExpanded] = useState(false);
@@ -296,3 +296,8 @@ export default function RadarTeamCards({ metrics }: RadarTeamCardsProps) {
     </div>
   );
 }
+
+const RadarTeamCards = memo(RadarTeamCardsInner, (prev, next) =>
+  prev.metrics === next.metrics
+);
+export default RadarTeamCards;

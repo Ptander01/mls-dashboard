@@ -16,6 +16,7 @@ import { InsightPanel } from '@/components/InsightPanel';
 import { playerStatsInsights, computeOutliers, scatterCardInsights, topScorersCardInsights, playerRadarCardInsights, playerTableCardInsights } from '@/lib/insightEngine';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
 import StatsPlayground from '@/components/charts/StatsPlayground';
+import StaggerContainer, { StaggerItem } from '@/components/StaggerContainer';
 
 type SortKey = 'name' | 'team' | 'position' | 'age' | 'games' | 'minutes' | 'goals' | 'assists' | 'shots' | 'shotsOnTarget' | 'shotAccuracy' | 'tackles' | 'interceptions' | 'fouls' | 'yellowCards' | 'redCards' | 'salary';
 
@@ -456,17 +457,17 @@ export default function PlayerStats() {
   );
 
   return (
-    <div className="space-y-6 mt-4">
+    <StaggerContainer className="space-y-6 mt-4">
       {/* Tab Header Card — elevated command center */}
-      <NeuCard variant="raised" animate={true} delay={0.02} className="p-5">
+      <StaggerItem><NeuCard variant="raised" animate={false} className="p-5">
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           <span className="font-semibold text-foreground">Player Stats</span> — Compare individual player performance across the 2025 MLS season. Use the scatter plot to explore relationships between any two metrics (e.g., Shots vs Goals). Toggle between team and position coloring, and use the trend line to gauge correlation strength. Click any player row or dot to view their full performance radar.
         </p>
         <InsightPanel insights={insights} isDark={isDark} onToggle={setIsAnalyzing} />
-      </NeuCard>
+      </NeuCard></StaggerItem>
 
       {/* League-Wide Totals */}
-      <div>
+      <StaggerItem><div>
         <div className="flex items-center gap-2 mb-3 px-1">
           <div className="w-1 h-4 rounded-full bg-cyan" style={{ boxShadow: '0 0 6px var(--cyan)' }} />
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>League-Wide Totals</h2>
@@ -502,11 +503,11 @@ export default function PlayerStats() {
           <AnimatedCounter value={avgShotAcc} decimals={1} suffix="%" className="text-2xl text-purple-400" />
         </NeuCard>
         </div>
-      </div>
+      </div></StaggerItem>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <StaggerItem><div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Scatter Plot with Axis Selectors, Color Mode, and Trend Line */}
-        <NeuCard delay={0.15} className="p-4 lg:col-span-2">
+        <NeuCard animate={false} className="p-4 lg:col-span-2">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-1">
             <div>
               <h3 className="text-sm font-semibold flex items-center gap-2" style={{ fontFamily: 'Space Grotesk' }}>
@@ -574,11 +575,11 @@ export default function PlayerStats() {
             ))}
           </div>
         </NeuCard>
-      </div>
+      </div></StaggerItem>
 
       {/* Player Radar (if selected) */}
       {selPlayer && radarData && (
-        <NeuCard delay={0} animate={false} glow="cyan" className="p-4">
+        <StaggerItem><NeuCard animate={false} glow="cyan" className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>{selPlayer.name}</h3>
@@ -624,11 +625,11 @@ export default function PlayerStats() {
               ))}
             </div>
           </div>
-        </NeuCard>
+        </NeuCard></StaggerItem>
       )}
 
       {/* Full Player Table */}
-      <NeuCard delay={0.35} className="overflow-hidden">
+      <StaggerItem><NeuCard animate={false} className="overflow-hidden">
         <div className="p-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--table-border)' }}>
           <div>
             <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Player Database</h3>
@@ -689,13 +690,13 @@ export default function PlayerStats() {
             </tbody>
           </table>
         </div>
-      </NeuCard>
+      </NeuCard></StaggerItem>
 
       {/* Statistical Playground */}
-      <StatsPlayground
+      <StaggerItem><StatsPlayground
         players={filteredPlayers}
         onAxisChange={(xKey, yKey) => { setScatterX(xKey); setScatterY(yKey); }}
-      />
+      /></StaggerItem>
 
       {/* Maximize Modals */}
       <ChartModal isOpen={maximized === 'scatter'} onClose={() => setMaximized(null)} title={`${yOpt.label} vs ${xOpt.label}`}>
@@ -805,7 +806,7 @@ export default function PlayerStats() {
           </table>
         </div>
       </ChartModal>
-    </div>
+    </StaggerContainer>
   );
 }
 
