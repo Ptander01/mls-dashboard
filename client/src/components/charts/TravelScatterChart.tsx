@@ -1,20 +1,102 @@
 /**
- * TravelScatterChart — Travel Burden vs Away Performance Drop
+ * TravelScatterChart — V10 — 3D Torus Rings with Shadow
  *
- * Cinematic recessed-impression scatter plot inspired by pressed-clay impact maps.
- * v3 upgrades:
- *   - Deeper 3D lighting: stronger shadow crescents, brighter rim highlights,
- *     inner shelf shadow at rim-bowl junction, darkened bowl floor
- *   - Y-based z-ordering: craters higher on screen render first (behind),
- *     lower craters render last (in front) for natural depth stacking
- *   - Smart labels: 3-4 char city abbreviations with collision-aware placement
- *     that tests 8 positions around each crater to find the least overlap
+ * Each team is represented by a 3D torus ring sitting on a flat surface.
+ * Ring size = PPG gap magnitude. Strong directional lighting from upper-left
+ * casts crisp shadows onto the surface, creating depth and dimension.
+ *
+ * Design:
+ *   - TorusGeometry rings — visible from any camera angle
+ *   - Monochromatic cream/plaster material
+ *   - Strong directional shadow casting
+ *   - Slight camera tilt (10°) for ring visibility
+ *   - Orthographic camera — no perspective distortion
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import { Html, Text } from '@react-three/drei';
+import * as THREE from 'three';
 import { useTheme } from '@/contexts/ThemeContext';
-import { mutedTeamColor, linearRegression, lighten, darken, hexToRgba } from '@/lib/chartUtils';
+import { linearRegression } from '@/lib/chartUtils';
 import type { TeamResilienceMetrics } from '@/lib/resilienceUtils';
+import { CardInsightToggle } from '@/components/CardInsight';
+import type { CardInsightItem } from '@/components/CardInsight';
+import { NeuInsightContainer } from '@/components/NeuInsightContainer';
+import { motion, AnimatePresence } from 'framer-motion';
+
+/* Extended insight item with optional team color for bullet matching */
+interface TeamInsightItem extends CardInsightItem {
+  teamColor?: string;
+}
+
+const ACCENT_COLORS: Record<string, string> = {
+  cyan: 'var(--cyan)',
+  amber: 'var(--amber)',
+  emerald: 'var(--emerald)',
+  coral: 'var(--coral)',
+};
+
+/** Custom insight section that uses team color for bullets when available */
+function TeamInsightSection({ isOpen, insights, isDark }: {
+  isOpen: boolean;
+  insights: TeamInsightItem[];
+  isDark: boolean;
+}) {
+  if (insights.length === 0) return null;
+
+  return (
+    <div className="px-3 pb-1 pt-1">
+      <NeuInsightContainer
+        isOpen={isOpen}
+        isDark={isDark}
+        variant="compact"
+        showDepression={isOpen}
+      >
+        <AnimatePresence mode="wait">
+          {isOpen && (
+            <motion.div
+              key="card-insights"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="space-y-1.5"
+            >
+              {insights.map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06 + 0.15, duration: 0.2 }}
+                  className="flex items-start gap-2"
+                >
+                  <span
+                    className="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-[5px]"
+                    style={{ background: item.teamColor || ACCENT_COLORS[item.accent] }}
+                  />
+                  <p
+                    className="text-[11px] leading-relaxed"
+                    style={{
+                      fontFamily: 'Space Grotesk, sans-serif',
+                      color: 'var(--foreground)',
+                    }}
+                  >
+                    {item.text}
+                  </p>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </NeuInsightContainer>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CONSTANTS & TYPES
+   ═══════════════════════════════════════════════════════════ */
 
 type ConferenceFilter = 'ALL' | 'EAST' | 'WEST';
 
@@ -22,444 +104,694 @@ interface TravelScatterChartProps {
   metrics: TeamResilienceMetrics[];
 }
 
-// ─── Short label map ───
 const ABBREV: Record<string, string> = {
-  'Atlanta Utd': 'ATL',
-  'Austin FC': 'AUS',
-  'CF Montréal': 'MTL',
-  'Charlotte FC': 'CLT',
-  'Chicago Fire': 'CHI',
-  'Colorado Rapids': 'COL',
-  'Columbus Crew': 'CLB',
-  'D.C. United': 'DC',
-  'FC Cincinnati': 'CIN',
-  'FC Dallas': 'DAL',
-  'Houston Dynamo': 'HOU',
-  'Inter Miami': 'MIA',
-  'LA Galaxy': 'LAG',
-  'LAFC': 'LAFC',
-  'Minnesota Utd': 'MIN',
-  'Nashville SC': 'NSH',
-  'NE Revolution': 'NE',
-  'NY Red Bulls': 'NYR',
-  'NYCFC': 'NYC',
-  'Orlando City': 'ORL',
-  'Philadelphia Union': 'PHI',
-  'Portland Timbers': 'POR',
-  'Real Salt Lake': 'RSL',
-  'San Diego FC': 'SD',
-  'Seattle Sounders': 'SEA',
-  'SJ Earthquakes': 'SJ',
-  'Sporting KC': 'SKC',
-  'St. Louis City': 'STL',
-  'Toronto FC': 'TOR',
-  "Vancouver W'caps": 'VAN',
+  'Atlanta Utd': 'ATL', 'Austin FC': 'AUS', 'CF Montréal': 'MTL',
+  'Charlotte FC': 'CLT', 'Chicago Fire': 'CHI', 'Colorado Rapids': 'COL',
+  'Columbus Crew': 'CLB', 'D.C. United': 'DC', 'FC Cincinnati': 'CIN',
+  'FC Dallas': 'DAL', 'Houston Dynamo': 'HOU', 'Inter Miami': 'MIA',
+  'LA Galaxy': 'LAG', 'LAFC': 'LAFC', 'Minnesota Utd': 'MIN',
+  'Nashville SC': 'NSH', 'NE Revolution': 'NE', 'NY Red Bulls': 'NYR',
+  'NYCFC': 'NYC', 'Orlando City': 'ORL', 'Philadelphia Union': 'PHI',
+  'Portland Timbers': 'POR', 'Real Salt Lake': 'RSL', 'San Diego FC': 'SD',
+  'Seattle Sounders': 'SEA', 'SJ Earthquakes': 'SJ', 'Sporting KC': 'SKC',
+  'St. Louis City': 'STL', 'Toronto FC': 'TOR', "Vancouver W'caps": 'VAN',
 };
 
-function abbrev(teamShort: string): string {
-  return ABBREV[teamShort] || teamShort.slice(0, 3).toUpperCase();
+function abbrev(name: string): string {
+  return ABBREV[name] || name.slice(0, 3).toUpperCase();
 }
 
-// ─── Insight headline generator ───
-function generateScatterHeadline(metrics: TeamResilienceMetrics[]): string {
-  if (metrics.length < 5) return 'Not enough data to analyze travel-performance patterns.';
+const WORLD_W = 39;
+const WORLD_H = 27;
 
+/* ═══════════════════════════════════════════════════════════
+   HEADLINE GENERATOR
+   ═══════════════════════════════════════════════════════════ */
+
+const ACCENT_CYCLE: Array<'cyan' | 'amber' | 'emerald' | 'coral'> = ['cyan', 'emerald', 'amber', 'coral'];
+
+function generateInsights(metrics: TeamResilienceMetrics[]): TeamInsightItem[] {
+  if (metrics.length < 5) return [{ text: 'Not enough data to analyze travel-performance patterns.', accent: 'cyan' }];
+
+  const items: TeamInsightItem[] = [];
   const pts = metrics.map(m => ({ x: m.totalAwayMiles, y: m.ppgGap }));
   const reg = linearRegression(pts);
 
-  const mostTravel = [...metrics].sort((a, b) => b.totalAwayMiles - a.totalAwayMiles)[0];
-  const biggestGap = [...metrics].sort((a, b) => b.ppgGap - a.ppgGap)[0];
+  // Helper to find team color
+  const tc = (name: string) => metrics.find(m => m.teamShort === name)?.teamColor;
 
-  const withResiduals = metrics.map(m => ({
-    ...m,
-    predicted: reg.slope * m.totalAwayMiles + reg.intercept,
-    residual: m.ppgGap - (reg.slope * m.totalAwayMiles + reg.intercept),
-  }));
-  const overperformer = [...withResiduals].sort((a, b) => b.residual - a.residual)[0];
-
+  // 1. Correlation summary (league-wide, no specific team)
+  const r2Str = reg.r2.toFixed(2);
   if (Math.abs(reg.r2) < 0.1) {
-    return `No clear travel penalty league-wide (R² = ${reg.r2.toFixed(2)}) — but ${biggestGap.teamShort} shows the largest home advantage gap (${biggestGap.ppgGap.toFixed(2)} PPG). ${overperformer.teamShort} outperforms expectations given their ${(overperformer.totalAwayMiles / 1000).toFixed(0)}k travel miles.`;
+    items.push({ text: `No clear travel penalty league-wide (R² = ${r2Str}). Travel distance alone does not predict home advantage.`, accent: 'cyan' });
+  } else {
+    const dir = reg.slope > 0 ? 'increases' : 'decreases';
+    const strength = Math.abs(reg.r2) > 0.3 ? 'moderate' : 'weak';
+    items.push({ text: `Home advantage ${dir} with travel distance (R² = ${r2Str}, ${strength} correlation).`, accent: 'cyan' });
   }
 
-  const direction = reg.slope > 0 ? 'increases' : 'decreases';
-  return `Home advantage ${direction} with travel distance (R² = ${reg.r2.toFixed(2)}). ${mostTravel.teamShort} traveled the most (${(mostTravel.totalAwayMiles / 1000).toFixed(0)}k mi) with a ${mostTravel.ppgGap.toFixed(2)} PPG gap, while ${overperformer.teamShort} defies the trend — maintaining resilience despite ${(overperformer.totalAwayMiles / 1000).toFixed(0)}k miles.`;
+  // 2. Biggest home advantage
+  const byGap = [...metrics].sort((a, b) => b.ppgGap - a.ppgGap);
+  const biggest = byGap[0];
+  items.push({ text: `${biggest.teamShort} has the largest home advantage gap at +${biggest.ppgGap.toFixed(2)} PPG (${biggest.homePPG.toFixed(2)} home vs ${biggest.awayPPG.toFixed(2)} away).`, accent: 'emerald', teamColor: tc(biggest.teamShort) });
+
+  // 3. Worst home advantage (or best away)
+  const worst = byGap[byGap.length - 1];
+  if (worst.ppgGap < 0) {
+    items.push({ text: `${worst.teamShort} actually performs better away (${worst.ppgGap.toFixed(2)} PPG gap) — a reverse home advantage.`, accent: 'coral', teamColor: tc(worst.teamShort) });
+  } else {
+    items.push({ text: `${worst.teamShort} has the smallest home advantage at +${worst.ppgGap.toFixed(2)} PPG.`, accent: 'amber', teamColor: tc(worst.teamShort) });
+  }
+
+  // 4. Overperformer (positive residual — better than regression predicts)
+  const withResiduals = metrics.map(m => ({
+    ...m, residual: m.ppgGap - (reg.slope * m.totalAwayMiles + reg.intercept),
+  }));
+  const overperformer = [...withResiduals].sort((a, b) => b.residual - a.residual)[0];
+  items.push({ text: `${overperformer.teamShort} outperforms expectations given their ${(overperformer.totalAwayMiles / 1000).toFixed(0)}k travel miles — the most travel-resilient team.`, accent: 'emerald', teamColor: tc(overperformer.teamShort) });
+
+  // 5. Underperformer (negative residual)
+  const underperformer = [...withResiduals].sort((a, b) => a.residual - b.residual)[0];
+  items.push({ text: `${underperformer.teamShort} underperforms relative to their ${(underperformer.totalAwayMiles / 1000).toFixed(0)}k travel load — most travel-sensitive.`, accent: 'coral', teamColor: tc(underperformer.teamShort) });
+
+  // 6. Most traveled
+  const mostTraveled = [...metrics].sort((a, b) => b.totalAwayMiles - a.totalAwayMiles)[0];
+  items.push({ text: `${mostTraveled.teamShort} logs the most away miles at ${(mostTraveled.totalAwayMiles / 1000).toFixed(1)}k — PPG gap of ${mostTraveled.ppgGap >= 0 ? '+' : ''}${mostTraveled.ppgGap.toFixed(2)}.`, accent: 'amber', teamColor: tc(mostTraveled.teamShort) });
+
+  // 7. Conference split (league-wide, no specific team)
+  const east = metrics.filter(m => m.conference === 'Eastern');
+  const west = metrics.filter(m => m.conference === 'Western');
+  if (east.length > 2 && west.length > 2) {
+    const avgEastMiles = east.reduce((s, m) => s + m.totalAwayMiles, 0) / east.length;
+    const avgWestMiles = west.reduce((s, m) => s + m.totalAwayMiles, 0) / west.length;
+    const avgEastGap = east.reduce((s, m) => s + m.ppgGap, 0) / east.length;
+    const avgWestGap = west.reduce((s, m) => s + m.ppgGap, 0) / west.length;
+    items.push({ text: `Western teams average ${(avgWestMiles / 1000).toFixed(1)}k miles vs Eastern ${(avgEastMiles / 1000).toFixed(1)}k. Home advantage: East +${avgEastGap.toFixed(2)} PPG, West +${avgWestGap.toFixed(2)} PPG.`, accent: 'cyan' });
+  }
+
+  return items;
 }
 
-// ─── Light source constants ───
-const LIGHT_ANGLE = -0.7; // radians, ~315° (10 o'clock)
-const LX = Math.cos(LIGHT_ANGLE);
-const LY = Math.sin(LIGHT_ANGLE);
+/* ═══════════════════════════════════════════════════════════
+   3D RING COMPONENT
+   ═══════════════════════════════════════════════════════════ */
 
-// ─── Cinematic Crater Component (v3) ───
-function Crater({
-  cx,
-  cy,
-  baseRadius,
-  ringCount,
-  teamColor,
-  isDark,
-  label,
-  labelX,
-  labelY,
-  labelAnchor,
-  labelColor,
-  id,
-}: {
-  cx: number;
-  cy: number;
-  baseRadius: number;
-  ringCount: number;
-  teamColor: string;
-  isDark: boolean;
+function Ring({ position, ringRadius, tubeRadius, label, isDark, teamColor, showColor, tooltip }: {
+  position: [number, number, number];
+  ringRadius: number;
+  tubeRadius: number;
   label: string;
-  labelX: number;
-  labelY: number;
-  labelAnchor: 'start' | 'middle' | 'end';
-  labelColor: string;
-  id: string;
+  isDark: boolean;
+  teamColor: string;
+  showColor: boolean;
+  tooltip: TooltipData;
 }) {
-  const R = baseRadius;
-  const rimW = R * 0.2; // Slightly thicker rim for more pronounced bevel
+  const meshRef = useRef<THREE.Group>(null);
+  const [hovered, setHovered] = useState(false);
+
+  // Wall height proportional to ring size for shadow casting
+  const wallHeight = ringRadius * 0.25 + 0.06;
+  const wallThickness = tubeRadius;
+
+  // Outer cylinder
+  const outerGeo = useMemo(
+    () => new THREE.CylinderGeometry(ringRadius + wallThickness, ringRadius + wallThickness, wallHeight, 64, 1, true),
+    [ringRadius, wallThickness, wallHeight]
+  );
+  // Inner cylinder (slightly smaller radius, same height)
+  const innerGeo = useMemo(
+    () => new THREE.CylinderGeometry(ringRadius, ringRadius, wallHeight, 64, 1, true),
+    [ringRadius, wallHeight]
+  );
+  // Top ring face (annular disc)
+  const topGeo = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, ringRadius + wallThickness, 0, Math.PI * 2, false);
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, ringRadius, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+    const geo = new THREE.ShapeGeometry(shape, 64);
+    geo.rotateX(-Math.PI / 2);
+    return geo;
+  }, [ringRadius, wallThickness]);
+
+  // Subtle hover scale
+  useFrame(() => {
+    if (meshRef.current) {
+      const target = hovered ? 1.06 : 1;
+      meshRef.current.scale.lerp(new THREE.Vector3(target, target, target), 0.12);
+    }
+  });
+
+  // White monochrome default; team color when toggled
+  const monoColor = isDark ? '#e8e6e2' : '#f5f3f0';
+  const materialColor = showColor ? teamColor : monoColor;
 
   return (
-    <g>
-      <defs>
-        {/* Cast shadow blur */}
-        <filter id={`cs-${id}`} x="-60%" y="-40%" width="220%" height="220%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation={R * 0.14} />
-        </filter>
-
-        {/* Inner bowl blur */}
-        <filter id={`ib-${id}`} x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation={R * 0.1} />
-        </filter>
-
-        {/* Shelf shadow blur (rim-to-bowl junction) */}
-        <filter id={`sh-${id}`} x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation={R * 0.06} />
-        </filter>
-
-        {/* Rim bevel gradient */}
-        <radialGradient id={`rim-${id}`} cx="35%" cy="28%" r="65%">
-          <stop offset="0%" stopColor={isDark ? 'rgba(80,80,100,0.55)' : 'rgba(255,255,255,0.9)'} />
-          <stop offset="45%" stopColor={isDark ? 'rgba(50,50,65,0.35)' : 'rgba(245,243,240,0.7)'} />
-          <stop offset="100%" stopColor={isDark ? 'rgba(18,18,28,0.55)' : 'rgba(180,178,175,0.55)'} />
-        </radialGradient>
-
-        {/* Inner bowl gradient — darker floor */}
-        <radialGradient id={`bowl-${id}`} cx="38%" cy="32%" r="68%">
-          <stop offset="0%" stopColor={isDark ? 'rgba(50,50,65,0.3)' : 'rgba(218,216,212,0.55)'} />
-          <stop offset="25%" stopColor={hexToRgba(teamColor, isDark ? 0.18 : 0.12)} />
-          <stop offset="60%" stopColor={isDark ? 'rgba(20,20,32,0.55)' : 'rgba(188,186,182,0.5)'} />
-          <stop offset="100%" stopColor={isDark ? 'rgba(8,8,15,0.7)' : 'rgba(165,163,160,0.45)'} />
-        </radialGradient>
-
-        {/* Center pit gradient */}
-        <radialGradient id={`pit-${id}`} cx="38%" cy="32%" r="60%">
-          <stop offset="0%" stopColor={hexToRgba(teamColor, isDark ? 0.35 : 0.25)} />
-          <stop offset="50%" stopColor={isDark ? darken(teamColor, 0.5) : darken(teamColor, 0.3)} />
-          <stop offset="100%" stopColor={isDark ? 'rgba(3,3,8,0.95)' : 'rgba(100,98,95,0.6)'} />
-        </radialGradient>
-
-        {/* Clips */}
-        <clipPath id={`clip-${id}`}>
-          <circle cx={cx} cy={cy} r={R - rimW * 0.4} />
-        </clipPath>
-        <clipPath id={`rimclip-${id}`}>
-          <circle cx={cx} cy={cy} r={R + rimW * 0.4} />
-        </clipPath>
-      </defs>
-
-      {/* ═══ 1. CAST SHADOW ═══ */}
-      <ellipse
-        cx={cx + R * 0.1}
-        cy={cy + R * 0.15}
-        rx={R + rimW + 5}
-        ry={R * 0.55 + rimW + 3}
-        fill={isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.07)'}
-        filter={`url(#cs-${id})`}
-      />
-
-      {/* ═══ 2. OUTER RIM — thick beveled ring ═══ */}
-      <circle cx={cx} cy={cy} r={R + rimW * 0.35} fill={`url(#rim-${id})`} />
-
-      {/* Rim highlight crescent — top-left, brighter */}
-      <ellipse
-        cx={cx + LX * R * 0.15}
-        cy={cy + LY * R * 0.15}
-        rx={R * 0.88}
-        ry={R * 0.72}
-        fill={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.65)'}
-        clipPath={`url(#rimclip-${id})`}
-      />
-
-      {/* Rim shadow crescent — bottom-right, darker */}
-      <ellipse
-        cx={cx - LX * R * 0.22}
-        cy={cy - LY * R * 0.22}
-        rx={R * 0.92}
-        ry={R * 0.78}
-        fill={isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.06)'}
-        clipPath={`url(#rimclip-${id})`}
-      />
-
-      {/* Rim outer edge — bright line */}
-      <circle
-        cx={cx} cy={cy} r={R + rimW * 0.35}
-        fill="none"
-        stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.7)'}
-        strokeWidth={1.4}
-      />
-
-      {/* ═══ 3. RIM EDGE HIGHLIGHT ARC — cinematic bright arc on lit side ═══ */}
-      <path
-        d={(() => {
-          const arcR = R + rimW * 0.3;
-          const sa = LIGHT_ANGLE - 1.3;
-          const ea = LIGHT_ANGLE + 1.3;
-          const x1 = cx + Math.cos(sa) * arcR;
-          const y1 = cy + Math.sin(sa) * arcR;
-          const x2 = cx + Math.cos(ea) * arcR;
-          const y2 = cy + Math.sin(ea) * arcR;
-          return `M ${x1},${y1} A ${arcR},${arcR} 0 0,1 ${x2},${y2}`;
-        })()}
-        fill="none"
-        stroke={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.75)'}
-        strokeWidth={rimW * 0.7}
-        strokeLinecap="round"
-      />
-
-      {/* Inner rim edge shadow arc — dark arc on shadow side */}
-      <path
-        d={(() => {
-          const arcR = R - rimW * 0.1;
-          const sa = LIGHT_ANGLE + Math.PI - 1.1;
-          const ea = LIGHT_ANGLE + Math.PI + 1.1;
-          const x1 = cx + Math.cos(sa) * arcR;
-          const y1 = cy + Math.sin(sa) * arcR;
-          const x2 = cx + Math.cos(ea) * arcR;
-          const y2 = cy + Math.sin(ea) * arcR;
-          return `M ${x1},${y1} A ${arcR},${arcR} 0 0,1 ${x2},${y2}`;
-        })()}
-        fill="none"
-        stroke={isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.08)'}
-        strokeWidth={rimW * 0.5}
-        strokeLinecap="round"
-      />
-
-      {/* ═══ 4. INNER BOWL ═══ */}
-      <circle cx={cx} cy={cy} r={R - rimW * 0.35} fill={`url(#bowl-${id})`} />
-
-      {/* Shelf shadow — dark ring at the rim-to-bowl junction */}
-      <circle
-        cx={cx} cy={cy} r={R - rimW * 0.35}
-        fill="none"
-        stroke={isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)'}
-        strokeWidth={rimW * 0.5}
-        filter={`url(#sh-${id})`}
-        clipPath={`url(#clip-${id})`}
-      />
-
-      {/* Bowl shadow crescent — deep shadow on bottom-right interior */}
-      <ellipse
-        cx={cx - LX * R * 0.35}
-        cy={cy - LY * R * 0.35}
-        rx={R * 0.88}
-        ry={R * 0.68}
-        fill={isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.1)'}
-        clipPath={`url(#clip-${id})`}
-        filter={`url(#ib-${id})`}
-      />
-
-      {/* Second shadow layer — deeper, tighter crescent for more depth */}
-      <ellipse
-        cx={cx - LX * R * 0.45}
-        cy={cy - LY * R * 0.45}
-        rx={R * 0.6}
-        ry={R * 0.45}
-        fill={isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}
-        clipPath={`url(#clip-${id})`}
-        filter={`url(#ib-${id})`}
-      />
-
-      {/* Bowl highlight crescent — light hitting upper-left inner wall */}
-      <ellipse
-        cx={cx + LX * R * 0.28}
-        cy={cy + LY * R * 0.28}
-        rx={R * 0.5}
-        ry={R * 0.38}
-        fill={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.35)'}
-        clipPath={`url(#clip-${id})`}
-      />
-
-      {/* ═══ 5. CONCENTRIC RINGS — variable spacing ═══ */}
-      {Array.from({ length: ringCount }, (_, i) => {
-        const t = (i + 1) / (ringCount + 1);
-        const ringR = (R - rimW) * (1 - Math.pow(1 - t, 1.7));
-        const depth = i / Math.max(1, ringCount - 1);
-        const opacity = isDark ? 0.12 + depth * 0.4 : 0.1 + depth * 0.3;
-        const strokeW = 0.5 + depth * 1.2;
-
-        return (
-          <g key={i}>
-            {/* Shadow side of ring groove */}
-            <circle
-              cx={cx} cy={cy} r={ringR} fill="none"
-              stroke={hexToRgba(isDark ? darken(teamColor, 0.25) : darken(teamColor, 0.15), opacity)}
-              strokeWidth={strokeW}
-              clipPath={`url(#clip-${id})`}
-            />
-            {/* Light side of ring groove */}
-            <circle
-              cx={cx + LX * 0.5} cy={cy + LY * 0.5} r={ringR} fill="none"
-              stroke={hexToRgba(isDark ? lighten(teamColor, 0.25) : lighten(teamColor, 0.2), opacity * 0.45)}
-              strokeWidth={strokeW * 0.5}
-              clipPath={`url(#clip-${id})`}
-            />
-          </g>
-        );
-      })}
-
-      {/* ═══ 6. CENTER PIT ═══ */}
-      <circle cx={cx} cy={cy} r={Math.max(3.5, R * 0.15)} fill={`url(#pit-${id})`} />
-      {/* Pit inner shadow ring */}
-      <circle
-        cx={cx} cy={cy} r={Math.max(3, R * 0.13)}
-        fill="none"
-        stroke={isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.12)'}
-        strokeWidth={1}
-      />
-      {/* Specular highlight */}
-      <circle
-        cx={cx + LX * R * 0.04}
-        cy={cy + LY * R * 0.04}
-        r={Math.max(1.2, R * 0.045)}
-        fill="white"
-        fillOpacity={isDark ? 0.25 : 0.6}
-      />
-
-      {/* ═══ 7. LABEL — positioned by collision-aware placement ═══ */}
-      <text
-        x={labelX + 0.5}
-        y={labelY + 0.5}
-        fill={isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)'}
-        fontSize={9}
-        fontWeight={800}
-        fontFamily="Space Grotesk"
-        textAnchor={labelAnchor as 'start' | 'middle' | 'end'}
-        letterSpacing="0.06em"
+    <group position={position}>
+      {/* Cylindrical wall sitting on the surface */}
+      <group
+        ref={meshRef}
+        position={[0, wallHeight / 2, 0]}
+        onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
+        onPointerOut={() => setHovered(false)}
       >
-        {label}
-      </text>
-      <text
-        x={labelX}
-        y={labelY}
-        fill={labelColor}
-        fontSize={9}
-        fontWeight={800}
-        fontFamily="Space Grotesk"
-        textAnchor={labelAnchor as 'start' | 'middle' | 'end'}
-        letterSpacing="0.06em"
+        {/* Outer wall */}
+        <mesh geometry={outerGeo} castShadow receiveShadow>
+          <meshStandardMaterial color={materialColor} roughness={0.92} metalness={0.02} side={THREE.DoubleSide} />
+        </mesh>
+        {/* Inner wall */}
+        <mesh geometry={innerGeo} castShadow receiveShadow>
+          <meshStandardMaterial color={materialColor} roughness={0.92} metalness={0.02} side={THREE.DoubleSide} />
+        </mesh>
+        {/* Top cap (annular ring) */}
+        <mesh geometry={topGeo} position={[0, wallHeight / 2, 0]} castShadow receiveShadow>
+          <meshStandardMaterial color={materialColor} roughness={0.92} metalness={0.02} side={THREE.DoubleSide} />
+        </mesh>
+      </group>
+
+      {/* Team label above ring */}
+      <Html
+        position={[0, 0.3, -(ringRadius + tubeRadius + 0.3)]}
+        center
+        style={{ pointerEvents: 'none' }}
       >
-        {label}
-      </text>
-    </g>
+        <div style={{
+          fontSize: '9px',
+          fontWeight: 700,
+          fontFamily: 'Space Grotesk, sans-serif',
+          color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(60,55,50,0.55)',
+          letterSpacing: '0.06em',
+          whiteSpace: 'nowrap',
+          textShadow: isDark ? 'none' : '0 1px 2px rgba(255,255,255,0.8)',
+        }}>
+          {label}
+        </div>
+      </Html>
+
+      {/* Rich tooltip on hover */}
+      {hovered && (
+        <Html
+          position={[0, 2.2, 0]}
+          center
+          style={{ pointerEvents: 'none', zIndex: 1000 }}
+        >
+          <div style={{
+            fontFamily: 'Space Grotesk, sans-serif',
+            color: isDark ? '#e8e8e8' : '#2a2a2a',
+            background: isDark ? 'rgba(20,20,35,0.92)' : 'rgba(255,255,255,0.96)',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            whiteSpace: 'nowrap',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+            minWidth: '180px',
+          }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`, paddingBottom: '5px' }}>
+              <span style={{ color: showColor ? teamColor : (isDark ? '#7ec8c8' : '#5aafaf') }}>●</span>{' '}
+              {tooltip.teamName}
+              <span style={{ fontSize: '9px', fontWeight: 500, marginLeft: '6px', opacity: 0.5 }}>{tooltip.conference}</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 16px', fontSize: '10px' }}>
+              <div style={{ opacity: 0.55, fontSize: '9px' }}>AWAY MILES</div>
+              <div style={{ fontWeight: 600, textAlign: 'right' }}>{(tooltip.totalAwayMiles / 1000).toFixed(1)}k</div>
+              <div style={{ opacity: 0.55, fontSize: '9px' }}>PPG GAP</div>
+              <div style={{ fontWeight: 600, textAlign: 'right', color: tooltip.ppgGap > 0 ? (isDark ? '#7ec8c8' : '#2a9a8a') : (isDark ? '#e88' : '#c44') }}>
+                {tooltip.ppgGap >= 0 ? '+' : ''}{tooltip.ppgGap.toFixed(2)}
+              </div>
+              <div style={{ opacity: 0.55, fontSize: '9px' }}>HOME PPG</div>
+              <div style={{ fontWeight: 600, textAlign: 'right' }}>{tooltip.homePPG.toFixed(2)}</div>
+              <div style={{ opacity: 0.55, fontSize: '9px' }}>AWAY PPG</div>
+              <div style={{ fontWeight: 600, textAlign: 'right' }}>{tooltip.awayPPG.toFixed(2)}</div>
+              <div style={{ opacity: 0.55, fontSize: '9px' }}>HOME WIN%</div>
+              <div style={{ fontWeight: 600, textAlign: 'right' }}>{(tooltip.homeWinPct * 100).toFixed(0)}%</div>
+              <div style={{ opacity: 0.55, fontSize: '9px' }}>AWAY WIN%</div>
+              <div style={{ fontWeight: 600, textAlign: 'right' }}>{(tooltip.awayWinPct * 100).toFixed(0)}%</div>
+              <div style={{ opacity: 0.55, fontSize: '9px' }}>LONGEST TRIP</div>
+              <div style={{ fontWeight: 600, textAlign: 'right' }}>{(tooltip.longestTripMiles / 1000).toFixed(1)}k mi</div>
+              <div style={{ opacity: 0.55, fontSize: '9px' }}>RESILIENCE</div>
+              <div style={{ fontWeight: 600, textAlign: 'right' }}>{tooltip.resilienceScore.toFixed(0)}/100</div>
+            </div>
+          </div>
+        </Html>
+      )}
+    </group>
   );
 }
 
-// ─── Label placement engine ───
-// Tests 8 candidate positions around each crater and picks the one with least overlap
-interface LabelPlacement {
-  x: number;
-  y: number;
-  anchor: string;
-  w: number;
-  h: number;
+/* ═══════════════════════════════════════════════════════════
+   SURFACE PLANE — receives shadows
+   ═══════════════════════════════════════════════════════════ */
+
+function SurfacePlane({ width, height, color }: {
+  width: number; height: number; color: string;
+}) {
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+      <planeGeometry args={[width, height]} />
+      <meshStandardMaterial
+        color={color}
+        roughness={0.95}
+        metalness={0}
+      />
+    </mesh>
+  );
 }
 
-function computeLabelPlacements(
-  items: { cx: number; cy: number; r: number; label: string }[],
-  plotBounds: { left: number; top: number; right: number; bottom: number },
-): LabelPlacement[] {
-  const placed: { x: number; y: number; w: number; h: number }[] = [];
-  const results: LabelPlacement[] = [];
-  const FONT_W = 6.5; // approx width per char at 9px
-  const FONT_H = 11;
+/* ═══════════════════════════════════════════════════════════
+   GRID LINES
+   ═══════════════════════════════════════════════════════════ */
 
-  for (const item of items) {
-    const labelW = item.label.length * FONT_W;
-    const gap = 5;
+function GridLines({ xTicks, yTicks, xScale, yScale, worldW, worldH, isDark }: {
+  xTicks: number[];
+  yTicks: number[];
+  xScale: (v: number) => number;
+  yScale: (v: number) => number;
+  worldW: number;
+  worldH: number;
+  isDark: boolean;
+}) {
+  const hh = worldH / 2;
+  const hw = worldW / 2;
 
-    // 8 candidate positions: top, bottom, left, right, and 4 diagonals
-    const candidates: { x: number; y: number; anchor: string }[] = [
-      { x: item.cx, y: item.cy - item.r - gap - 2, anchor: 'middle' },           // top
-      { x: item.cx, y: item.cy + item.r + gap + FONT_H, anchor: 'middle' },      // bottom
-      { x: item.cx + item.r + gap, y: item.cy + 3, anchor: 'start' },            // right
-      { x: item.cx - item.r - gap, y: item.cy + 3, anchor: 'end' },              // left
-      { x: item.cx + item.r * 0.7 + gap, y: item.cy - item.r * 0.5 - 2, anchor: 'start' },  // top-right
-      { x: item.cx - item.r * 0.7 - gap, y: item.cy - item.r * 0.5 - 2, anchor: 'end' },    // top-left
-      { x: item.cx + item.r * 0.7 + gap, y: item.cy + item.r * 0.5 + FONT_H, anchor: 'start' }, // bottom-right
-      { x: item.cx - item.r * 0.7 - gap, y: item.cy + item.r * 0.5 + FONT_H, anchor: 'end' },   // bottom-left
-    ];
-
-    let bestScore = Infinity;
-    let bestCandidate = candidates[0];
-
-    for (const cand of candidates) {
-      // Compute bounding box of this label
-      let lx = cand.x;
-      if (cand.anchor === 'middle') lx -= labelW / 2;
-      else if (cand.anchor === 'end') lx -= labelW;
-      const ly = cand.y - FONT_H;
-      const lw = labelW;
-      const lh = FONT_H + 2;
-
-      // Penalty: out of bounds
-      let score = 0;
-      if (lx < plotBounds.left) score += 50;
-      if (lx + lw > plotBounds.right) score += 50;
-      if (ly < plotBounds.top) score += 50;
-      if (ly + lh > plotBounds.bottom) score += 50;
-
-      // Penalty: overlap with other craters
-      for (const other of items) {
-        if (other === item) continue;
-        const dx = (lx + lw / 2) - other.cx;
-        const dy = (ly + lh / 2) - other.cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < other.r + 8) score += 30;
-      }
-
-      // Penalty: overlap with already-placed labels
-      for (const p of placed) {
-        const overlapX = Math.max(0, Math.min(lx + lw, p.x + p.w) - Math.max(lx, p.x));
-        const overlapY = Math.max(0, Math.min(ly + lh, p.y + p.h) - Math.max(ly, p.y));
-        if (overlapX > 0 && overlapY > 0) score += 40;
-      }
-
-      if (score < bestScore) {
-        bestScore = score;
-        bestCandidate = cand;
-      }
+  const lines = useMemo(() => {
+    const pts: THREE.Vector3[][] = [];
+    for (const t of xTicks) {
+      const x = xScale(t);
+      pts.push([new THREE.Vector3(x, 0.005, -hh), new THREE.Vector3(x, 0.005, hh)]);
     }
+    for (const t of yTicks) {
+      const z = yScale(t);
+      pts.push([new THREE.Vector3(-hw, 0.005, z), new THREE.Vector3(hw, 0.005, z)]);
+    }
+    return pts;
+  }, [xTicks, yTicks, xScale, yScale, hh, hw]);
 
-    // Compute final bbox for placed list
-    let lx = bestCandidate.x;
-    if (bestCandidate.anchor === 'middle') lx -= labelW / 2;
-    else if (bestCandidate.anchor === 'end') lx -= labelW;
-    const ly = bestCandidate.y - FONT_H;
-
-    placed.push({ x: lx, y: ly, w: labelW, h: FONT_H + 2 });
-    results.push({ x: bestCandidate.x, y: bestCandidate.y, anchor: bestCandidate.anchor, w: labelW, h: FONT_H + 2 });
-  }
-
-  return results;
+  return (
+    <group>
+      {lines.map((pair, i) => {
+        const geo = new THREE.BufferGeometry().setFromPoints(pair);
+        return (
+          <line key={i} geometry={geo}>
+            <lineBasicMaterial
+              color={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
+              transparent
+              opacity={0.06}
+            />
+          </line>
+        );
+      })}
+    </group>
+  );
 }
+
+/* ═══════════════════════════════════════════════════════════
+   REGRESSION DOTTED PATH
+   ═══════════════════════════════════════════════════════════ */
+
+function RegressionPath({ regression, xExtent, xScale, yScale, isDark }: {
+  regression: { slope: number; intercept: number; r2: number } | null;
+  xExtent: { min: number; max: number };
+  xScale: (v: number) => number;
+  yScale: (v: number) => number;
+  isDark: boolean;
+}) {
+  if (!regression) return null;
+
+  const spheres = useMemo(() => {
+    const count = 40;
+    const result: { pos: [number, number, number] }[] = [];
+    for (let i = 0; i < count; i++) {
+      const t = i / (count - 1);
+      const dataX = xExtent.min + t * (xExtent.max - xExtent.min);
+      const dataY = regression.slope * dataX + regression.intercept;
+      const wx = xScale(dataX);
+      const wz = yScale(dataY);
+      result.push({ pos: [wx, 0.08, wz] });
+    }
+    return result;
+  }, [regression, xExtent, xScale, yScale]);
+
+  return (
+    <group>
+      {spheres.map((s, i) => (
+        <mesh key={i} position={s.pos}>
+          <sphereGeometry args={[0.06, 8, 8]} />
+          <meshStandardMaterial
+            color={isDark ? '#7ec8c8' : '#5aafaf'}
+            roughness={0.5}
+            metalness={0.1}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AXIS LABELS
+   ═══════════════════════════════════════════════════════════ */
+
+function AxisLabels({ xTicks, yTicks, xScale, yScale, worldW, worldH, isDark }: {
+  xTicks: number[];
+  yTicks: number[];
+  xScale: (v: number) => number;
+  yScale: (v: number) => number;
+  worldW: number;
+  worldH: number;
+  isDark: boolean;
+}) {
+  const hh = worldH / 2;
+  const hw = worldW / 2;
+  const color = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(60,55,50,0.45)';
+  const style: React.CSSProperties = {
+    fontSize: '9px',
+    fontWeight: 600,
+    fontFamily: 'Space Grotesk, sans-serif',
+    color,
+    whiteSpace: 'nowrap',
+    pointerEvents: 'none',
+  };
+
+  return (
+    <group>
+      {xTicks.map(t => (
+        <Html key={`x-${t}`} position={[xScale(t), 0, hh + 0.6]} center style={{ pointerEvents: 'none' }}>
+          <div style={style}>{t >= 1000 ? `${(t / 1000).toFixed(0)}k` : t}</div>
+        </Html>
+      ))}
+      {yTicks.map(t => (
+        <Html key={`y-${t}`} position={[-hw - 0.6, 0, yScale(t)]} center style={{ pointerEvents: 'none' }}>
+          <div style={style}>{t.toFixed(2)}</div>
+        </Html>
+      ))}
+      <Html position={[0, 0, hh + 1.6]} center style={{ pointerEvents: 'none' }}>
+        <div style={{ ...style, fontSize: '11px', fontWeight: 700 }}>
+          Total Away Miles Traveled
+        </div>
+      </Html>
+      <Html position={[-hw - 2.2, 0, 0]} center style={{ pointerEvents: 'none' }}>
+        <div style={{ ...style, fontSize: '11px', fontWeight: 700, transform: 'rotate(-90deg)', transformOrigin: 'center' }}>
+          Home Advantage (PPG Delta)
+        </div>
+      </Html>
+
+      {/* 3D Ghost interpretation hints — extruded text on the surface */}
+      <group position={[0, 0.02, 0]}>
+        {/* "More travel →" — bottom-right of plot */}
+        <Text
+          position={[hw - 4, 0.15, hh - 1.5]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          fontSize={0.38}
+          letterSpacing={0.12}
+          color={isDark ? '#555566' : '#b8b4ae'}
+          anchorX="center"
+          anchorY="middle"
+          castShadow
+        >
+          MORE TRAVEL
+           <meshStandardMaterial
+             color={isDark ? '#666677' : '#a8a4a0'}
+            roughness={0.95}
+            metalness={0.02}
+          />
+        </Text>
+
+        {/* "↑ STRONGER HOME EDGE" — upper-left of plot */}
+        <Text
+          position={[-hw + 4, 0.15, -hh + 2]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          fontSize={0.35}
+          letterSpacing={0.12}
+          color={isDark ? '#555566' : '#b8b4ae'}
+          anchorX="center"
+          anchorY="middle"
+          castShadow
+        >
+          STRONGER HOME EDGE
+           <meshStandardMaterial
+             color={isDark ? '#666677' : '#a8a4a0'}
+            roughness={0.95}
+            metalness={0.02}
+          />
+        </Text>
+
+        {/* "BETTER AWAY ↓" — lower-left of plot */}
+        <Text
+          position={[-hw + 3.5, 0.15, hh - 1.5]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          fontSize={0.35}
+          letterSpacing={0.12}
+          color={isDark ? '#555566' : '#b8b4ae'}
+          anchorX="center"
+          anchorY="middle"
+          castShadow
+        >
+          BETTER AWAY
+           <meshStandardMaterial
+             color={isDark ? '#666677' : '#a8a4a0'}
+            roughness={0.95}
+            metalness={0.02}
+          />
+        </Text>
+      </group>
+    </group>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   R² LABEL
+   ═══════════════════════════════════════════════════════════ */
+
+function R2Label({ regression, xExtent, xScale, yScale, isDark }: {
+  regression: { slope: number; intercept: number; r2: number } | null;
+  xExtent: { min: number; max: number };
+  xScale: (v: number) => number;
+  yScale: (v: number) => number;
+  isDark: boolean;
+}) {
+  if (!regression) return null;
+  const endX = xExtent.max;
+  const endY = regression.slope * endX + regression.intercept;
+  const wx = xScale(endX);
+  const wz = yScale(endY);
+
+  return (
+    <Html position={[wx - 0.8, 0.2, wz - 0.6]} center style={{ pointerEvents: 'none' }}>
+      <div style={{
+        fontSize: '10px',
+        fontWeight: 600,
+        fontFamily: 'Space Grotesk, sans-serif',
+        color: isDark ? 'rgba(0,212,255,0.5)' : 'rgba(0,160,200,0.45)',
+        whiteSpace: 'nowrap',
+        background: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.6)',
+        padding: '2px 6px',
+        borderRadius: '4px',
+      }}>
+        R² = {regression.r2.toFixed(2)}
+      </div>
+    </Html>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CAMERA — Orthographic with slight tilt for ring visibility
+   ═══════════════════════════════════════════════════════════ */
+
+function CameraSetup() {
+  const { camera, size } = useThree();
+
+  useEffect(() => {
+    if (camera instanceof THREE.OrthographicCamera) {
+      const aspect = size.width / size.height;
+      const viewH = WORLD_H * 0.58;
+      const viewW = viewH * aspect;
+
+      camera.left = -viewW;
+      camera.right = viewW;
+      camera.top = viewH;
+      camera.bottom = -viewH;
+      camera.near = 0.1;
+      camera.far = 300;
+
+      // Slight tilt from top-down — ~10° forward tilt
+      // This lets us see the ring tubes and their shadows
+      // Position: high up, slightly behind (positive Z offset)
+      camera.position.set(0, 80, 14);
+      camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
+    }
+  }, [camera, size]);
+
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN 3D SCENE
+   ═══════════════════════════════════════════════════════════ */
+
+interface TooltipData {
+  teamName: string;
+  conference: string;
+  totalAwayMiles: number;
+  ppgGap: number;
+  homePPG: number;
+  awayPPG: number;
+  homeWinPct: number;
+  awayWinPct: number;
+  longestTripMiles: number;
+  awayGamesCount: number;
+  resilienceScore: number;
+}
+
+interface RingData {
+  teamId: string;
+  label: string;
+  wx: number;
+  wz: number;
+  ringRadius: number;
+  tubeRadius: number;
+  teamColor: string;
+  tooltip: TooltipData;
+}
+
+function ScatterScene({ rings, xTicks, yTicks, xScale, yScale, regression, xExtent, isDark, showColor, showInsights }: {
+  rings: RingData[];
+  xTicks: number[];
+  yTicks: number[];
+  xScale: (v: number) => number;
+  yScale: (v: number) => number;
+  regression: { slope: number; intercept: number; r2: number } | null;
+  xExtent: { min: number; max: number };
+  isDark: boolean;
+  showColor: boolean;
+  showInsights: boolean;
+}) {
+  const surfaceColor = isDark ? '#3a3a50' : '#ffffff';
+
+  return (
+    <>
+      <CameraSetup />
+
+      {/* ── Lighting ──
+          Strong key light from upper-left for crisp shadow casting.
+          Low ambient for high shadow contrast. */}
+
+      {/* Ambient — low for shadow contrast */}
+      <ambientLight intensity={isDark ? 0.25 : 0.55} />
+
+      {/* Hemisphere — subtle warm/cool */}
+      <hemisphereLight
+        args={[
+          isDark ? '#4a4a6a' : '#f5f2ed',
+          isDark ? '#2a2a3a' : '#d4d0ca',
+          isDark ? 0.15 : 0.2,
+        ]}
+      />
+
+      {/* Key light — upper-left, strong, casts shadows */}
+      <directionalLight
+        position={[-40, 50, -30]}
+        intensity={isDark ? 1.8 : 1.2}
+        castShadow
+        shadow-mapSize-width={4096}
+        shadow-mapSize-height={4096}
+        shadow-camera-left={-20}
+        shadow-camera-right={20}
+        shadow-camera-top={20}
+        shadow-camera-bottom={-20}
+        shadow-camera-near={0.5}
+        shadow-camera-far={200}
+        shadow-bias={-0.0003}
+        shadow-radius={2}
+      />
+
+      {/* Fill light — opposite side, soft, no shadows */}
+      <directionalLight
+        position={[30, 20, 25]}
+        intensity={isDark ? 0.15 : 0.3}
+      />
+
+      {/* Surface plane — receives shadows */}
+      <SurfacePlane
+        width={WORLD_W + 6}
+        height={WORLD_H + 6}
+        color={surfaceColor}
+      />
+
+      {/* Torus rings — sorted by Z for proper overlap */}
+      {[...rings]
+        .sort((a, b) => a.wz - b.wz)
+        .map(r => (
+          <Ring
+            key={r.teamId}
+            position={[r.wx, 0, r.wz]}
+            ringRadius={r.ringRadius}
+            tubeRadius={r.tubeRadius}
+            label={r.label}
+            isDark={isDark}
+            teamColor={r.teamColor}
+            showColor={showColor}
+            tooltip={r.tooltip}
+          />
+        ))}
+
+      {/* Grid lines */}
+      <GridLines
+        xTicks={xTicks}
+        yTicks={yTicks}
+        xScale={xScale}
+        yScale={yScale}
+        worldW={WORLD_W}
+        worldH={WORLD_H}
+        isDark={isDark}
+      />
+
+      {/* Regression trend — only shown when insights are open */}
+      {showInsights && (
+        <RegressionPath
+          regression={regression}
+          xExtent={xExtent}
+          xScale={xScale}
+          yScale={yScale}
+          isDark={isDark}
+        />
+      )}
+
+      {/* Axis labels */}
+      <AxisLabels
+        xTicks={xTicks}
+        yTicks={yTicks}
+        xScale={xScale}
+        yScale={yScale}
+        worldW={WORLD_W}
+        worldH={WORLD_H}
+        isDark={isDark}
+      />
+
+      {/* R² label — only shown when insights are open */}
+      {showInsights && (
+        <R2Label
+          regression={regression}
+          xExtent={xExtent}
+          xScale={xScale}
+          yScale={yScale}
+          isDark={isDark}
+        />
+      )}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN EXPORT COMPONENT
+   ═══════════════════════════════════════════════════════════ */
 
 export default function TravelScatterChart({ metrics }: TravelScatterChartProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [conference, setConference] = useState<ConferenceFilter>('ALL');
+  const [showColor, setShowColor] = useState(false);
 
   const filtered = useMemo(() => {
     if (conference === 'ALL') return metrics;
@@ -467,23 +799,17 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
     return metrics.filter(m => m.conference === conf);
   }, [metrics, conference]);
 
-  const headline = useMemo(() => generateScatterHeadline(filtered), [filtered]);
+  const insights = useMemo(() => generateInsights(filtered), [filtered]);
+  const [showInsights, setShowInsights] = useState(false);
 
-  // ─── Chart dimensions ───
-  const width = 1100;
-  const height = 700;
-  const margin = { top: 45, right: 55, bottom: 65, left: 75 };
-  const plotW = width - margin.left - margin.right;
-  const plotH = height - margin.top - margin.bottom;
-
-  // ─── Scales ───
+  // Data extents
   const xExtent = useMemo(() => {
     if (filtered.length === 0) return { min: 15000, max: 45000 };
     const vals = filtered.map(m => m.totalAwayMiles);
     const min = Math.min(...vals);
     const max = Math.max(...vals);
-    const pad = (max - min) * 0.15 || 5000;
-    return { min: Math.max(0, min - pad), max: max + pad };
+    const pad = (max - min) * 0.12 || 5000;
+    return { min: min - pad, max: max + pad };
   }, [filtered]);
 
   const yExtent = useMemo(() => {
@@ -491,18 +817,9 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
     const vals = filtered.map(m => m.ppgGap);
     const min = Math.min(...vals);
     const max = Math.max(...vals);
-    const pad = (max - min) * 0.2 || 0.3;
+    const pad = (max - min) * 0.15 || 0.3;
     return { min: min - pad, max: max + pad };
   }, [filtered]);
-
-  const depthExtent = useMemo(() => {
-    if (filtered.length === 0) return { min: 0, max: 100 };
-    const vals = filtered.map(m => m.squadDepthIndex);
-    return { min: Math.min(...vals), max: Math.max(...vals) };
-  }, [filtered]);
-
-  const xScale = (val: number) => margin.left + ((val - xExtent.min) / (xExtent.max - xExtent.min)) * plotW;
-  const yScale = (val: number) => margin.top + plotH - ((val - yExtent.min) / (yExtent.max - yExtent.min)) * plotH;
 
   const gapExtent = useMemo(() => {
     if (filtered.length === 0) return { min: 0, max: 1 };
@@ -510,24 +827,64 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
     return { min: Math.min(...vals), max: Math.max(...vals) };
   }, [filtered]);
 
-  const radiusScale = (gap: number) => {
+  const hw = WORLD_W / 2;
+  const hh = WORLD_H / 2;
+
+  const xScale = useCallback((val: number) => {
+    return -hw + ((val - xExtent.min) / (xExtent.max - xExtent.min)) * WORLD_W;
+  }, [xExtent, hw]);
+
+  const yScale = useCallback((val: number) => {
+    return hh - ((val - yExtent.min) / (yExtent.max - yExtent.min)) * WORLD_H;
+  }, [yExtent, hh]);
+
+  const ringRadiusScale = useCallback((gap: number) => {
     const range = gapExtent.max - gapExtent.min || 1;
     const t = (Math.abs(gap) - gapExtent.min) / range;
-    return 18 + t * 24;
-  };
+    // Ring major radius: 0.4 to 1.8 (sqrt for area perception)
+    return 0.4 + Math.sqrt(t) * 1.4;
+  }, [gapExtent]);
 
-  const ringCountScale = (depth: number) => {
-    const range = depthExtent.max - depthExtent.min || 1;
-    const t = (depth - depthExtent.min) / range;
-    return Math.round(2 + t * 5);
-  };
+  const tubeRadiusScale = useCallback((gap: number) => {
+    const ringR = ringRadiusScale(gap);
+    // Thin tube — wire-like raised edge, not chunky tube
+    return ringR * 0.04 + 0.015;
+  }, [ringRadiusScale]);
 
+  // Build ring data
+  const rings: RingData[] = useMemo(() => {
+    return filtered.map(m => ({
+      teamId: m.teamId,
+      label: abbrev(m.teamShort),
+      wx: xScale(m.totalAwayMiles),
+      wz: yScale(m.ppgGap),
+      ringRadius: ringRadiusScale(m.ppgGap),
+      tubeRadius: tubeRadiusScale(m.ppgGap),
+      teamColor: m.teamColor,
+      tooltip: {
+        teamName: m.teamShort,
+        conference: m.conference,
+        totalAwayMiles: m.totalAwayMiles,
+        ppgGap: m.ppgGap,
+        homePPG: m.homePPG,
+        awayPPG: m.awayPPG,
+        homeWinPct: m.homeWinPct,
+        awayWinPct: m.awayWinPct,
+        longestTripMiles: m.longestTripMiles,
+        awayGamesCount: m.awayGamesCount,
+        resilienceScore: m.resilienceScore,
+      },
+    }));
+  }, [filtered, xScale, yScale, ringRadiusScale, tubeRadiusScale]);
+
+  // Regression
   const regression = useMemo(() => {
     if (filtered.length < 3) return null;
     const pts = filtered.map(m => ({ x: m.totalAwayMiles, y: m.ppgGap }));
     return linearRegression(pts);
   }, [filtered]);
 
+  // Axis ticks
   const xTicks = useMemo(() => {
     const step = (xExtent.max - xExtent.min) > 20000 ? 5000 : 2500;
     const ticks: number[] = [];
@@ -545,67 +902,9 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
     return ticks;
   }, [yExtent]);
 
-  const medianX = useMemo(() => {
-    if (filtered.length === 0) return (xExtent.min + xExtent.max) / 2;
-    const sorted = [...filtered.map(m => m.totalAwayMiles)].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-  }, [filtered, xExtent]);
-
-  const medianY = useMemo(() => {
-    if (filtered.length === 0) return (yExtent.min + yExtent.max) / 2;
-    const sorted = [...filtered.map(m => m.ppgGap)].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-  }, [filtered, yExtent]);
-
-  // Colors
-  const gridColor = isDark ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.035)';
-  const axisColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-  const textColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
-  const labelColor = isDark ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.6)';
-  const quadrantColor = isDark ? 'rgba(0,212,255,0.06)' : 'rgba(0,160,200,0.05)';
+  const labelColor = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)';
   const regressionColor = isDark ? 'rgba(0,212,255,0.3)' : 'rgba(0,160,200,0.25)';
-
-  // Surface dots
-  const surfaceDots = useMemo(() => {
-    const dots: { x: number; y: number }[] = [];
-    const spacing = 16;
-    for (let x = margin.left; x < margin.left + plotW; x += spacing) {
-      for (let y = margin.top; y < margin.top + plotH; y += spacing) {
-        const jx = x + (Math.sin(x * 0.1 + y * 0.07) * 2.5);
-        const jy = y + (Math.cos(x * 0.07 + y * 0.1) * 2.5);
-        dots.push({ x: jx, y: jy });
-      }
-    }
-    return dots;
-  }, [plotW, plotH, margin]);
-
-  // ─── Z-ordering: sort by Y position (top of screen = behind, bottom = in front) ───
-  const zSorted = useMemo(() =>
-    [...filtered].sort((a, b) => {
-      const ya = yScale(a.ppgGap);
-      const yb = yScale(b.ppgGap);
-      return ya - yb; // smaller Y (higher on screen) renders first (behind)
-    }),
-    [filtered, yExtent]
-  );
-
-  // ─── Compute label placements ───
-  const labelPlacements = useMemo(() => {
-    const items = zSorted.map(m => ({
-      cx: xScale(m.totalAwayMiles),
-      cy: yScale(m.ppgGap),
-      r: radiusScale(m.ppgGap) + radiusScale(m.ppgGap) * 0.2, // include rim
-      label: abbrev(m.teamShort),
-    }));
-    return computeLabelPlacements(items, {
-      left: margin.left + 5,
-      top: margin.top + 5,
-      right: margin.left + plotW - 5,
-      bottom: margin.top + plotH - 5,
-    });
-  }, [zSorted, xExtent, yExtent, gapExtent]);
+  const bgColor = isDark ? '#1c1c2e' : '#ffffff';
 
   return (
     <div>
@@ -616,221 +915,118 @@ export default function TravelScatterChart({ metrics }: TravelScatterChartProps)
             Travel Burden vs Away Performance Drop
           </h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Each impression represents a team pressed into the surface. Ring depth = squad rotation depth. Crater size = PPG gap magnitude.
+            Each impression represents a team pressed into the surface. Crater size = PPG gap magnitude.
           </p>
         </div>
-        <div className="flex items-center gap-0 relative z-10">
-          {(['ALL', 'EAST', 'WEST'] as ConferenceFilter[]).map((c, i) => (
-            <button
-              key={c}
-              onClick={(e) => { e.stopPropagation(); setConference(c); }}
-              className={`text-[10px] px-3 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
-                conference === c
-                  ? 'neu-pressed text-cyan'
-                  : 'neu-raised text-muted-foreground hover:text-foreground'
-              } ${i === 0 ? 'rounded-l-lg' : i === 2 ? 'rounded-r-lg' : ''}`}
-              style={{ fontFamily: 'Space Grotesk', minWidth: 40, minHeight: 28 }}
-            >
-              {c}
-            </button>
-          ))}
+        <div className="flex items-center gap-3 relative z-10">
+          {/* Insights lightbulb toggle */}
+          <CardInsightToggle
+            isOpen={showInsights}
+            onToggle={() => setShowInsights(v => !v)}
+            isDark={isDark}
+          />
+          {/* Conference filter */}
+          <div className="flex items-center gap-0">
+            {(['ALL', 'EAST', 'WEST'] as ConferenceFilter[]).map((c, i) => (
+              <button key={c}
+                onClick={(e) => { e.stopPropagation(); setConference(c); }}
+                className={`text-[10px] px-3 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
+                  conference === c ? 'neu-pressed text-cyan' : 'neu-raised text-muted-foreground hover:text-foreground'
+                } ${i === 0 ? 'rounded-l-lg' : i === 2 ? 'rounded-r-lg' : ''}`}
+                style={{ fontFamily: 'Space Grotesk', minWidth: 40, minHeight: 28 }}
+              >{c}</button>
+            ))}
+          </div>
+          {/* Color toggle */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowColor(prev => !prev); }}
+            className={`text-[10px] px-3 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none rounded-lg ${
+              showColor ? 'neu-pressed text-cyan' : 'neu-raised text-muted-foreground hover:text-foreground'
+            }`}
+            style={{ fontFamily: 'Space Grotesk', minWidth: 40, minHeight: 28 }}
+            title={showColor ? 'Hide team colors' : 'Show team colors'}
+          >COLOR</button>
         </div>
       </div>
 
-      {/* Insight headline */}
-      <div className="mb-3 px-3 py-2 rounded-lg text-[11px] leading-relaxed"
-        style={{
-          fontFamily: 'Space Grotesk',
-          background: isDark ? 'rgba(0,212,255,0.04)' : 'rgba(0,160,200,0.04)',
-          border: `1px solid ${isDark ? 'rgba(0,212,255,0.1)' : 'rgba(0,160,200,0.08)'}`,
-          color: labelColor,
-        }}
-      >
-        <span style={{ color: 'var(--cyan)', fontWeight: 600 }}>
-          {headline.split('—')[0]}
-        </span>
-        {headline.includes('—') ? `—${headline.split('—').slice(1).join('—')}` : ''}
-      </div>
+      {/* AI-Powered Insights — custom section with team-colored bullets */}
+      <TeamInsightSection
+        isOpen={showInsights}
+        insights={insights}
+        isDark={isDark}
+      />
 
-      {/* Chart */}
-      <div className="w-full overflow-x-auto">
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="w-full"
-          style={{ minWidth: '700px', maxHeight: '700px' }}
+      {/* 3D Canvas */}
+      <div className="w-full rounded-lg overflow-hidden" style={{
+        height: '930px',
+        background: bgColor,
+      }}>
+        <Canvas
+          orthographic
+          shadows
+          gl={{ antialias: true, alpha: false }}
+          dpr={[1, 2]}
+          style={{ width: '100%', height: '100%' }}
         >
-          <defs>
-            <filter id="clay-surface" x="0%" y="0%" width="100%" height="100%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" result="noise" />
-              <feColorMatrix type="saturate" values="0" in="noise" result="gray" />
-              <feBlend in="SourceGraphic" in2="gray" mode={isDark ? 'soft-light' : 'multiply'} result="textured" />
-              <feComponentTransfer in="textured">
-                <feFuncA type="linear" slope={isDark ? 0.15 : 0.08} />
-              </feComponentTransfer>
-            </filter>
-          </defs>
+          <color attach="background" args={[bgColor]} />
 
-          {/* Background surface */}
-          <rect x={margin.left} y={margin.top} width={plotW} height={plotH} rx={6}
-            fill={isDark ? 'rgba(18,18,28,0.35)' : 'rgba(232,230,226,0.55)'} />
-          <rect x={margin.left} y={margin.top} width={plotW} height={plotH} rx={6}
-            fill={isDark ? 'rgba(30,30,45,0.15)' : 'rgba(215,213,210,0.2)'}
-            filter="url(#clay-surface)" />
-
-          {/* Dot grid */}
-          {surfaceDots.map((d, i) => (
-            <circle key={i} cx={d.x} cy={d.y} r={0.5}
-              fill={isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'} />
-          ))}
-
-          {/* Grid lines */}
-          {xTicks.map(t => (
-            <line key={`xg-${t}`} x1={xScale(t)} y1={margin.top} x2={xScale(t)} y2={margin.top + plotH}
-              stroke={gridColor} strokeDasharray="2,8" />
-          ))}
-          {yTicks.map(t => (
-            <line key={`yg-${t}`} x1={margin.left} y1={yScale(t)} x2={margin.left + plotW} y2={yScale(t)}
-              stroke={gridColor} strokeDasharray="2,8" />
-          ))}
-
-          {/* Quadrant dividers */}
-          <line x1={xScale(medianX)} y1={margin.top} x2={xScale(medianX)} y2={margin.top + plotH}
-            stroke={quadrantColor} strokeDasharray="4,8" strokeWidth={1} />
-          <line x1={margin.left} y1={yScale(medianY)} x2={margin.left + plotW} y2={yScale(medianY)}
-            stroke={quadrantColor} strokeDasharray="4,8" strokeWidth={1} />
-
-          {/* Quadrant labels */}
-          <text x={margin.left + 14} y={margin.top + 18}
-            fill={isDark ? 'rgba(0,212,255,0.12)' : 'rgba(0,160,200,0.1)'}
-            fontSize={8.5} fontWeight={700} fontFamily="Space Grotesk" letterSpacing="0.1em"
-          >LOW TRAVEL · HIGH ADVANTAGE</text>
-          <text x={margin.left + plotW - 14} y={margin.top + plotH - 10}
-            fill={isDark ? 'rgba(0,212,255,0.12)' : 'rgba(0,160,200,0.1)'}
-            fontSize={8.5} fontWeight={700} fontFamily="Space Grotesk" letterSpacing="0.1em" textAnchor="end"
-          >HIGH TRAVEL · LOW ADVANTAGE</text>
-          <text x={margin.left + plotW - 14} y={margin.top + 18}
-            fill={isDark ? 'rgba(255,180,80,0.1)' : 'rgba(180,120,40,0.08)'}
-            fontSize={8.5} fontWeight={700} fontFamily="Space Grotesk" letterSpacing="0.1em" textAnchor="end"
-          >HIGH TRAVEL · HIGH ADVANTAGE</text>
-          <text x={margin.left + 14} y={margin.top + plotH - 10}
-            fill={isDark ? 'rgba(255,180,80,0.1)' : 'rgba(180,120,40,0.08)'}
-            fontSize={8.5} fontWeight={700} fontFamily="Space Grotesk" letterSpacing="0.1em"
-          >LOW TRAVEL · LOW ADVANTAGE</text>
-
-          {/* Regression path */}
-          {regression && (() => {
-            const x1 = xScale(xExtent.min);
-            const y1 = yScale(regression.slope * xExtent.min + regression.intercept);
-            const x2 = xScale(xExtent.max);
-            const y2 = yScale(regression.slope * xExtent.max + regression.intercept);
-            const len = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-            const dotCount = Math.floor(len / 7);
-            const dots = Array.from({ length: dotCount }, (_, i) => {
-              const t = i / (dotCount - 1);
-              return { x: x1 + (x2 - x1) * t, y: y1 + (y2 - y1) * t };
-            });
-            return (
-              <g>
-                {dots.map((d, i) => (
-                  <circle key={i} cx={d.x} cy={d.y}
-                    r={i % 4 === 0 ? 1.8 : i % 2 === 0 ? 1.1 : 0.6}
-                    fill={regressionColor} />
-                ))}
-                <text x={x2 - 8} y={y2 - 14} fill={regressionColor}
-                  fontSize={10} fontWeight={600} fontFamily="Space Grotesk" textAnchor="end">
-                  R² = {regression.r2.toFixed(2)}
-                </text>
-              </g>
-            );
-          })()}
-
-          {/* Axes */}
-          <line x1={margin.left} y1={margin.top + plotH} x2={margin.left + plotW} y2={margin.top + plotH} stroke={axisColor} />
-          <line x1={margin.left} y1={margin.top} x2={margin.left} y2={margin.top + plotH} stroke={axisColor} />
-
-          {xTicks.map(t => (
-            <g key={`xt-${t}`}>
-              <line x1={xScale(t)} y1={margin.top + plotH} x2={xScale(t)} y2={margin.top + plotH + 5} stroke={axisColor} />
-              <text x={xScale(t)} y={margin.top + plotH + 20} fill={textColor} fontSize={10} fontFamily="Space Grotesk" textAnchor="middle">
-                {t >= 1000 ? `${(t / 1000).toFixed(0)}k` : t}
-              </text>
-            </g>
-          ))}
-          {yTicks.map(t => (
-            <g key={`yt-${t}`}>
-              <line x1={margin.left - 5} y1={yScale(t)} x2={margin.left} y2={yScale(t)} stroke={axisColor} />
-              <text x={margin.left - 10} y={yScale(t) + 4} fill={textColor} fontSize={10} fontFamily="Space Grotesk" textAnchor="end">
-                {t.toFixed(2)}
-              </text>
-            </g>
-          ))}
-
-          <text x={margin.left + plotW / 2} y={height - 8} fill={labelColor} fontSize={12} fontWeight={600} fontFamily="Space Grotesk" textAnchor="middle">
-            Total Away Miles Traveled
-          </text>
-          <text x={16} y={margin.top + plotH / 2} fill={labelColor} fontSize={12} fontWeight={600} fontFamily="Space Grotesk" textAnchor="middle"
-            transform={`rotate(-90, 16, ${margin.top + plotH / 2})`}>
-            Home Advantage (PPG Delta)
-          </text>
-
-          {/* ═══ CRATERS — z-sorted by Y position ═══ */}
-          {zSorted.map((m, idx) => {
-            const cx = xScale(m.totalAwayMiles);
-            const cy = yScale(m.ppgGap);
-            const r = radiusScale(m.ppgGap);
-            const rings = ringCountScale(m.squadDepthIndex);
-            const color = mutedTeamColor(m.teamId, isDark);
-            const lp = labelPlacements[idx];
-
-            return (
-              <Crater
-                key={m.teamId}
-                cx={cx}
-                cy={cy}
-                baseRadius={r}
-                ringCount={rings}
-                teamColor={color}
-                isDark={isDark}
-                label={abbrev(m.teamShort)}
-                labelX={lp?.x ?? cx}
-                labelY={lp?.y ?? (cy - r - 8)}
-                labelAnchor={lp?.anchor ?? 'middle'}
-                labelColor={labelColor}
-                id={m.teamId}
-              />
-            );
-          })}
-        </svg>
+          <ScatterScene
+            rings={rings}
+            xTicks={xTicks}
+            yTicks={yTicks}
+            xScale={xScale}
+            yScale={yScale}
+            regression={regression}
+            xExtent={xExtent}
+            isDark={isDark}
+            showColor={showColor}
+            showInsights={showInsights}
+          />
+        </Canvas>
       </div>
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-6 mt-3 text-[10px] text-muted-foreground flex-wrap">
         <div className="flex items-center gap-2">
-          <svg width="22" height="22" viewBox="0 0 22 22">
-            <circle cx="11" cy="11" r="9.5" fill={isDark ? 'rgba(40,40,55,0.3)' : 'rgba(220,218,215,0.5)'} />
-            <circle cx="11" cy="11" r="9.5" fill="none" stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.5)'} strokeWidth={1} />
-            <circle cx="11" cy="11" r="7" fill="none" stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'} strokeWidth={0.5} />
-            <circle cx="11" cy="11" r="4.5" fill="none" stroke={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'} strokeWidth={0.5} />
-            <circle cx="11" cy="11" r="2.5" fill="none" stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'} strokeWidth={0.5} />
-            <circle cx="11" cy="11" r="1.2" fill={isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'} />
-          </svg>
-          <span>More rings = deeper squad rotation</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <svg width="22" height="22" viewBox="0 0 22 22">
-            <circle cx="11" cy="11" r="10" fill="none" stroke={isDark ? 'rgba(0,212,255,0.15)' : 'rgba(0,160,200,0.12)'} strokeWidth={0.8} />
-            <circle cx="11" cy="11" r="6" fill="none" stroke={isDark ? 'rgba(0,212,255,0.1)' : 'rgba(0,160,200,0.08)'} strokeWidth={0.5} strokeDasharray="2,2" />
-          </svg>
+          <div style={{ width: 28, height: 28 }}>
+            <Canvas
+              orthographic
+              shadows
+              gl={{ antialias: true, alpha: true }}
+              dpr={[1, 2]}
+              camera={{ position: [0, 5, 1.5], zoom: 6 }}
+              style={{ width: '100%', height: '100%', background: 'transparent' }}
+            >
+              <ambientLight intensity={0.4} />
+              <directionalLight position={[-3, 5, -2]} intensity={1.2} castShadow />
+              <group position={[0, 0.15, 0]}>
+                <mesh castShadow>
+                  <cylinderGeometry args={[1.1, 1.1, 0.3, 32, 1, true]} />
+                  <meshStandardMaterial color={isDark ? '#e8e6e2' : '#d8d5d0'} roughness={0.92} metalness={0.02} side={THREE.DoubleSide} />
+                </mesh>
+                <mesh castShadow>
+                  <cylinderGeometry args={[0.9, 0.9, 0.3, 32, 1, true]} />
+                  <meshStandardMaterial color={isDark ? '#e8e6e2' : '#d8d5d0'} roughness={0.92} metalness={0.02} side={THREE.DoubleSide} />
+                </mesh>
+              </group>
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+                <planeGeometry args={[4, 4]} />
+                <meshStandardMaterial color={isDark ? '#3a3a50' : '#ffffff'} roughness={0.95} metalness={0} />
+              </mesh>
+            </Canvas>
+          </div>
           <span>Larger impression = bigger PPG gap</span>
         </div>
-        <div className="flex items-center gap-2">
-          <svg width="28" height="6" viewBox="0 0 28 6">
-            {[0, 5, 10, 15, 20, 25].map(x => (
-              <circle key={x} cx={x + 1.5} cy={3} r={x % 12 === 0 ? 1.6 : x % 6 === 0 ? 1 : 0.5} fill={regressionColor} />
-            ))}
-          </svg>
-          <span>Dotted path = regression trend</span>
-        </div>
+        {showInsights && (
+          <div className="flex items-center gap-2">
+            <svg width="28" height="6" viewBox="0 0 28 6">
+              {[0, 7, 14, 21].map(x => (
+                <circle key={x} cx={x + 3} cy={3} r={1.2} fill={regressionColor} />
+              ))}
+            </svg>
+            <span>Dotted path = regression trend</span>
+          </div>
+        )}
       </div>
     </div>
   );

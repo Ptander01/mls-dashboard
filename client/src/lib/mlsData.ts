@@ -75,7 +75,7 @@ export const TEAMS: Team[] = [
   { id: 'COL', name: 'Colorado Rapids', short: 'Colorado Rapids', stadium: 'Dick\'s Sporting Goods Park', city: 'Commerce City', state: 'CO', lat: 39.8056, lng: -104.8917, color: '#862633', conference: 'Western' },
   { id: 'CLB', name: 'Columbus Crew', short: 'Columbus Crew', stadium: 'Lower.com Field', city: 'Columbus', state: 'OH', lat: 39.9689, lng: -83.0172, color: '#000000', conference: 'Eastern' },
   { id: 'DC', name: 'D.C. United', short: 'D.C. United', stadium: 'Audi Field', city: 'Washington', state: 'DC', lat: 38.8686, lng: -77.0128, color: '#000000', conference: 'Eastern' },
-  { id: 'CIN', name: 'FC Cincinnati', short: 'FC Cincinnati', stadium: 'TQL Stadium', city: 'Cincinnati', state: 'OH', lat: 39.1112, lng: -84.5217, color: '#F05323', conference: 'Eastern' },
+  { id: 'CIN', name: 'FC Cincinnati', short: 'FC Cincinnati', stadium: 'TQL Stadium', city: 'Cincinnati', state: 'OH', lat: 39.1112, lng: -84.5217, color: '#FC4C02', conference: 'Eastern' },
   { id: 'DAL', name: 'FC Dallas', short: 'FC Dallas', stadium: 'Toyota Stadium', city: 'Frisco', state: 'TX', lat: 33.1543, lng: -96.8353, color: '#E81F3E', conference: 'Western' },
   { id: 'HOU', name: 'Houston Dynamo FC', short: 'Houston Dynamo', stadium: 'Shell Energy Stadium', city: 'Houston', state: 'TX', lat: 29.7522, lng: -95.3544, color: '#FF6B00', conference: 'Western' },
   { id: 'MIA', name: 'Inter Miami CF', short: 'Inter Miami', stadium: 'Chase Stadium', city: 'Fort Lauderdale', state: 'FL', lat: 26.1928, lng: -80.16, color: '#F7B5CD', conference: 'Eastern' },
