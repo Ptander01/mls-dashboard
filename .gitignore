@@ -105,5 +105,14 @@ temp/
 *.sqlite
 *.sqlite3
 
+# Manus skills directory
+skills/
+
+# Backup files
+*.backup.tsx
+
+# Archive directory
+archive/
+
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/

@@ -166,6 +166,21 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/three/') || id.includes('node_modules/@react-three/')) {
+            return 'vendor-three';
+          }
+          if (id.includes('node_modules/recharts/') || id.includes('node_modules/d3-')) {
+            return 'vendor-recharts';
+          }
+          if (id.includes('node_modules/@radix-ui/')) {
+            return 'vendor-radix';
+          }
+        },
+      },
+    },
   },
   server: {
     port: 3000,

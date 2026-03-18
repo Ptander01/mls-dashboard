@@ -15,8 +15,8 @@ import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart3, Grid3X3, FlaskConical, Activity, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import NeuCard from './NeuCard';
-import { NeuInsightContainer } from './NeuInsightContainer';
+import NeuCard from '../NeuCard';
+import { NeuInsightContainer } from '../NeuInsightContainer';
 import CorrelationMatrix3D from './CorrelationMatrix3D';
 import type { Player } from '@/lib/mlsData';
 

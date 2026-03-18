@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import FilterPanel from '@/components/FilterPanel';
-import PlayerStats from '@/components/tabs/PlayerStats';
-import TeamBudget from '@/components/tabs/TeamBudget';
-import Attendance from '@/components/tabs/Attendance';
-import TravelMap from '@/components/tabs/TravelMap';
-import PitchMatch from '@/components/tabs/PitchMatch';
 import { useFilters } from '@/contexts/FilterContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Users, DollarSign, BarChart3, Map, Target, Sun, Moon, Filter } from 'lucide-react';
+
+// Lazy-loaded tab components
+const PlayerStats = lazy(() => import('@/components/tabs/PlayerStats'));
+const TeamBudget = lazy(() => import('@/components/tabs/TeamBudget'));
+const Attendance = lazy(() => import('@/components/tabs/Attendance'));
+const TravelMap = lazy(() => import('@/components/tabs/TravelMap'));
+const PitchMatch = lazy(() => import('@/components/tabs/PitchMatch'));
 
 const HERO_IMG = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/hero-stadium-YUnnMoGMi6PoZPwoH5aXFc.webp';
 
@@ -18,6 +20,21 @@ const tabs = [
   { id: 'travel', label: 'Travel Map', icon: Map },
   { id: 'pitch', label: 'Pitch Match', icon: Target },
 ];
+
+/** Skeleton fallback shown while a tab chunk is loading */
+function TabSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 py-8 animate-pulse">
+      <div className="h-8 rounded-lg w-48" style={{ background: 'var(--neu-bg-pressed)' }} />
+      <div className="grid grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-24 rounded-xl" style={{ background: 'var(--neu-bg-pressed)' }} />
+        ))}
+      </div>
+      <div className="h-64 rounded-xl" style={{ background: 'var(--neu-bg-pressed)' }} />
+    </div>
+  );
+}
 
 // Exploded Z-axis assembly animation component
 function ZAssemblyTitle() {
@@ -288,11 +305,13 @@ export default function Home() {
             transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         >
-          {activeTab === 'players' && <PlayerStats />}
-          {activeTab === 'budget' && <TeamBudget />}
-          {activeTab === 'attendance' && <Attendance />}
-          {activeTab === 'travel' && <TravelMap />}
-          {activeTab === 'pitch' && <PitchMatch />}
+          <Suspense fallback={<TabSkeleton />}>
+            {activeTab === 'players' && <PlayerStats />}
+            {activeTab === 'budget' && <TeamBudget />}
+            {activeTab === 'attendance' && <Attendance />}
+            {activeTab === 'travel' && <TravelMap />}
+            {activeTab === 'pitch' && <PitchMatch />}
+          </Suspense>
         </div>
       </main>
 

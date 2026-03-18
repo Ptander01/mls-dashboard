@@ -15,7 +15,7 @@ import { ArrowUpDown, TrendingUp, Crosshair, Shield, Zap, Palette } from 'lucide
 import { InsightPanel } from '@/components/InsightPanel';
 import { playerStatsInsights, computeOutliers, scatterCardInsights, topScorersCardInsights, playerRadarCardInsights, playerTableCardInsights } from '@/lib/insightEngine';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
-import StatsPlayground from '@/components/StatsPlayground';
+import StatsPlayground from '@/components/charts/StatsPlayground';
 
 type SortKey = 'name' | 'team' | 'position' | 'age' | 'games' | 'minutes' | 'goals' | 'assists' | 'shots' | 'shotsOnTarget' | 'shotAccuracy' | 'tackles' | 'interceptions' | 'fouls' | 'yellowCards' | 'redCards' | 'salary';
 
