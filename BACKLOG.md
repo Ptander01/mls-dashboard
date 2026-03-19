@@ -49,6 +49,23 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 - **Task 6.4: Insight Engine Polish**
   - [x] Ensure all new insight cards are punchy, max 2 sentences, and start with specific numbers/teams.
 
+## Epic 6.5: Uniform Chart Container Template (Completed)
+**Effort:** 1 Session
+**Goal:** Create a reusable `ChartHeader` component with conversational descriptions and expandable METHODS panels, rolled out across all 10 chart cards. Establishes the "smart casual" tone pattern: visible conversational hook + collapsible methodology section with recessed neumorphic inset.
+**Files Touched:** New `ChartHeader.tsx`, `Attendance.tsx`, `TeamBudget.tsx`, `PlayerStats.tsx`, `TravelScatterChart.tsx`, `DumbbellChart.tsx`, `ResilienceIndexChart.tsx`, `RadarTeamCards.tsx`
+**Dependencies:** Epics 1-6
+**PR:** #68 (merged)
+**Issue:** #67 (closed)
+
+- **Task 6.5.1: ChartHeader Component**
+  - [x] Build reusable `ChartHeader` with title, conversational description, and expandable METHODS panel.
+  - [x] Recessed neumorphic inset for METHODS — "peeking under the hood" design intent.
+- **Task 6.5.2: Rollout Across All Charts**
+  - [x] Integrate `ChartHeader` into all 10 chart cards across Attendance, Travel Performance, Team Budget, and Player Stats tabs.
+  - [x] Write unique descriptions and methodology text for each chart.
+
+---
+
 ## Epic 7: The Relief Scatter (Visual Overhaul)
 **Effort:** 1 Session
 **Goal:** Redesign the Travel Scatter chart into a monochromatic relief sculpture using SVG filters and physical depth encoding (Vaughn Horseman aesthetic).
