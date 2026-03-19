@@ -22,6 +22,7 @@ import type { TeamResilienceMetrics } from '@/lib/resilienceUtils';
 import { CardInsightToggle } from '@/components/CardInsight';
 import type { CardInsightItem } from '@/components/CardInsight';
 import { NeuInsightContainer } from '@/components/NeuInsightContainer';
+import { ChartHeader } from '@/components/ui/ChartHeader';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /* Extended insight item with optional team color for bullet matching */
@@ -1330,20 +1331,21 @@ function TravelScatterChartInner({ metrics }: TravelScatterChartProps) {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-4">
-        <div className="flex items-start justify-between gap-4 mb-2">
-          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-            Travel Burden vs Away Performance Drop
-          </h3>
+      <ChartHeader
+        title="Travel Burden vs Away Performance Drop"
+        description={
+          <>Does flying more miles actually hurt a team's away form? This chart plots each club's <strong className="text-foreground/80">total away travel</strong> against their <strong className="text-foreground/80">home-vs-away performance gap</strong>. Bigger rings mean a bigger drop-off on the road. Hover any ring for detailed splits — Home/Away PPG, Win%, and longest trip. The dashed trend line shows the league-wide correlation, and R² tells you how much travel alone explains the gap.  Toggle the lightbulb for AI-powered quadrant analysis.</>
+        }
+        methods={
+          <>Home Advantage Gap = Home PPG − Away PPG. Ring diameter encodes |ΔPPG| on a linear scale (min {gapExtent.min.toFixed(2)}, max {gapExtent.max.toFixed(2)}). Regression: OLS with robust standard errors. R² = {regression ? regression.r2.toFixed(2) : 'N/A'} (slope = {regression ? regression.slope.toFixed(4) : 'N/A'}). X-axis: total one-way away miles for the season. Y-axis: PPG gap (positive = stronger at home). Data: 2025 MLS regular season. Correlation does not imply causation — roster depth, schedule congestion, altitude, and opponent strength also affect away performance. Western Conference teams typically log more miles due to geography.</>
+        }
+        rightAction={
           <div className="flex items-center gap-3 relative z-10">
-            {/* Insights lightbulb toggle */}
             <CardInsightToggle
               isOpen={showInsights}
               onToggle={() => setShowInsights(v => !v)}
               isDark={isDark}
             />
-            {/* Conference filter */}
             <div className="flex items-center gap-0">
               {(['ALL', 'EAST', 'WEST'] as ConferenceFilter[]).map((c, i) => (
                 <button key={c}
@@ -1355,7 +1357,6 @@ function TravelScatterChartInner({ metrics }: TravelScatterChartProps) {
                 >{c}</button>
               ))}
             </div>
-            {/* Color toggle */}
             <button
               onClick={(e) => { e.stopPropagation(); setShowColor(prev => !prev); }}
               className={`text-[10px] px-3 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none rounded-lg ${
@@ -1365,14 +1366,8 @@ function TravelScatterChartInner({ metrics }: TravelScatterChartProps) {
               title={showColor ? 'Hide team colors' : 'Show team colors'}
             >COLOR</button>
           </div>
-        </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Does flying more miles hurt a team's away form? This chart plots each MLS team's <strong className="text-foreground/80">total away miles traveled</strong> (X-axis) against their <strong className="text-foreground/80">home advantage gap</strong> — the difference between home and away points-per-game (Y-axis). Higher on the chart means a bigger drop-off when playing on the road. Each ring is a team — larger rings indicate a wider PPG gap. Hover any ring for detailed splits (Home/Away PPG, Win%, longest trip). The dashed trend line shows the league-wide correlation; R² measures how much travel alone explains the gap. Toggle the lightbulb for AI-powered quadrant analysis.
-        </p>
-        <p className="text-[10px] text-muted-foreground/60 mt-1 leading-relaxed italic">
-          Note: Correlation does not imply causation. Roster depth, schedule congestion, altitude, and opponent strength also affect away performance. Western Conference teams typically log more miles due to geography.
-        </p>
-      </div>
+        }
+      />
 
       {/* AI-Powered Insights — custom section with team-colored bullets */}
       <TeamInsightSection
