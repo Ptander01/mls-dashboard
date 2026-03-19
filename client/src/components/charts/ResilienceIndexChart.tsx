@@ -22,6 +22,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { lighten, darken, mutedTeamColor } from '@/lib/chartUtils';
 import type { TeamResilienceMetrics } from '@/lib/resilienceUtils';
 import { TIER_COLORS, TIER_LABELS, tierColor } from '@/lib/resilienceUtils';
+import { ChartHeader } from '@/components/ui/ChartHeader';
 
 type ViewMode = 'INDEX' | 'COMPONENTS';
 type ColorMode = 'SCORE' | 'TEAM';
@@ -537,56 +538,51 @@ function ResilienceIndexChartInner({ metrics }: ResilienceIndexChartProps) {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <div>
-          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-            Travel Resilience Index — All {sortedMetrics.length} Teams
-          </h3>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {viewMode === 'INDEX'
-              ? <>Tile area = resilience score. Extrusion depth = away PPG. {colorMode === 'SCORE' ? <>Color = <span style={{ color: tierColor('green', isDark) }}>performance tier</span>.</> : <>Color = <strong>team identity</strong>.</>}</>
-              : <>Each tile subdivided by component: <span style={{ color: isDark ? '#3A6A4A' : '#4A7A5A' }}>Away</span> · <span style={{ color: isDark ? '#4A6A8A' : '#5A7A9A' }}>Depth</span> · <span style={{ color: isDark ? '#8A7A4A' : '#7A6A3A' }}>Long-Haul</span>. Area = composite score.</>
-            }
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Color symbology toggle */}
-          <div className="flex items-center gap-0">
-            {(['SCORE', 'TEAM'] as ColorMode[]).map(c => (
-              <button
-                key={c}
-                onClick={() => setColorMode(c)}
-                className={`text-[10px] px-2.5 py-1 font-semibold tracking-wider transition-all ${
-                  colorMode === c
-                    ? 'neu-pressed text-cyan'
-                    : 'neu-raised text-muted-foreground hover:text-foreground'
-                } ${c === 'SCORE' ? 'rounded-l-lg' : 'rounded-r-lg'}`}
-                style={{ fontFamily: 'Space Grotesk' }}
-              >
-                {c}
-              </button>
-            ))}
+      <ChartHeader
+        title={`Travel Resilience Index — All ${sortedMetrics.length} Teams`}
+        description={
+          <>Which teams hold up best when the road gets long? This treemap sizes each club by its <strong className="text-foreground/80">composite resilience score</strong> — bigger tiles mean a team copes better with travel fatigue, schedule congestion, and long-haul flights. The 3D extrusion depth shows <strong className="text-foreground/80">away PPG</strong>, so taller blocks are earning more points on the road. Switch to COMPONENTS view to see exactly which factors drive each team's ranking.</>
+        }
+        methods={
+          <>Resilience Score = weighted composite of Away PPG (40%), Congestion Resistance (30%), and Long-Haul Record (30%). Congestion Resistance = away PPG in matches with ≤4 days rest vs. season away PPG. Long-Haul Record = away PPG in matches requiring 1,500+ mile travel. Tile area ∝ resilience score (squarified treemap layout). Extrusion depth ∝ away PPG (range 3–10px). Color modes: SCORE maps to performance tier (green/cyan/amber/red); TEAM uses muted club primary. Data: 2025 MLS regular season.</>
+        }
+        rightAction={
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-0">
+              {(['SCORE', 'TEAM'] as ColorMode[]).map(c => (
+                <button
+                  key={c}
+                  onClick={() => setColorMode(c)}
+                  className={`text-[10px] px-2.5 py-1 font-semibold tracking-wider transition-all ${
+                    colorMode === c
+                      ? 'neu-pressed text-cyan'
+                      : 'neu-raised text-muted-foreground hover:text-foreground'
+                  } ${c === 'SCORE' ? 'rounded-l-lg' : 'rounded-r-lg'}`}
+                  style={{ fontFamily: 'Space Grotesk' }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-0">
+              {(['INDEX', 'COMPONENTS'] as ViewMode[]).map(m => (
+                <button
+                  key={m}
+                  onClick={() => setViewMode(m)}
+                  className={`text-[10px] px-3 py-1 font-semibold tracking-wider transition-all ${
+                    viewMode === m
+                      ? 'neu-pressed text-cyan'
+                      : 'neu-raised text-muted-foreground hover:text-foreground'
+                  } ${m === 'INDEX' ? 'rounded-l-lg' : 'rounded-r-lg'}`}
+                  style={{ fontFamily: 'Space Grotesk' }}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
           </div>
-          {/* View mode toggle */}
-          <div className="flex items-center gap-0">
-            {(['INDEX', 'COMPONENTS'] as ViewMode[]).map(m => (
-              <button
-                key={m}
-                onClick={() => setViewMode(m)}
-                className={`text-[10px] px-3 py-1 font-semibold tracking-wider transition-all ${
-                  viewMode === m
-                    ? 'neu-pressed text-cyan'
-                    : 'neu-raised text-muted-foreground hover:text-foreground'
-                } ${m === 'INDEX' ? 'rounded-l-lg' : 'rounded-r-lg'}`}
-                style={{ fontFamily: 'Space Grotesk' }}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* SVG Treemap */}
       <div style={{ overflow: 'hidden', width: '100%' }}>

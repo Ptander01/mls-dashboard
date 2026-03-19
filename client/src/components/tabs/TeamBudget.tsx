@@ -13,6 +13,7 @@ import { DollarSign, TrendingUp, Users, Trophy } from 'lucide-react';
 import { InsightPanel } from '@/components/InsightPanel';
 import { teamBudgetInsights, budgetBarCardInsights, salaryPieCardInsights, topEarnersCardInsights } from '@/lib/insightEngine';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
+import { ChartHeader } from '@/components/ui/ChartHeader';
 import StaggerContainer, { StaggerItem } from '@/components/StaggerContainer';
 
 export default function TeamBudget() {
@@ -170,16 +171,21 @@ export default function TeamBudget() {
 
       {/* Budget Breakdown */}
       <StaggerItem><NeuCard animate={false} className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Team Salary Breakdown ($ Millions)</h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Stacked bar chart — click a team to drill into their positional salary split</p>
-          </div>
-          <div className="flex items-center gap-1">
-            <CardInsightToggle isOpen={showBudgetBarInsights} onToggle={() => setShowBudgetBarInsights(v => !v)} isDark={isDark} />
-            <MaximizeButton onClick={() => setMaximized('budget')} />
-          </div>
-        </div>
+        <ChartHeader
+          title="Team Salary Breakdown ($ Millions)"
+          description={
+            <>Where does the money go in MLS? Each bar stacks a team's spending into three buckets: <strong className="text-foreground/80">Designated Players</strong> (the marquee stars exempt from the cap), <strong className="text-foreground/80">TAM</strong> (Targeted Allocation Money for mid-tier signings), and <strong className="text-foreground/80">regular roster</strong> slots. Click any team to drill into their positional salary split and see exactly how they invest across the pitch.</>
+          }
+          methods={
+            <>Salary data sourced from MLSPA salary disclosures (2025 season). DP = Designated Player slots (max 3 per team, salaries above the cap threshold). TAM = Targeted Allocation Money, used to sign players above the senior roster budget but below DP level. Regular = all remaining senior roster players within the salary cap. Stacked bar values in $ millions. Teams sorted descending by total payroll. Data: 2025 MLS season salary disclosures.</>
+          }
+          rightAction={
+            <div className="flex items-center gap-1">
+              <CardInsightToggle isOpen={showBudgetBarInsights} onToggle={() => setShowBudgetBarInsights(v => !v)} isDark={isDark} />
+              <MaximizeButton onClick={() => setMaximized('budget')} />
+            </div>
+          }
+        />
         <CardInsightSection isOpen={showBudgetBarInsights} insights={budgetBarInsights} isDark={isDark} />
         <BudgetBarContent />
         <div className="flex flex-col items-center gap-2 mt-3">

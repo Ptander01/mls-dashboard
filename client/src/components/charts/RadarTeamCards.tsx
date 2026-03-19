@@ -19,6 +19,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { mutedTeamColor, lighten, darken, hexToRgba } from '@/lib/chartUtils';
 import type { TeamResilienceMetrics } from '@/lib/resilienceUtils';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChartHeader } from '@/components/ui/ChartHeader';
 
 interface RadarTeamCardsProps {
   metrics: TeamResilienceMetrics[];
@@ -206,14 +207,15 @@ function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
             className="overflow-hidden"
           >
             <div className="mt-4">
-              <div className="mb-3">
-                <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-                  Team Resilience Profiles
-                </h3>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  5-axis radar: Away PPG · Congestion Resistance · Long-haul Record · Squad Depth · Age Efficiency
-                </p>
-              </div>
+              <ChartHeader
+                title="Team Resilience Profiles"
+                description={
+                  <>How do you read these spider charts? Each card shows a team’s <strong className="text-foreground/80">five-axis resilience fingerprint</strong>. A wider polygon means the club is strong across multiple dimensions — not just winning away, but doing it under congestion, after long flights, with a deep squad, and without relying on aging legs. Compare shapes at a glance: a lopsided polygon reveals where a team thrives and where it’s vulnerable.</>
+                }
+                methods={
+                  <>Five normalized axes (0–1 scale): (1) Away PPG = raw away points-per-game / league max. (2) Congestion Resistance = away PPG in matches with ≤4 days rest, normalized. (3) Long-Haul Record = away PPG in 1,500+ mile trips, normalized. (4) Squad Depth = unique starters / total squad size, normalized. (5) Age Efficiency = inverse weighted-average age, normalized (younger squads score higher). Polygon area is not used as a metric — shape comparison is qualitative. Cards sorted by composite resilience score descending. Top 12 teams shown. Data: 2025 MLS regular season.</>
+                }
+              />
 
               {/* Card grid — responsive: 2 cols mobile, 3 md, 4 lg, up to 5 xl */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">

@@ -16,6 +16,7 @@ import { useState, useMemo, memo } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { lighten, darken, hexToRgba } from '@/lib/chartUtils';
 import type { TeamResilienceMetrics } from '@/lib/resilienceUtils';
+import { ChartHeader } from '@/components/ui/ChartHeader';
 
 type MetricMode = 'PPG' | 'WIN%' | 'GD';
 type SymbologyMode = 'STANDARD' | 'TEAM';
@@ -387,54 +388,51 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
 
   return (
     <div>
-      {/* Header with toggles */}
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <div>
-          <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-            Home vs Away Points Per Game
-          </h3>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {symbology === 'STANDARD'
-              ? <>Each team's average points earned at home <span style={{ color: '#4a9a5a' }}>(green)</span> vs away <span style={{ color: '#c45a6a' }}>(red)</span>. Gap width = home advantage magnitude.</>
-              : <>Each team colored by primary hue — lighter knob = home, darker = away. Gap width = home advantage magnitude.</>
-            }
-          </p>
-        </div>
-        <div className="flex items-center gap-3 relative z-10">
-          <div className="flex items-center gap-0">
-            {(['STANDARD', 'TEAM'] as SymbologyMode[]).map(s => (
-              <button
-                key={s}
-                onClick={(e) => { e.stopPropagation(); setSymbology(s); }}
-                className={`text-[10px] px-2.5 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
-                  symbology === s
-                    ? 'neu-pressed text-cyan'
-                    : 'neu-raised text-muted-foreground hover:text-foreground'
-                } ${s === 'STANDARD' ? 'rounded-l-lg' : 'rounded-r-lg'}`}
-                style={{ fontFamily: 'Space Grotesk', minWidth: '40px', minHeight: '28px' }}
-              >
-                {s === 'STANDARD' ? 'H/A' : 'TEAM'}
-              </button>
-            ))}
+      <ChartHeader
+        title="Home vs Away Points Per Game"
+        description={
+          <>How big is each team's <strong className="text-foreground/80">home-field advantage</strong>? This dumbbell chart lines up every MLS club and shows the gap between what they earn at home versus on the road. The wider the bar, the more a team relies on its own fans. Toggle between <strong className="text-foreground/80">PPG</strong>, <strong className="text-foreground/80">Win%</strong>, or <strong className="text-foreground/80">Goal Difference</strong> to see the split from different angles, and switch to team colors to spot your club at a glance.</>
+        }
+        methods={
+          <>PPG = Total Points / Games Played (home or away subset). Win% = (Wins / GP) × 100. GD/Game = (Goals For − Goals Against) / GP. Teams sorted descending by gap (home metric − away metric). Symbology: STANDARD uses forest green (home) and burgundy (away); TEAM mode maps each club’s primary color to chrome knob hue. Gap label = home value − away value. Data: 2025 MLS regular season.</>
+        }
+        rightAction={
+          <div className="flex items-center gap-3 relative z-10">
+            <div className="flex items-center gap-0">
+              {(['STANDARD', 'TEAM'] as SymbologyMode[]).map(s => (
+                <button
+                  key={s}
+                  onClick={(e) => { e.stopPropagation(); setSymbology(s); }}
+                  className={`text-[10px] px-2.5 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
+                    symbology === s
+                      ? 'neu-pressed text-cyan'
+                      : 'neu-raised text-muted-foreground hover:text-foreground'
+                  } ${s === 'STANDARD' ? 'rounded-l-lg' : 'rounded-r-lg'}`}
+                  style={{ fontFamily: 'Space Grotesk', minWidth: '40px', minHeight: '28px' }}
+                >
+                  {s === 'STANDARD' ? 'H/A' : 'TEAM'}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-0">
+              {(['PPG', 'WIN%', 'GD'] as MetricMode[]).map(m => (
+                <button
+                  key={m}
+                  onClick={(e) => { e.stopPropagation(); setMode(m); }}
+                  className={`text-[10px] px-3 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
+                    mode === m
+                      ? 'neu-pressed text-cyan'
+                      : 'neu-raised text-muted-foreground hover:text-foreground'
+                  } ${m === 'PPG' ? 'rounded-l-lg' : m === 'GD' ? 'rounded-r-lg' : ''}`}
+                  style={{ fontFamily: 'Space Grotesk', minWidth: '40px', minHeight: '28px' }}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-0">
-            {(['PPG', 'WIN%', 'GD'] as MetricMode[]).map(m => (
-              <button
-                key={m}
-                onClick={(e) => { e.stopPropagation(); setMode(m); }}
-                className={`text-[10px] px-3 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
-                  mode === m
-                    ? 'neu-pressed text-cyan'
-                    : 'neu-raised text-muted-foreground hover:text-foreground'
-                } ${m === 'PPG' ? 'rounded-l-lg' : m === 'GD' ? 'rounded-r-lg' : ''}`}
-                style={{ fontFamily: 'Space Grotesk', minWidth: '40px', minHeight: '28px' }}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Legend */}
       <div className="flex items-center gap-3 mb-2 px-1 text-[11px] text-muted-foreground">

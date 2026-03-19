@@ -14,6 +14,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { InsightPanel } from '@/components/InsightPanel';
 import { attendanceHeadline, attendanceInsights, attendanceTrendCardInsights, capacityFillCardInsights, gravPullCardInsights, gravitationalPullHeadline, awayImpactCardInsights, homeResponseCardInsights } from '@/lib/insightEngine';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
+import { ChartHeader } from '@/components/ui/ChartHeader';
 import StaggerContainer, { StaggerItem } from '@/components/StaggerContainer';
 
 // ─── Stadium Capacities (expandable max for multi-use venues) ───
@@ -1051,75 +1052,74 @@ export default function Attendance() {
 
       {/* Home Attendance with Fill Rate Toggle */}
       <StaggerItem><NeuCard animate={false} className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-              {showFillRate ? 'Stadium Fill Rate by Team' : 'Average Home Attendance by Team'}
-            </h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{showFillRate ? 'Stadium utilization as a percentage of capacity — reveals which clubs consistently sell out vs. those with room to grow. Click any bar to filter the entire tab.' : 'Teams ranked by average home attendance. The dotted line marks stadium capacity — bars that reach it indicate sellouts. Click any bar to filter the entire tab.'}</p>
-            {!showFillRate && (
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="inline-block w-5 border-t-2 border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.25)' }} />
-                <span className="text-[9px] text-muted-foreground" style={{ fontFamily: 'JetBrains Mono' }}>Stadium Capacity</span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFillRate(!showFillRate)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
-              style={{
-                background: showFillRate ? (isDark ? 'rgba(0, 212, 255, 0.12)' : 'rgba(8, 145, 178, 0.1)') : (isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)'),
-                color: showFillRate ? 'var(--cyan)' : 'var(--table-header-color)',
-                border: `1px solid ${showFillRate ? (isDark ? 'rgba(0, 212, 255, 0.3)' : 'rgba(8, 145, 178, 0.3)') : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')}`,
-              }}
-            >
-              {showFillRate ? <BarChart3 size={11} /> : <Percent size={11} />}
-              {showFillRate ? 'Absolute' : 'Fill Rate'}
-            </button>
-            <CardInsightToggle isOpen={showCapacityInsights} onToggle={() => setShowCapacityInsights(v => !v)} isDark={isDark} />
-            <MaximizeButton onClick={() => setMaximized('home')} />
-          </div>
-        </div>
+        <ChartHeader
+          title={showFillRate ? 'Stadium Fill Rate by Team' : 'Average Home Attendance by Team'}
+          description={
+            showFillRate
+              ? <>Are teams actually filling their stadiums, or is there room to grow? This chart shows each club's <strong className="text-foreground/80">fill rate</strong> — the percentage of seats filled on a typical match day. A bar hitting 100% means consistent sellouts; anything below reveals untapped demand (or an oversized venue). Click any bar to filter the entire tab.</>
+              : <>Who draws the biggest crowds in MLS? This chart ranks every team by their <strong className="text-foreground/80">average home attendance</strong>. The dotted line marks each stadium's capacity — when a bar reaches it, that club is selling out. Click any bar to filter the entire tab.</>
+          }
+          methods={
+            <>Fill% = (Average Home Attendance / Stadium Capacity) × 100. Average Home Attendance = sum of all home match attendances / number of home matches. Stadium capacities sourced from official MLS venue data (expandable max for multi-use venues, e.g., ATL = 71,000, CLT = 75,000). Bars sorted descending by the active metric. Data: 2025 MLS regular season.</>
+          }
+          rightAction={
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowFillRate(!showFillRate)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
+                style={{
+                  background: showFillRate ? (isDark ? 'rgba(0, 212, 255, 0.12)' : 'rgba(8, 145, 178, 0.1)') : (isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)'),
+                  color: showFillRate ? 'var(--cyan)' : 'var(--table-header-color)',
+                  border: `1px solid ${showFillRate ? (isDark ? 'rgba(0, 212, 255, 0.3)' : 'rgba(8, 145, 178, 0.3)') : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')}`,
+                }}
+              >
+                {showFillRate ? <BarChart3 size={11} /> : <Percent size={11} />}
+                {showFillRate ? 'Absolute' : 'Fill Rate'}
+              </button>
+              <CardInsightToggle isOpen={showCapacityInsights} onToggle={() => setShowCapacityInsights(v => !v)} isDark={isDark} />
+              <MaximizeButton onClick={() => setMaximized('home')} />
+            </div>
+          }
+        />
         <CardInsightSection isOpen={showCapacityInsights} insights={capacityFillInsights} isDark={isDark} />
         <HomeBarContent />
       </NeuCard></StaggerItem>
 
       {/* Weekly Trend with Team Filter */}
       <StaggerItem><NeuCard animate={false} className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-              Home Attendance by Matchweek
-              {trendTeamObj && (
-                <span className="ml-2 text-xs font-normal" style={{ color: trendColor }}>
-                  — {trendTeamObj.short}
-                </span>
-              )}
-            </h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{effectiveTrendTeam ? `${trendTeamObj?.short}'s home gate week by week. Dotted line = capacity, faint background = league average.` : 'League-wide home attendance across the season — dotted lines show the high and low each week. Select a team to isolate one club.'}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <select
-              value={trendTeamOverride || (filters.selectedTeams.length === 1 ? filters.selectedTeams[0] : '')}
-              onChange={(e) => setTrendTeamOverride(e.target.value)}
-              className="text-[10px] font-semibold uppercase tracking-wider rounded-md px-2 py-1 transition-all duration-200"
-              style={{
-                background: effectiveTrendTeam ? (isDark ? 'rgba(0, 212, 255, 0.08)' : 'rgba(8, 145, 178, 0.08)') : 'var(--neu-bg-flat)',
-                color: effectiveTrendTeam ? trendColor : 'var(--table-header-color)',
-                border: `1px solid ${effectiveTrendTeam ? (isDark ? 'rgba(0, 212, 255, 0.25)' : 'rgba(8, 145, 178, 0.25)') : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')}`,
-                outline: 'none',
-              }}
-            >
-              <option value="">All Teams</option>
-              {TEAMS.slice().sort((a, b) => a.short.localeCompare(b.short)).map(t => (
-                <option key={t.id} value={t.id}>{t.short}</option>
-              ))}
-            </select>
-            <CardInsightToggle isOpen={showTrendInsights} onToggle={() => setShowTrendInsights(v => !v)} isDark={isDark} />
-            <MaximizeButton onClick={() => setMaximized('weekly')} />
-          </div>
-        </div>
+        <ChartHeader
+          title={`Home Attendance by Matchweek${trendTeamObj ? ` — ${trendTeamObj.short}` : ''}`}
+          description={
+            effectiveTrendTeam
+              ? <>How does <strong className="text-foreground/80">{trendTeamObj?.short}'s</strong> home gate shift across the season? This trend line tracks their week-by-week attendance against <strong className="text-foreground/80">stadium capacity</strong> (dotted line) and the faint league average in the background. Look for spikes around rivalry weeks and dips during international breaks.</>
+              : <>Is MLS attendance momentum building or fading? This chart tracks <strong className="text-foreground/80">league-wide home attendance</strong> week by week across the season. The dotted envelope shows each week's high and low. Select a team from the dropdown to isolate one club's trajectory.</>
+          }
+          methods={
+            <>Weekly attendance = sum of all home match attendances in that matchweek / number of home matches. Envelope lines: max and min single-match attendance per week. When a team is selected, the line shows that club's actual home attendance per matchweek; dotted line = stadium capacity; faint area = league average for context. Smoothing: none (raw weekly values). Data: 2025 MLS regular season.</>
+          }
+          rightAction={
+            <div className="flex items-center gap-2">
+              <select
+                value={trendTeamOverride || (filters.selectedTeams.length === 1 ? filters.selectedTeams[0] : '')}
+                onChange={(e) => setTrendTeamOverride(e.target.value)}
+                className="text-[10px] font-semibold uppercase tracking-wider rounded-md px-2 py-1 transition-all duration-200"
+                style={{
+                  background: effectiveTrendTeam ? (isDark ? 'rgba(0, 212, 255, 0.08)' : 'rgba(8, 145, 178, 0.08)') : 'var(--neu-bg-flat)',
+                  color: effectiveTrendTeam ? trendColor : 'var(--table-header-color)',
+                  border: `1px solid ${effectiveTrendTeam ? (isDark ? 'rgba(0, 212, 255, 0.25)' : 'rgba(8, 145, 178, 0.25)') : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')}`,
+                  outline: 'none',
+                }}
+              >
+                <option value="">All Teams</option>
+                {TEAMS.slice().sort((a, b) => a.short.localeCompare(b.short)).map(t => (
+                  <option key={t.id} value={t.id}>{t.short}</option>
+                ))}
+              </select>
+              <CardInsightToggle isOpen={showTrendInsights} onToggle={() => setShowTrendInsights(v => !v)} isDark={isDark} />
+              <MaximizeButton onClick={() => setMaximized('weekly')} />
+            </div>
+          }
+        />
         <CardInsightSection isOpen={showTrendInsights} insights={trendInsights} isDark={isDark} />
         <WeeklyContent />
       </NeuCard></StaggerItem>
@@ -1128,44 +1128,41 @@ export default function Attendance() {
       <StaggerItem><NeuCard animate={false} className={`p-4 ${gravMode === 'FULL SCALE' ? 'z-10 relative' : ''}`}
         overflowVisible={gravMode === 'FULL SCALE'}
       >
-        <div className="flex items-center justify-between mb-2">
-          <div>
+        <ChartHeader
+          title="Gravitational Pull — League-Wide Away Team Impact"
+          description={
+            <>Think of it as the <strong className="text-foreground/80">“Messi Effect.”</strong> When certain teams visit, the host stadium fills up beyond its usual average. This chart measures each away team's <strong className="text-foreground/80">gravitational pull</strong> — how many extra (or fewer) fans show up compared to the host's normal home gate. Positive bars mean a visiting team is a genuine draw; negative bars mean fans stay home. Click a team to drill into which cities respond most.</>
+          }
+          methods={
+            <>Gravitational Pull = Average Away Attendance (when this team visits) − Host’s Season Home Average. Calculated per away team across all away matches. Positive values indicate the visiting team draws above-average crowds. FOCUSED mode shows all 30 teams with pottery-focus emphasis; FULL SCALE shows top 10 on a true linear axis. Data: 2025 MLS regular season match attendance.</>
+          }
+          rightAction={
             <div className="flex items-center gap-2">
-              <Globe size={16} className="text-cyan" />
-              <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-                Gravitational Pull — League-Wide Away Team Impact
-              </h3>
+              <div className="flex rounded-md overflow-hidden" style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }}>
+                {(['FOCUSED', 'FULL SCALE'] as const).map(mode => (
+                  <button key={mode}
+                    onClick={() => {
+                      setGravMode(mode);
+                      if (mode === 'FULL SCALE') setEmphasizedTeam(null);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
+                    style={{
+                      background: gravMode === mode
+                        ? (isDark ? 'rgba(0, 212, 255, 0.12)' : 'rgba(8, 145, 178, 0.1)')
+                        : (isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'),
+                      color: gravMode === mode ? 'var(--cyan)' : 'var(--table-header-color)',
+                    }}
+                  >
+                    {mode === 'FOCUSED' ? <Layers size={10} /> : <Eye size={10} />}
+                    {mode}
+                  </button>
+                ))}
+              </div>
+              <CardInsightToggle isOpen={showGravInsights} onToggle={() => setShowGravInsights(v => !v)} isDark={isDark} />
+              <MaximizeButton onClick={() => setMaximized('gravity')} />
             </div>
-            <p className="text-[10.5px] text-muted-foreground mt-1 ml-6" style={{ fontFamily: 'JetBrains Mono', lineHeight: 1.5 }}>
-              {gravHeadline}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* ABSOLUTE / COMPARE toggle */}
-            <div className="flex rounded-md overflow-hidden" style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }}>
-              {(['FOCUSED', 'FULL SCALE'] as const).map(mode => (
-                <button key={mode}
-                  onClick={() => {
-                    setGravMode(mode);
-                    if (mode === 'FULL SCALE') setEmphasizedTeam(null);
-                  }}
-                  className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
-                  style={{
-                    background: gravMode === mode
-                      ? (isDark ? 'rgba(0, 212, 255, 0.12)' : 'rgba(8, 145, 178, 0.1)')
-                      : (isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'),
-                    color: gravMode === mode ? 'var(--cyan)' : 'var(--table-header-color)',
-                  }}
-                >
-                  {mode === 'FOCUSED' ? <Layers size={10} /> : <Eye size={10} />}
-                  {mode}
-                </button>
-              ))}
-            </div>
-            <CardInsightToggle isOpen={showGravInsights} onToggle={() => setShowGravInsights(v => !v)} isDark={isDark} />
-            <MaximizeButton onClick={() => setMaximized('gravity')} />
-          </div>
-        </div>
+          }
+        />
         <CardInsightSection isOpen={showGravInsights} insights={gravInsights} isDark={isDark} />
 
         {/* Pottery Focus Badge (FOCUSED mode) */}

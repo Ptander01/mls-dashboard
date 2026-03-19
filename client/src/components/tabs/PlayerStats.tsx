@@ -15,6 +15,7 @@ import { ArrowUpDown, TrendingUp, Crosshair, Shield, Zap, Palette } from 'lucide
 import { InsightPanel } from '@/components/InsightPanel';
 import { playerStatsInsights, computeOutliers, scatterCardInsights, topScorersCardInsights, playerRadarCardInsights, playerTableCardInsights } from '@/lib/insightEngine';
 import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
+import { ChartHeader } from '@/components/ui/ChartHeader';
 import StatsPlayground from '@/components/charts/StatsPlayground';
 import StaggerContainer, { StaggerItem } from '@/components/StaggerContainer';
 
@@ -508,23 +509,25 @@ export default function PlayerStats() {
       <StaggerItem><div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Scatter Plot with Axis Selectors, Color Mode, and Trend Line */}
         <NeuCard animate={false} className="p-4 lg:col-span-2">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-1">
-            <div>
-              <h3 className="text-sm font-semibold flex items-center gap-2" style={{ fontFamily: 'Space Grotesk' }}>
-                <Crosshair size={14} className="text-cyan" />
-                Player Comparison
-              </h3>
-              <p className="text-[10px] text-muted-foreground mt-0.5 ml-5">Plot any two metrics to find correlations and outliers across the league</p>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <AxisDropdown value={scatterX} onChange={setScatterX} label="X" />
-              <AxisDropdown value={scatterY} onChange={setScatterY} label="Y" />
-              <ColorModeToggle />
-              <TrendLineToggle />
-              <CardInsightToggle isOpen={showScatterInsights} onToggle={() => setShowScatterInsights(v => !v)} isDark={isDark} compact />
-              <MaximizeButton onClick={() => setMaximized('scatter')} />
-            </div>
-          </div>
+          <ChartHeader
+            title="Player Comparison"
+            description={
+              <>Pick any two stats and see how every player in the league stacks up. The <strong className="text-foreground/80">X-axis</strong> and <strong className="text-foreground/80">Y-axis</strong> are yours to choose — try Shots vs Goals to find clinical finishers, or Minutes vs Assists to spot creative workhorses. Toggle the trend line to see the overall correlation, and switch between <strong className="text-foreground/80">team</strong> and <strong className="text-foreground/80">position</strong> coloring to reveal different patterns. Outliers are automatically flagged.</>
+            }
+            methods={
+              <>Scatter axes are user-selectable from: Goals, Assists, Shots, Shots on Target, Shot Accuracy (%), Tackles, Interceptions, Fouls, Yellow Cards, Minutes, Age, Salary. Trend line: OLS linear regression; R² displayed as a badge. Outliers: points with |residual| &gt; 2× standard deviation of residuals. Color modes: TEAM = muted team primary; POSITION = categorical (FW/MF/DF/GK). All stats are season totals (not per-90). Data: 2025 MLS regular season.</>
+            }
+            rightAction={
+              <div className="flex items-center gap-2 flex-wrap">
+                <AxisDropdown value={scatterX} onChange={setScatterX} label="X" />
+                <AxisDropdown value={scatterY} onChange={setScatterY} label="Y" />
+                <ColorModeToggle />
+                <TrendLineToggle />
+                <CardInsightToggle isOpen={showScatterInsights} onToggle={() => setShowScatterInsights(v => !v)} isDark={isDark} compact />
+                <MaximizeButton onClick={() => setMaximized('scatter')} />
+              </div>
+            }
+          />
           <CardInsightSection isOpen={showScatterInsights} insights={scatterInsights} isDark={isDark} />
           <div className="flex items-center justify-between mb-2">
             <PositionLegend />
@@ -580,17 +583,23 @@ export default function PlayerStats() {
       {/* Player Radar (if selected) */}
       {selPlayer && radarData && (
         <StaggerItem><NeuCard animate={false} glow="cyan" className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>{selPlayer.name}</h3>
-              <p className="text-xs text-muted-foreground">{getTeam(selPlayer.team)?.short} · {selPlayer.position} · Age {selPlayer.age}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <CardInsightToggle isOpen={showRadarInsights} onToggle={() => setShowRadarInsights(v => !v)} isDark={isDark} compact />
-              <MaximizeButton onClick={() => setMaximized('radar')} />
-              <button onClick={() => setSelectedPlayer(null)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
-            </div>
-          </div>
+          <ChartHeader
+            title={selPlayer.name}
+            subtitle={`${getTeam(selPlayer.team)?.short} · ${selPlayer.position} · Age ${selPlayer.age}`}
+            description={
+              <>This radar chart maps <strong className="text-foreground/80">{selPlayer.name}'s</strong> season profile across six key dimensions. A wider shape means the player contributes across multiple areas — not just goals, but also creativity, defensive work, and discipline. Compare the shape to other players by clicking different rows in the table above.</>
+            }
+            methods={
+              <>Radar axes: Goals, Assists, Shots on Target, Tackles, Interceptions, Shot Accuracy. Each axis normalized to 0–100 using percentile rank within the filtered player pool (100 = league leader). Polygon area is visual only — not a composite score. Stats are season totals (not per-90 adjusted). Data: 2025 MLS regular season.</>
+            }
+            rightAction={
+              <div className="flex items-center gap-2">
+                <CardInsightToggle isOpen={showRadarInsights} onToggle={() => setShowRadarInsights(v => !v)} isDark={isDark} compact />
+                <MaximizeButton onClick={() => setMaximized('radar')} />
+                <button onClick={() => setSelectedPlayer(null)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
+              </div>
+            }
+          />
           <CardInsightSection isOpen={showRadarInsights} insights={selPlayer ? playerRadarCardInsights(selPlayer, filteredPlayers) : []} isDark={isDark} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div style={{ height: 220 }}>
