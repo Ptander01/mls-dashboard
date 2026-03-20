@@ -1,6 +1,7 @@
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
+import { Analytics } from "@vercel/analytics/react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import SplashIntro from "./components/SplashIntro";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -28,6 +29,7 @@ function App() {
           </TooltipProvider>
         </FilterProvider>
       </ThemeProvider>
+      <Analytics />
     </ErrorBoundary>
   );
 }
