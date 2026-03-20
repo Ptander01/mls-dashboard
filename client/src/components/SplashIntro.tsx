@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
  * Cloudflare R2, or another CDN.  During local development you can point
  * it at a file served from `public/`.
  */
-const SPLASH_VIDEO_URL = "/splash.mp4";
+const SPLASH_VIDEO_URL = "https://lgwwk3igzcagstag.public.blob.vercel-storage.com/splash-optimized.mp4";
 
 /**
  * Static fallback image shown while the video loads or if it fails.
