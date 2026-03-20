@@ -2,6 +2,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
+import SplashIntro from "./components/SplashIntro";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { FilterProvider } from "./contexts/FilterContext";
 import Home from "./pages/Home";
@@ -19,6 +20,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
+      <SplashIntro />
       <ThemeProvider defaultTheme="light" switchable>
         <FilterProvider>
           <TooltipProvider>

@@ -1,22 +1,13 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import splashFallback from "../assets/splash-fallback.webp";
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-/**
- * Replace this URL with your hosted video once uploaded to Vercel Blob,
- * Cloudflare R2, or another CDN.  During local development you can point
- * it at a file served from `public/`.
- */
-const SPLASH_VIDEO_URL = "https://lgwwk3igzcagstag.public.blob.vercel-storage.com/splash-optimized.mp4";
-
-/**
- * Static fallback image shown while the video loads or if it fails.
- * This file IS committed to the repo (~66 KB).
- */
-import splashFallback from "../assets/splash-fallback.webp";
+const SPLASH_VIDEO_URL =
+  "https://lgwwk3igzcagstag.public.blob.vercel-storage.com/splash-optimized.mp4";
 
 // ---------------------------------------------------------------------------
 // Component
@@ -33,6 +24,12 @@ export default function SplashIntro() {
 
   // ---- Handlers -----------------------------------------------------------
 
+  /** Dismiss the splash overlay and mark it as seen. */
+  const dismiss = useCallback(() => {
+    setVisible(false);
+    sessionStorage.setItem("splashSeen", "true");
+  }, []);
+
   /** Called when the video has buffered enough to play through. */
   const handleCanPlay = useCallback(() => {
     setVideoReady(true);
@@ -41,23 +38,17 @@ export default function SplashIntro() {
   /** Called when the video finishes playing. */
   const handleEnded = useCallback(() => {
     dismiss();
-  }, []);
+  }, [dismiss]);
 
   /** Called if the video source fails to load. */
   const handleError = useCallback(() => {
     setVideoFailed(true);
     // Show the static fallback for 2 seconds, then fade out
     setTimeout(() => dismiss(), 2000);
-  }, []);
-
-  /** Dismiss the splash overlay and mark it as seen. */
-  const dismiss = useCallback(() => {
-    setVisible(false);
-    sessionStorage.setItem("splashSeen", "true");
-  }, []);
+  }, [dismiss]);
 
   // If the splash was already seen this session, render nothing.
-  if (!visible && !videoReady) return null;
+  if (!visible) return null;
 
   return (
     <AnimatePresence>
