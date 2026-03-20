@@ -14,16 +14,16 @@ The MLS Analytics Dashboard is a **static frontend application** built with Reac
 
 When running inside Manus, the project uses this stack:
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| **Dev Server** | Vite 7.1 | Hot Module Replacement, serves `client/` directory |
-| **Framework** | React 19 | Component rendering and state management |
-| **Styling** | Tailwind CSS 4 + shadcn/ui | Design tokens, utility classes, pre-built components |
-| **Charts** | Recharts 2.15 | SVG-based charting with custom 3D shape renderers |
-| **3D Map** | Three.js 0.183 | WebGL-powered Travel Map with GeoJSON polygons |
-| **Animations** | Framer Motion 12 | Page transitions, entrance animations |
-| **Routing** | Wouter 3.3 | Client-side routing (single page app) |
-| **Data** | Static TypeScript files | `mlsData.ts` (1,559 lines) and `geoData.ts` (40KB) |
+| Layer          | Technology                 | Purpose                                              |
+| -------------- | -------------------------- | ---------------------------------------------------- |
+| **Dev Server** | Vite 7.1                   | Hot Module Replacement, serves `client/` directory   |
+| **Framework**  | React 19                   | Component rendering and state management             |
+| **Styling**    | Tailwind CSS 4 + shadcn/ui | Design tokens, utility classes, pre-built components |
+| **Charts**     | Recharts 2.15              | SVG-based charting with custom 3D shape renderers    |
+| **3D Map**     | Three.js 0.183             | WebGL-powered Travel Map with GeoJSON polygons       |
+| **Animations** | Framer Motion 12           | Page transitions, entrance animations                |
+| **Routing**    | Wouter 3.3                 | Client-side routing (single page app)                |
+| **Data**       | Static TypeScript files    | `mlsData.ts` (1,559 lines) and `geoData.ts` (40KB)   |
 
 ### 1.2 Manus-Specific Components (What You Can Remove)
 
@@ -45,16 +45,16 @@ The project includes several Manus-specific plugins and files that are **only ne
 
 The Manus sandbox injects these environment variables, but **none of them are required** for the dashboard to function:
 
-| Variable | Used By | Required for Self-Hosting? |
-|---|---|---|
-| `VITE_FRONTEND_FORGE_API_KEY` | `Map.tsx` (unused) | No |
-| `VITE_FRONTEND_FORGE_API_URL` | `Map.tsx` (unused) | No |
-| `VITE_OAUTH_PORTAL_URL` | `const.ts` (unused) | No |
-| `VITE_APP_ID` | `const.ts` (unused) | No |
-| `VITE_ANALYTICS_ENDPOINT` | `index.html` analytics | No (remove the script tag) |
-| `VITE_ANALYTICS_WEBSITE_ID` | `index.html` analytics | No (remove the script tag) |
-| `VITE_APP_LOGO` | Not referenced in code | No |
-| `VITE_APP_TITLE` | Not referenced in code | No |
+| Variable                      | Used By                | Required for Self-Hosting? |
+| ----------------------------- | ---------------------- | -------------------------- |
+| `VITE_FRONTEND_FORGE_API_KEY` | `Map.tsx` (unused)     | No                         |
+| `VITE_FRONTEND_FORGE_API_URL` | `Map.tsx` (unused)     | No                         |
+| `VITE_OAUTH_PORTAL_URL`       | `const.ts` (unused)    | No                         |
+| `VITE_APP_ID`                 | `const.ts` (unused)    | No                         |
+| `VITE_ANALYTICS_ENDPOINT`     | `index.html` analytics | No (remove the script tag) |
+| `VITE_ANALYTICS_WEBSITE_ID`   | `index.html` analytics | No (remove the script tag) |
+| `VITE_APP_LOGO`               | Not referenced in code | No                         |
+| `VITE_APP_TITLE`              | Not referenced in code | No                         |
 
 The dashboard is **100% self-contained** — all data is embedded in TypeScript files, all images are served from CloudFront CDN URLs, and there are no API calls to external services.
 
@@ -62,10 +62,10 @@ The dashboard is **100% self-contained** — all data is embedded in TypeScript 
 
 The dashboard references two images hosted on Manus's CloudFront CDN:
 
-| Asset | File | URL |
-|---|---|---|
-| Hero stadium background | `Home.tsx` line 12 | `https://d2xsxph8kpxj0f.cloudfront.net/.../hero-stadium-*.webp` |
-| Pitch background | `PitchMatch.tsx` line 12 | `https://d2xsxph8kpxj0f.cloudfront.net/.../pitch-bg-*.webp` |
+| Asset                   | File                     | URL                                                             |
+| ----------------------- | ------------------------ | --------------------------------------------------------------- |
+| Hero stadium background | `Home.tsx` line 12       | `https://d2xsxph8kpxj0f.cloudfront.net/.../hero-stadium-*.webp` |
+| Pitch background        | `PitchMatch.tsx` line 12 | `https://d2xsxph8kpxj0f.cloudfront.net/.../pitch-bg-*.webp`     |
 
 These URLs are publicly accessible and will continue to work. However, if you want full independence from Manus infrastructure, you should download these images and host them yourself (see Section 3.3).
 
@@ -178,7 +178,11 @@ Remove the analytics script from `client/index.html`:
 
 ```html
 <!-- DELETE this line: -->
-<script defer src="%VITE_ANALYTICS_ENDPOINT%/umami" data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+<script
+  defer
+  src="%VITE_ANALYTICS_ENDPOINT%/umami"
+  data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"
+></script>
 ```
 
 Delete the debug collector file:
@@ -199,14 +203,14 @@ This outputs static files to `dist/public/`. The folder contains `index.html`, b
 
 You can deploy this folder to any static hosting provider:
 
-| Provider | Command / Method |
-|---|---|
-| **Vercel** | `npx vercel --prod` (from project root) |
-| **Netlify** | Drag `dist/public/` to Netlify Drop, or connect GitHub repo |
-| **GitHub Pages** | Push `dist/public/` contents to a `gh-pages` branch |
-| **AWS S3 + CloudFront** | `aws s3 sync dist/public/ s3://your-bucket/` |
-| **Cloudflare Pages** | Connect GitHub repo, set build command to `pnpm build`, output dir to `dist/public` |
-| **Any web server** | Copy `dist/public/` to your server's document root |
+| Provider                | Command / Method                                                                    |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| **Vercel**              | `npx vercel --prod` (from project root)                                             |
+| **Netlify**             | Drag `dist/public/` to Netlify Drop, or connect GitHub repo                         |
+| **GitHub Pages**        | Push `dist/public/` contents to a `gh-pages` branch                                 |
+| **AWS S3 + CloudFront** | `aws s3 sync dist/public/ s3://your-bucket/`                                        |
+| **Cloudflare Pages**    | Connect GitHub repo, set build command to `pnpm build`, output dir to `dist/public` |
+| **Any web server**      | Copy `dist/public/` to your server's document root                                  |
 
 **Important for SPA routing**: Since the app uses client-side routing (Wouter), you need to configure your hosting to serve `index.html` for all routes. Most providers have a "single page app" or "rewrite all to index.html" option.
 
@@ -257,25 +261,27 @@ curl -o client/public/images/pitch-bg.webp \
 Then update the references in the source code:
 
 In `client/src/pages/Home.tsx` line 12, change:
+
 ```typescript
-const HERO_IMG = '/images/hero-stadium.webp';
+const HERO_IMG = "/images/hero-stadium.webp";
 ```
 
 In `client/src/components/tabs/PitchMatch.tsx` line 12, change:
+
 ```typescript
-const PITCH_BG = '/images/pitch-bg.webp';
+const PITCH_BG = "/images/pitch-bg.webp";
 ```
 
 ### 3.5 System Requirements
 
-| Requirement | Minimum |
-|---|---|
-| **Node.js** | v18+ (v22 recommended) |
-| **pnpm** | v10+ |
-| **Browser** | Chrome 90+, Firefox 90+, Safari 15+, Edge 90+ |
-| **RAM for build** | ~512MB |
-| **Disk space** | ~200MB (including `node_modules`) |
-| **Build output size** | ~2-3MB (gzipped) |
+| Requirement           | Minimum                                       |
+| --------------------- | --------------------------------------------- |
+| **Node.js**           | v18+ (v22 recommended)                        |
+| **pnpm**              | v10+                                          |
+| **Browser**           | Chrome 90+, Firefox 90+, Safari 15+, Edge 90+ |
+| **RAM for build**     | ~512MB                                        |
+| **Disk space**        | ~200MB (including `node_modules`)             |
+| **Build output size** | ~2-3MB (gzipped)                              |
 
 The dashboard is entirely client-side, so the hosting server has minimal requirements — it just needs to serve static files. Even a free-tier Netlify or Vercel account is more than sufficient.
 
@@ -285,13 +291,13 @@ The dashboard is entirely client-side, so the hosting server has minimal require
 
 The good news is that **almost nothing breaks**. The dashboard was built as a static frontend with all data embedded. Here is a complete list of potential issues:
 
-| Issue | Severity | Fix |
-|---|---|---|
-| `vite-plugin-manus-runtime` missing in production | None — only runs during dev | Remove from `vite.config.ts` plugins array |
-| Analytics script fails (no Umami endpoint) | None — fails silently | Remove the `<script>` tag from `index.html` |
-| CDN images become unavailable someday | Low — they work now | Download and self-host (see Section 3.4) |
-| `allowedHosts` in Vite config blocks your domain | Low — only affects dev server | Add your domain or set `allowedHosts: true` |
-| `class="dark"` hardcoded in `index.html` | Cosmetic — brief flash before React hydrates | Change to `class=""` since default theme is now light |
+| Issue                                             | Severity                                     | Fix                                                   |
+| ------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------- |
+| `vite-plugin-manus-runtime` missing in production | None — only runs during dev                  | Remove from `vite.config.ts` plugins array            |
+| Analytics script fails (no Umami endpoint)        | None — fails silently                        | Remove the `<script>` tag from `index.html`           |
+| CDN images become unavailable someday             | Low — they work now                          | Download and self-host (see Section 3.4)              |
+| `allowedHosts` in Vite config blocks your domain  | Low — only affects dev server                | Add your domain or set `allowedHosts: true`           |
+| `class="dark"` hardcoded in `index.html`          | Cosmetic — brief flash before React hydrates | Change to `class=""` since default theme is now light |
 
 None of these are blocking issues. The dashboard will build and run correctly on any standard Node.js environment without any modifications.
 

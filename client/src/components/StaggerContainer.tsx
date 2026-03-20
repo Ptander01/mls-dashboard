@@ -5,8 +5,8 @@
  * fade in + translate up with an 80ms delay between each child.
  */
 
-import { ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { ReactNode } from "react";
+import { motion } from "framer-motion";
 
 interface StaggerContainerProps {
   children: ReactNode;
@@ -32,7 +32,7 @@ export const staggerItemVariants = {
     y: 0,
     scale: 1,
     transition: {
-      type: 'spring' as const,
+      type: "spring" as const,
       stiffness: 260,
       damping: 24,
     },
@@ -42,7 +42,7 @@ export const staggerItemVariants = {
 export default function StaggerContainer({
   children,
   stagger = 0.08,
-  className = '',
+  className = "",
 }: StaggerContainerProps) {
   return (
     <motion.div
@@ -60,7 +60,7 @@ export default function StaggerContainer({
 /** Convenience wrapper for individual stagger items */
 export function StaggerItem({
   children,
-  className = '',
+  className = "",
 }: {
   children: ReactNode;
   className?: string;

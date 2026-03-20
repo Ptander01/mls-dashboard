@@ -1,5 +1,18 @@
-import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
-import { TEAMS, PLAYERS, MATCHES, type Player, type Match, type Team } from '@/lib/mlsData';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
+import {
+  TEAMS,
+  PLAYERS,
+  MATCHES,
+  type Player,
+  type Match,
+  type Team,
+} from "@/lib/mlsData";
 
 export interface Filters {
   selectedTeams: string[];
@@ -42,18 +55,25 @@ const FilterContext = createContext<FilterContextType | null>(null);
 
 export function FilterProvider({ children }: { children: React.ReactNode }) {
   const [filters, setFilters] = useState<Filters>(defaultFilters);
-  const [potteryFocus, setPotteryFocus] = useState<PotteryFocus>({ emphasizedTeam: null });
+  const [potteryFocus, setPotteryFocus] = useState<PotteryFocus>({
+    emphasizedTeam: null,
+  });
 
   const resetFilters = useCallback(() => setFilters(defaultFilters), []);
 
   const isFilterActive = useMemo(() => {
-    return filters.selectedTeams.length > 0 ||
+    return (
+      filters.selectedTeams.length > 0 ||
       filters.selectedPlayers.length > 0 ||
       filters.positionFilter.length > 0 ||
       filters.conferenceFilter.length > 0 ||
-      filters.ageRange[0] !== 16 || filters.ageRange[1] !== 42 ||
-      filters.minutesRange[0] !== 0 || filters.minutesRange[1] !== 3500 ||
-      filters.salaryRange[0] !== 0 || filters.salaryRange[1] !== 15000000;
+      filters.ageRange[0] !== 16 ||
+      filters.ageRange[1] !== 42 ||
+      filters.minutesRange[0] !== 0 ||
+      filters.minutesRange[1] !== 3500 ||
+      filters.salaryRange[0] !== 0 ||
+      filters.salaryRange[1] !== 15000000
+    );
   }, [filters]);
 
   const filteredTeams = useMemo(() => {
@@ -70,29 +90,63 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
   const filteredPlayers = useMemo(() => {
     let p = [...PLAYERS];
     const teamIds = filteredTeams.map(t => t.id);
-    if (filters.selectedTeams.length > 0 || filters.conferenceFilter.length > 0) {
+    if (
+      filters.selectedTeams.length > 0 ||
+      filters.conferenceFilter.length > 0
+    ) {
       p = p.filter(player => teamIds.includes(player.team));
     }
     if (filters.selectedPlayers.length > 0) {
-      p = p.filter(player => filters.selectedPlayers.includes(String(player.id)));
+      p = p.filter(player =>
+        filters.selectedPlayers.includes(String(player.id))
+      );
     }
     if (filters.positionFilter.length > 0) {
       p = p.filter(player => filters.positionFilter.includes(player.position));
     }
-    p = p.filter(player => player.age >= filters.ageRange[0] && player.age <= filters.ageRange[1]);
-    p = p.filter(player => player.minutes >= filters.minutesRange[0] && player.minutes <= filters.minutesRange[1]);
-    p = p.filter(player => player.salary >= filters.salaryRange[0] && player.salary <= filters.salaryRange[1]);
+    p = p.filter(
+      player =>
+        player.age >= filters.ageRange[0] && player.age <= filters.ageRange[1]
+    );
+    p = p.filter(
+      player =>
+        player.minutes >= filters.minutesRange[0] &&
+        player.minutes <= filters.minutesRange[1]
+    );
+    p = p.filter(
+      player =>
+        player.salary >= filters.salaryRange[0] &&
+        player.salary <= filters.salaryRange[1]
+    );
     return p;
   }, [filters, filteredTeams]);
 
   const filteredMatches = useMemo(() => {
-    if (filters.selectedTeams.length === 0 && filters.conferenceFilter.length === 0) return MATCHES;
+    if (
+      filters.selectedTeams.length === 0 &&
+      filters.conferenceFilter.length === 0
+    )
+      return MATCHES;
     const teamIds = filteredTeams.map(t => t.id);
-    return MATCHES.filter(m => teamIds.includes(m.homeTeam) || teamIds.includes(m.awayTeam));
+    return MATCHES.filter(
+      m => teamIds.includes(m.homeTeam) || teamIds.includes(m.awayTeam)
+    );
   }, [filters.selectedTeams, filters.conferenceFilter, filteredTeams]);
 
   return (
-    <FilterContext.Provider value={{ filters, setFilters, resetFilters, filteredPlayers, filteredMatches, filteredTeams, isFilterActive, potteryFocus, setPotteryFocus }}>
+    <FilterContext.Provider
+      value={{
+        filters,
+        setFilters,
+        resetFilters,
+        filteredPlayers,
+        filteredMatches,
+        filteredTeams,
+        isFilterActive,
+        potteryFocus,
+        setPotteryFocus,
+      }}
+    >
       {children}
     </FilterContext.Provider>
   );
@@ -100,6 +154,6 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
 
 export function useFilters() {
   const ctx = useContext(FilterContext);
-  if (!ctx) throw new Error('useFilters must be used within FilterProvider');
+  if (!ctx) throw new Error("useFilters must be used within FilterProvider");
   return ctx;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from "react";
 
 interface AnimatedCounterProps {
   value: number;
@@ -12,10 +12,10 @@ interface AnimatedCounterProps {
 export default function AnimatedCounter({
   value,
   duration = 1500,
-  prefix = '',
-  suffix = '',
+  prefix = "",
+  suffix = "",
   decimals = 0,
-  className = '',
+  className = "",
 }: AnimatedCounterProps) {
   const [display, setDisplay] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
@@ -39,11 +39,16 @@ export default function AnimatedCounter({
     requestAnimationFrame(animate);
   }, [value, duration]);
 
-  const formatted = decimals > 0 ? display.toFixed(decimals) : Math.round(display).toLocaleString();
+  const formatted =
+    decimals > 0
+      ? display.toFixed(decimals)
+      : Math.round(display).toLocaleString();
 
   return (
     <span ref={ref} className={`stat-value ${className}`}>
-      {prefix}{formatted}{suffix}
+      {prefix}
+      {formatted}
+      {suffix}
     </span>
   );
 }

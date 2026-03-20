@@ -11,14 +11,14 @@
  * content down naturally.
  */
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Lightbulb, X } from 'lucide-react';
-import { NeuInsightContainer } from './NeuInsightContainer';
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Lightbulb, X } from "lucide-react";
+import { NeuInsightContainer } from "./NeuInsightContainer";
 
 export interface CardInsightItem {
   text: string;
-  accent: 'cyan' | 'amber' | 'emerald' | 'coral';
+  accent: "cyan" | "amber" | "emerald" | "coral";
 }
 
 interface CardInsightButtonProps {
@@ -28,10 +28,10 @@ interface CardInsightButtonProps {
 }
 
 const ACCENT_COLORS: Record<string, string> = {
-  cyan: 'var(--cyan)',
-  amber: 'var(--amber)',
-  emerald: 'var(--emerald)',
-  coral: 'var(--coral)',
+  cyan: "var(--cyan)",
+  amber: "var(--amber)",
+  emerald: "var(--emerald)",
+  coral: "var(--coral)",
 };
 
 /**
@@ -52,27 +52,35 @@ interface CardInsightToggleProps {
   compact?: boolean;
 }
 
-export function CardInsightToggle({ isOpen, onToggle, isDark, compact = false }: CardInsightToggleProps) {
+export function CardInsightToggle({
+  isOpen,
+  onToggle,
+  isDark,
+  compact = false,
+}: CardInsightToggleProps) {
   return (
     <button
-      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      onClick={e => {
+        e.stopPropagation();
+        onToggle();
+      }}
       className="flex items-center gap-1 transition-all rounded-md"
       style={{
-        padding: compact ? '2px 6px' : '3px 8px',
-        fontFamily: 'Space Grotesk, sans-serif',
-        fontSize: compact ? '9px' : '10px',
+        padding: compact ? "2px 6px" : "3px 8px",
+        fontFamily: "Space Grotesk, sans-serif",
+        fontSize: compact ? "9px" : "10px",
         fontWeight: 600,
-        letterSpacing: '0.05em',
-        textTransform: 'uppercase' as const,
-        background: isOpen ? 'var(--neu-bg-pressed)' : 'transparent',
-        color: isOpen ? 'var(--cyan)' : 'var(--muted-foreground)',
+        letterSpacing: "0.05em",
+        textTransform: "uppercase" as const,
+        background: isOpen ? "var(--neu-bg-pressed)" : "transparent",
+        color: isOpen ? "var(--cyan)" : "var(--muted-foreground)",
         boxShadow: isOpen
-          ? (isDark
-              ? 'inset 1px 1px 3px rgba(0,0,0,0.4), inset -1px -1px 2px rgba(60,60,80,0.06)'
-              : 'inset 1px 1px 3px rgba(0,0,0,0.08), inset -1px -1px 2px rgba(255,255,255,0.4)')
-          : 'none',
+          ? isDark
+            ? "inset 1px 1px 3px rgba(0,0,0,0.4), inset -1px -1px 2px rgba(60,60,80,0.06)"
+            : "inset 1px 1px 3px rgba(0,0,0,0.08), inset -1px -1px 2px rgba(255,255,255,0.4)"
+          : "none",
       }}
-      title={isOpen ? 'Hide insights' : 'Show insights for this section'}
+      title={isOpen ? "Hide insights" : "Show insights for this section"}
     >
       <Lightbulb size={compact ? 10 : 11} />
       {isOpen ? <X size={compact ? 8 : 9} /> : null}
@@ -91,7 +99,11 @@ interface CardInsightSectionProps {
   isDark: boolean;
 }
 
-export function CardInsightSection({ isOpen, insights, isDark }: CardInsightSectionProps) {
+export function CardInsightSection({
+  isOpen,
+  insights,
+  isDark,
+}: CardInsightSectionProps) {
   if (insights.length === 0) return null;
 
   return (
@@ -127,8 +139,8 @@ export function CardInsightSection({ isOpen, insights, isDark }: CardInsightSect
                   <p
                     className="text-[11px] leading-relaxed"
                     style={{
-                      fontFamily: 'Space Grotesk, sans-serif',
-                      color: 'var(--foreground)',
+                      fontFamily: "Space Grotesk, sans-serif",
+                      color: "var(--foreground)",
                     }}
                   >
                     {item.text}
@@ -148,7 +160,11 @@ export function CardInsightSection({ isOpen, insights, isDark }: CardInsightSect
  * DEPRECATED: Use CardInsightToggle + CardInsightSection instead.
  * Kept temporarily for backward compatibility during migration.
  */
-export function CardInsightButton({ insights, isDark, compact = false }: CardInsightButtonProps) {
+export function CardInsightButton({
+  insights,
+  isDark,
+  compact = false,
+}: CardInsightButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   if (insights.length === 0) return null;
@@ -169,7 +185,11 @@ export function CardInsightButton({ insights, isDark, compact = false }: CardIns
 /**
  * CardInsightInline — Non-floating variant (same as CardInsightButton now).
  */
-export function CardInsightInline({ insights, isDark, compact = false }: CardInsightButtonProps) {
+export function CardInsightInline({
+  insights,
+  isDark,
+  compact = false,
+}: CardInsightButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   if (insights.length === 0) return null;

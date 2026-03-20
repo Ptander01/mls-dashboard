@@ -1,3 +1,4 @@
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
@@ -28,6 +29,7 @@ function App() {
           </TooltipProvider>
         </FilterProvider>
       </ThemeProvider>
+      <SpeedInsights />
     </ErrorBoundary>
   );
 }

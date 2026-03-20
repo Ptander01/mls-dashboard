@@ -21,9 +21,9 @@ export default function TabSkeleton() {
             key={i}
             className="rounded-xl p-4"
             style={{
-              background: 'var(--neu-bg-raised)',
+              background: "var(--neu-bg-raised)",
               boxShadow:
-                '4px 4px 10px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light)',
+                "4px 4px 10px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light)",
             }}
           >
             <div className="flex items-center gap-2 mb-3">
@@ -39,9 +39,9 @@ export default function TabSkeleton() {
       <div
         className="rounded-xl p-5"
         style={{
-          background: 'var(--neu-bg-raised)',
+          background: "var(--neu-bg-raised)",
           boxShadow:
-            '4px 4px 10px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light)',
+            "4px 4px 10px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light)",
         }}
       >
         <div className="flex items-center justify-between mb-4">
@@ -61,9 +61,9 @@ export default function TabSkeleton() {
       <div
         className="rounded-xl p-5"
         style={{
-          background: 'var(--neu-bg-raised)',
+          background: "var(--neu-bg-raised)",
           boxShadow:
-            '4px 4px 10px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light)',
+            "4px 4px 10px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light)",
         }}
       >
         <div className="flex items-center gap-2 mb-4">
