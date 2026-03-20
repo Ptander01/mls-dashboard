@@ -14,10 +14,10 @@
  *   - 3D Legend on the right side with raised/recessed indicators
  */
 
-import { useRef, useState, useMemo, useCallback, useEffect, memo } from 'react';
-import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
-import { OrthographicCamera, Html } from '@react-three/drei';
-import * as THREE from 'three';
+import { useRef, useState, useMemo, useCallback, useEffect, memo } from "react";
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
+import { OrthographicCamera, Html } from "@react-three/drei";
+import * as THREE from "three";
 
 // ═══════════════════════════════════════════
 // TYPES
@@ -48,7 +48,7 @@ function getCellColor(r: number, isDark: boolean): string {
   const absR = Math.min(Math.abs(r), 1);
 
   if (absR < 0.02) {
-    return isDark ? '#2a2a3e' : '#d8d8e0';
+    return isDark ? "#2a2a3e" : "#d8d8e0";
   }
 
   if (r > 0) {
@@ -97,10 +97,10 @@ function lightenColor(hex: string, factor: number): string {
 // CONSTANTS
 // ═══════════════════════════════════════════
 
-const CELL_SIZE = 1;          // world units per cell (center-to-center)
-const CELL_DIM = 0.88;        // actual visible cell width/depth (leaves gap)
-const MAX_STRIP = 0.22;       // maximum side strip width for |r|=1
-const MIN_STRIP = 0.04;       // minimum strip for weak correlations
+const CELL_SIZE = 1; // world units per cell (center-to-center)
+const CELL_DIM = 0.88; // actual visible cell width/depth (leaves gap)
+const MAX_STRIP = 0.22; // maximum side strip width for |r|=1
+const MIN_STRIP = 0.04; // minimum strip for weak correlations
 
 // ═══════════════════════════════════════════
 // INDIVIDUAL CELL (top face + side strips)
@@ -118,14 +118,24 @@ interface CellProps {
   onClick: () => void;
 }
 
-function Cell({ row, col, r, isDark, isDiagonal, totalCells, hoveredCell, onHover, onClick }: CellProps) {
+function Cell({
+  row,
+  col,
+  r,
+  isDark,
+  isDiagonal,
+  totalCells,
+  hoveredCell,
+  onHover,
+  onClick,
+}: CellProps) {
   const absR = Math.min(Math.abs(r), 1);
   const isHovered = hoveredCell?.row === row && hoveredCell?.col === col;
   const isHighlighted = hoveredCell?.row === row || hoveredCell?.col === col;
 
   // Cell color
   const colorStr = useMemo(() => {
-    if (isDiagonal) return isDark ? '#3a3a50' : '#c8c8d0';
+    if (isDiagonal) return isDark ? "#3a3a50" : "#c8c8d0";
     return getCellColor(r, isDark);
   }, [r, isDark, isDiagonal]);
 
@@ -138,15 +148,27 @@ function Cell({ row, col, r, isDark, isDiagonal, totalCells, hoveredCell, onHove
   }, [absR, isDiagonal]);
 
   // Side face colors — right is darker, bottom is even darker
-  const rightColor = useMemo(() => new THREE.Color(darkenColor(colorStr, 0.45)), [colorStr]);
-  const bottomColor = useMemo(() => new THREE.Color(darkenColor(colorStr, 0.30)), [colorStr]);
+  const rightColor = useMemo(
+    () => new THREE.Color(darkenColor(colorStr, 0.45)),
+    [colorStr]
+  );
+  const bottomColor = useMemo(
+    () => new THREE.Color(darkenColor(colorStr, 0.3)),
+    [colorStr]
+  );
 
   // For recessed (negative) cells: lighter top-left highlight strip
-  const topHighlightColor = useMemo(() => new THREE.Color(lightenColor(colorStr, 0.30)), [colorStr]);
-  const leftHighlightColor = useMemo(() => new THREE.Color(lightenColor(colorStr, 0.20)), [colorStr]);
+  const topHighlightColor = useMemo(
+    () => new THREE.Color(lightenColor(colorStr, 0.3)),
+    [colorStr]
+  );
+  const leftHighlightColor = useMemo(
+    () => new THREE.Color(lightenColor(colorStr, 0.2)),
+    [colorStr]
+  );
 
   // Position: center of the grid is at origin
-  const halfGrid = (totalCells - 1) * CELL_SIZE / 2;
+  const halfGrid = ((totalCells - 1) * CELL_SIZE) / 2;
   const x = col * CELL_SIZE - halfGrid;
   const z = row * CELL_SIZE - halfGrid;
 
@@ -155,7 +177,7 @@ function Cell({ row, col, r, isDark, isDiagonal, totalCells, hoveredCell, onHove
   // Emissive for hover
   const emissiveIntensity = isHovered ? 0.35 : isHighlighted ? 0.08 : 0;
   const emissiveColor = useMemo(() => {
-    if (isHovered) return new THREE.Color(r >= 0 ? '#3b82f6' : '#ef4444');
+    if (isHovered) return new THREE.Color(r >= 0 ? "#3b82f6" : "#ef4444");
     return color;
   }, [isHovered, r, color]);
 
@@ -166,8 +188,10 @@ function Cell({ row, col, r, isDark, isDiagonal, totalCells, hoveredCell, onHove
   // Offset the top face so strips appear on the correct edges
   // Raised (positive): strips on RIGHT and BOTTOM → shift top face LEFT and UP
   // Recessed (negative): strips on LEFT and TOP → shift top face RIGHT and DOWN
-  const topOffsetX = stripWidth > 0 ? (isRaised ? -stripWidth / 2 : stripWidth / 2) : 0;
-  const topOffsetZ = stripWidth > 0 ? (isRaised ? -stripWidth / 2 : stripWidth / 2) : 0;
+  const topOffsetX =
+    stripWidth > 0 ? (isRaised ? -stripWidth / 2 : stripWidth / 2) : 0;
+  const topOffsetZ =
+    stripWidth > 0 ? (isRaised ? -stripWidth / 2 : stripWidth / 2) : 0;
 
   const halfDim = CELL_DIM / 2;
 
@@ -179,12 +203,12 @@ function Cell({ row, col, r, isDark, isDiagonal, totalCells, hoveredCell, onHove
         onPointerOver={(e: ThreeEvent<PointerEvent>) => {
           e.stopPropagation();
           onHover({ row, col });
-          document.body.style.cursor = isDiagonal ? 'default' : 'pointer';
+          document.body.style.cursor = isDiagonal ? "default" : "pointer";
         }}
         onPointerOut={(e: ThreeEvent<PointerEvent>) => {
           e.stopPropagation();
           onHover(null);
-          document.body.style.cursor = 'default';
+          document.body.style.cursor = "default";
         }}
         onClick={(e: ThreeEvent<MouseEvent>) => {
           e.stopPropagation();
@@ -257,7 +281,7 @@ interface LabelsProps {
 
 function ColumnLabels({ activeStats, hoveredCell, isDark }: LabelsProps) {
   const n = activeStats.length;
-  const halfGrid = (n - 1) * CELL_SIZE / 2;
+  const halfGrid = ((n - 1) * CELL_SIZE) / 2;
 
   return (
     <>
@@ -272,22 +296,28 @@ function ColumnLabels({ activeStats, hoveredCell, isDark }: LabelsProps) {
             position={[x, 0.02, z]}
             center
             style={{
-              pointerEvents: 'none',
-              userSelect: 'none',
-              whiteSpace: 'nowrap',
+              pointerEvents: "none",
+              userSelect: "none",
+              whiteSpace: "nowrap",
             }}
           >
-            <div style={{
-              fontSize: '11px',
-              fontFamily: 'JetBrains Mono, monospace',
-              color: isHighlighted
-                ? (isDark ? '#60a5fa' : '#1e40af')
-                : (isDark ? '#8892b0' : '#64748b'),
-              fontWeight: isHighlighted ? 700 : 400,
-              transform: 'rotate(-55deg)',
-              transformOrigin: 'center center',
-              transition: 'color 0.15s, font-weight 0.15s',
-            }}>
+            <div
+              style={{
+                fontSize: "11px",
+                fontFamily: "JetBrains Mono, monospace",
+                color: isHighlighted
+                  ? isDark
+                    ? "#60a5fa"
+                    : "#1e40af"
+                  : isDark
+                    ? "#8892b0"
+                    : "#64748b",
+                fontWeight: isHighlighted ? 700 : 400,
+                transform: "rotate(-55deg)",
+                transformOrigin: "center center",
+                transition: "color 0.15s, font-weight 0.15s",
+              }}
+            >
               {stat.label}
             </div>
           </Html>
@@ -299,7 +329,7 @@ function ColumnLabels({ activeStats, hoveredCell, isDark }: LabelsProps) {
 
 function RowLabels({ activeStats, hoveredCell, isDark }: LabelsProps) {
   const n = activeStats.length;
-  const halfGrid = (n - 1) * CELL_SIZE / 2;
+  const halfGrid = ((n - 1) * CELL_SIZE) / 2;
 
   return (
     <>
@@ -314,21 +344,27 @@ function RowLabels({ activeStats, hoveredCell, isDark }: LabelsProps) {
             position={[x, 0.02, z]}
             center
             style={{
-              pointerEvents: 'none',
-              userSelect: 'none',
-              whiteSpace: 'nowrap',
+              pointerEvents: "none",
+              userSelect: "none",
+              whiteSpace: "nowrap",
             }}
           >
-            <div style={{
-              fontSize: '11px',
-              fontFamily: 'JetBrains Mono, monospace',
-              color: isHighlighted
-                ? (isDark ? '#60a5fa' : '#1e40af')
-                : (isDark ? '#8892b0' : '#64748b'),
-              fontWeight: isHighlighted ? 700 : 400,
-              transition: 'color 0.15s, font-weight 0.15s',
-              textAlign: 'right',
-            }}>
+            <div
+              style={{
+                fontSize: "11px",
+                fontFamily: "JetBrains Mono, monospace",
+                color: isHighlighted
+                  ? isDark
+                    ? "#60a5fa"
+                    : "#1e40af"
+                  : isDark
+                    ? "#8892b0"
+                    : "#64748b",
+                fontWeight: isHighlighted ? 700 : 400,
+                transition: "color 0.15s, font-weight 0.15s",
+                textAlign: "right",
+              }}
+            >
               {stat.label}
             </div>
           </Html>
@@ -349,14 +385,19 @@ interface TooltipProps {
   isDark: boolean;
 }
 
-function HoverTooltip({ hoveredCell, matrix, activeStats, isDark }: TooltipProps) {
+function HoverTooltip({
+  hoveredCell,
+  matrix,
+  activeStats,
+  isDark,
+}: TooltipProps) {
   if (!hoveredCell) return null;
   const { row, col } = hoveredCell;
   if (row === col) return null;
 
   const r = matrix[row][col];
   const n = activeStats.length;
-  const halfGrid = (n - 1) * CELL_SIZE / 2;
+  const halfGrid = ((n - 1) * CELL_SIZE) / 2;
   const x = col * CELL_SIZE - halfGrid;
   const z = row * CELL_SIZE - halfGrid;
 
@@ -364,35 +405,46 @@ function HoverTooltip({ hoveredCell, matrix, activeStats, isDark }: TooltipProps
     <Html
       position={[x, 0.5, z]}
       center
-      style={{ pointerEvents: 'none', userSelect: 'none' }}
+      style={{ pointerEvents: "none", userSelect: "none" }}
     >
-      <div style={{
-        background: isDark ? 'rgba(15,15,30,0.92)' : 'rgba(255,255,255,0.95)',
-        backdropFilter: 'blur(12px)',
-        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-        borderRadius: '6px',
-        padding: '6px 10px',
-        whiteSpace: 'nowrap',
-        boxShadow: isDark
-          ? '0 4px 12px rgba(0,0,0,0.5)'
-          : '0 4px 12px rgba(0,0,0,0.12)',
-      }}>
-        <div style={{
-          fontSize: '9px',
-          fontFamily: 'Space Grotesk, sans-serif',
-          color: isDark ? '#8892b0' : '#64748b',
-          marginBottom: '2px',
-        }}>
+      <div
+        style={{
+          background: isDark ? "rgba(15,15,30,0.92)" : "rgba(255,255,255,0.95)",
+          backdropFilter: "blur(12px)",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+          borderRadius: "6px",
+          padding: "6px 10px",
+          whiteSpace: "nowrap",
+          boxShadow: isDark
+            ? "0 4px 12px rgba(0,0,0,0.5)"
+            : "0 4px 12px rgba(0,0,0,0.12)",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "9px",
+            fontFamily: "Space Grotesk, sans-serif",
+            color: isDark ? "#8892b0" : "#64748b",
+            marginBottom: "2px",
+          }}
+        >
           {activeStats[row].label} × {activeStats[col].label}
         </div>
-        <div style={{
-          fontSize: '14px',
-          fontFamily: 'JetBrains Mono, monospace',
-          fontWeight: 700,
-          color: r >= 0
-            ? (isDark ? '#60a5fa' : '#1e40af')
-            : (isDark ? '#f87171' : '#b91c1c'),
-        }}>
+        <div
+          style={{
+            fontSize: "14px",
+            fontFamily: "JetBrains Mono, monospace",
+            fontWeight: 700,
+            color:
+              r >= 0
+                ? isDark
+                  ? "#60a5fa"
+                  : "#1e40af"
+                : isDark
+                  ? "#f87171"
+                  : "#b91c1c",
+          }}
+        >
           r = {r.toFixed(3)}
         </div>
       </div>
@@ -410,8 +462,10 @@ interface Legend3DProps {
 }
 
 function Legend3D({ isDark, totalCells }: Legend3DProps) {
-  const legendValues = [1, 0.75, 0.5, 0.25, 0.1, 0, -0.1, -0.25, -0.5, -0.75, -1];
-  const halfGrid = (totalCells - 1) * CELL_SIZE / 2;
+  const legendValues = [
+    1, 0.75, 0.5, 0.25, 0.1, 0, -0.1, -0.25, -0.5, -0.75, -1,
+  ];
+  const halfGrid = ((totalCells - 1) * CELL_SIZE) / 2;
   const legendX = halfGrid + CELL_SIZE * 2.8;
   const legendSpacing = CELL_SIZE * 0.75;
   const legendStartZ = -((legendValues.length - 1) * legendSpacing) / 2;
@@ -423,29 +477,36 @@ function Legend3D({ isDark, totalCells }: Legend3DProps) {
       <Html
         position={[legendX, 0.1, legendStartZ - legendSpacing * 1.1]}
         center
-        style={{ pointerEvents: 'none', userSelect: 'none' }}
+        style={{ pointerEvents: "none", userSelect: "none" }}
       >
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            fontSize: '12px',
-            fontFamily: 'JetBrains Mono, monospace',
-            fontWeight: 700,
-            color: isDark ? '#60a5fa' : '#1e3a8a',
-          }}>+1</div>
-          <div style={{
-            fontSize: '9px',
-            fontFamily: 'Space Grotesk, sans-serif',
-            color: isDark ? '#60a5fa' : '#1e3a8a',
-          }}>&#9650; Raised</div>
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              fontSize: "12px",
+              fontFamily: "JetBrains Mono, monospace",
+              fontWeight: 700,
+              color: isDark ? "#60a5fa" : "#1e3a8a",
+            }}
+          >
+            +1
+          </div>
+          <div
+            style={{
+              fontSize: "9px",
+              fontFamily: "Space Grotesk, sans-serif",
+              color: isDark ? "#60a5fa" : "#1e3a8a",
+            }}
+          >
+            &#9650; Raised
+          </div>
         </div>
       </Html>
 
       {legendValues.map((v, i) => {
         const absV = Math.abs(v);
         const z = legendStartZ + i * legendSpacing;
-        const colorStr = v === 0
-          ? (isDark ? '#3a3a50' : '#c8c8d0')
-          : getCellColor(v, isDark);
+        const colorStr =
+          v === 0 ? (isDark ? "#3a3a50" : "#c8c8d0") : getCellColor(v, isDark);
         const color = new THREE.Color(colorStr);
         const isRaised = v >= 0;
         const stripW = absV < 0.06 ? 0 : absV * MAX_STRIP;
@@ -472,13 +533,19 @@ function Legend3D({ isDark, totalCells }: Legend3DProps) {
             {/* Side strips for raised */}
             {stripW > 0 && isRaised && (
               <>
-                <mesh position={[legendX + halfLeg - stripW / 2, 0, z + topOffZ]}>
+                <mesh
+                  position={[legendX + halfLeg - stripW / 2, 0, z + topOffZ]}
+                >
                   <boxGeometry args={[stripW, 0.02, topD]} />
-                  <meshBasicMaterial color={new THREE.Color(darkenColor(colorStr, 0.55))} />
+                  <meshBasicMaterial
+                    color={new THREE.Color(darkenColor(colorStr, 0.55))}
+                  />
                 </mesh>
                 <mesh position={[legendX, 0, z + halfLeg - stripW / 2]}>
                   <boxGeometry args={[legendCellDim, 0.02, stripW]} />
-                  <meshBasicMaterial color={new THREE.Color(darkenColor(colorStr, 0.35))} />
+                  <meshBasicMaterial
+                    color={new THREE.Color(darkenColor(colorStr, 0.35))}
+                  />
                 </mesh>
               </>
             )}
@@ -487,22 +554,34 @@ function Legend3D({ isDark, totalCells }: Legend3DProps) {
             {stripW > 0 && !isRaised && (
               <>
                 {/* Light strips on left + top */}
-                <mesh position={[legendX - halfLeg + stripW / 2, 0, z + topOffZ]}>
+                <mesh
+                  position={[legendX - halfLeg + stripW / 2, 0, z + topOffZ]}
+                >
                   <boxGeometry args={[stripW, 0.02, topD]} />
-                  <meshBasicMaterial color={new THREE.Color(lightenColor(colorStr, 0.15))} />
+                  <meshBasicMaterial
+                    color={new THREE.Color(lightenColor(colorStr, 0.15))}
+                  />
                 </mesh>
                 <mesh position={[legendX, 0, z - halfLeg + stripW / 2]}>
                   <boxGeometry args={[legendCellDim, 0.02, stripW]} />
-                  <meshBasicMaterial color={new THREE.Color(lightenColor(colorStr, 0.25))} />
+                  <meshBasicMaterial
+                    color={new THREE.Color(lightenColor(colorStr, 0.25))}
+                  />
                 </mesh>
                 {/* Dark strips on right + bottom */}
-                <mesh position={[legendX + halfLeg - stripW / 2, 0, z + topOffZ]}>
+                <mesh
+                  position={[legendX + halfLeg - stripW / 2, 0, z + topOffZ]}
+                >
                   <boxGeometry args={[stripW, 0.02, topD]} />
-                  <meshBasicMaterial color={new THREE.Color(darkenColor(colorStr, 0.35))} />
+                  <meshBasicMaterial
+                    color={new THREE.Color(darkenColor(colorStr, 0.35))}
+                  />
                 </mesh>
                 <mesh position={[legendX, 0, z + halfLeg - stripW / 2]}>
                   <boxGeometry args={[legendCellDim, 0.02, stripW]} />
-                  <meshBasicMaterial color={new THREE.Color(darkenColor(colorStr, 0.55))} />
+                  <meshBasicMaterial
+                    color={new THREE.Color(darkenColor(colorStr, 0.55))}
+                  />
                 </mesh>
               </>
             )}
@@ -511,17 +590,19 @@ function Legend3D({ isDark, totalCells }: Legend3DProps) {
             <Html
               position={[legendX - legendCellDim * 1.4, 0.05, z]}
               center
-              style={{ pointerEvents: 'none', userSelect: 'none' }}
+              style={{ pointerEvents: "none", userSelect: "none" }}
             >
-              <div style={{
-                fontSize: '9px',
-                fontFamily: 'JetBrains Mono, monospace',
-                color: isDark ? '#8892b0' : '#64748b',
-                fontWeight: absV < 0.05 ? 600 : 400,
-                textAlign: 'right',
-                width: '32px',
-              }}>
-                {v === 0 ? '0' : v > 0 ? `+${v}` : `${v}`}
+              <div
+                style={{
+                  fontSize: "9px",
+                  fontFamily: "JetBrains Mono, monospace",
+                  color: isDark ? "#8892b0" : "#64748b",
+                  fontWeight: absV < 0.05 ? 600 : 400,
+                  textAlign: "right",
+                  width: "32px",
+                }}
+              >
+                {v === 0 ? "0" : v > 0 ? `+${v}` : `${v}`}
               </div>
             </Html>
           </group>
@@ -530,22 +611,34 @@ function Legend3D({ isDark, totalCells }: Legend3DProps) {
 
       {/* "-1 Recessed" label at bottom */}
       <Html
-        position={[legendX, 0.1, legendStartZ + legendValues.length * legendSpacing]}
+        position={[
+          legendX,
+          0.1,
+          legendStartZ + legendValues.length * legendSpacing,
+        ]}
         center
-        style={{ pointerEvents: 'none', userSelect: 'none' }}
+        style={{ pointerEvents: "none", userSelect: "none" }}
       >
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            fontSize: '9px',
-            fontFamily: 'Space Grotesk, sans-serif',
-            color: isDark ? '#f87171' : '#991b1b',
-          }}>&#9660; Recessed</div>
-          <div style={{
-            fontSize: '12px',
-            fontFamily: 'JetBrains Mono, monospace',
-            fontWeight: 700,
-            color: isDark ? '#f87171' : '#991b1b',
-          }}>−1</div>
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              fontSize: "9px",
+              fontFamily: "Space Grotesk, sans-serif",
+              color: isDark ? "#f87171" : "#991b1b",
+            }}
+          >
+            &#9660; Recessed
+          </div>
+          <div
+            style={{
+              fontSize: "12px",
+              fontFamily: "JetBrains Mono, monospace",
+              fontWeight: 700,
+              color: isDark ? "#f87171" : "#991b1b",
+            }}
+          >
+            −1
+          </div>
         </div>
       </Html>
     </>
@@ -576,7 +669,14 @@ function CameraRig() {
   return null;
 }
 
-function Scene({ matrix, activeStats, isDark, hoveredCell, onHover, onCellClick }: SceneProps) {
+function Scene({
+  matrix,
+  activeStats,
+  isDark,
+  hoveredCell,
+  onHover,
+  onCellClick,
+}: SceneProps) {
   const n = activeStats.length;
 
   return (
@@ -590,10 +690,7 @@ function Scene({ matrix, activeStats, isDark, hoveredCell, onHover, onCellClick 
         intensity={isDark ? 0.8 : 1.0}
       />
       {/* Fill light from opposite side */}
-      <directionalLight
-        position={[6, 15, 4]}
-        intensity={isDark ? 0.15 : 0.2}
-      />
+      <directionalLight position={[6, 15, 4]} intensity={isDark ? 0.15 : 0.2} />
 
       {/* Matrix cells */}
       {matrix.map((row, ri) =>
@@ -608,14 +705,24 @@ function Scene({ matrix, activeStats, isDark, hoveredCell, onHover, onCellClick 
             totalCells={n}
             hoveredCell={hoveredCell}
             onHover={onHover}
-            onClick={() => onCellClick(activeStats[ci].key, activeStats[ri].key)}
+            onClick={() =>
+              onCellClick(activeStats[ci].key, activeStats[ri].key)
+            }
           />
         ))
       )}
 
       {/* Labels */}
-      <ColumnLabels activeStats={activeStats} hoveredCell={hoveredCell} isDark={isDark} />
-      <RowLabels activeStats={activeStats} hoveredCell={hoveredCell} isDark={isDark} />
+      <ColumnLabels
+        activeStats={activeStats}
+        hoveredCell={hoveredCell}
+        isDark={isDark}
+      />
+      <RowLabels
+        activeStats={activeStats}
+        hoveredCell={hoveredCell}
+        isDark={isDark}
+      />
 
       {/* Hover tooltip */}
       <HoverTooltip
@@ -641,7 +748,10 @@ function CorrelationMatrix3DInner({
   isDark,
   onCellClick,
 }: CorrelationMatrix3DProps) {
-  const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
+  const [hoveredCell, setHoveredCell] = useState<{
+    row: number;
+    col: number;
+  } | null>(null);
 
   const n = activeStats.length;
 
@@ -651,14 +761,14 @@ function CorrelationMatrix3DInner({
   return (
     <div
       style={{
-        width: '100%',
+        width: "100%",
         height: containerHeight,
-        position: 'relative',
-        overflow: 'hidden',
+        position: "relative",
+        overflow: "hidden",
       }}
       onPointerLeave={() => {
         setHoveredCell(null);
-        document.body.style.cursor = 'default';
+        document.body.style.cursor = "default";
       }}
     >
       <Canvas
@@ -669,7 +779,7 @@ function CorrelationMatrix3DInner({
           toneMappingExposure: isDark ? 0.9 : 1.1,
         }}
         style={{
-          background: 'transparent',
+          background: "transparent",
         }}
       >
         {/* Camera: PERFECTLY top-down. Plane geometry faces camera. */}
@@ -693,7 +803,11 @@ function CorrelationMatrix3DInner({
   );
 }
 
-const CorrelationMatrix3D = memo(CorrelationMatrix3DInner, (prev, next) =>
-  prev.matrix === next.matrix && prev.activeStats === next.activeStats && prev.isDark === next.isDark
+const CorrelationMatrix3D = memo(
+  CorrelationMatrix3DInner,
+  (prev, next) =>
+    prev.matrix === next.matrix &&
+    prev.activeStats === next.activeStats &&
+    prev.isDark === next.isDark
 );
 export default CorrelationMatrix3D;

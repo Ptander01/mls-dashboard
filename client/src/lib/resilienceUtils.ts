@@ -6,19 +6,19 @@
  * Used by the Performance & Resilience Analysis section under the Travel Map tab.
  */
 
-import type { Team, Player, Match } from './mlsData';
-import { TEAMS, PLAYERS, MATCHES, getTeam, calculateDistance } from './mlsData';
+import type { Team, Player, Match } from "./mlsData";
+import { TEAMS, PLAYERS, MATCHES, getTeam, calculateDistance } from "./mlsData";
 
 // ═══════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════
 
-export type ResilienceTier = 'green' | 'cyan' | 'amber' | 'red';
+export type ResilienceTier = "green" | "cyan" | "amber" | "red";
 
 export interface ScoreComponents {
-  awayPerformance: number;      // 0–100: away PPG normalized
-  congestionResistance: number;  // 0–100: squad depth index
-  longHaulRecord: number;        // 0–100: PPG in games > 1000 mi away
+  awayPerformance: number; // 0–100: away PPG normalized
+  congestionResistance: number; // 0–100: squad depth index
+  longHaulRecord: number; // 0–100: PPG in games > 1000 mi away
 }
 
 export interface TeamResilienceMetrics {
@@ -26,7 +26,7 @@ export interface TeamResilienceMetrics {
   teamName: string;
   teamShort: string;
   teamColor: string;
-  conference: 'Eastern' | 'Western';
+  conference: "Eastern" | "Western";
   // Travel burden
   totalAwayMiles: number;
   longestTripMiles: number;
@@ -35,11 +35,11 @@ export interface TeamResilienceMetrics {
   // Performance splits
   homePPG: number;
   awayPPG: number;
-  ppgGap: number;           // homePPG - awayPPG (positive = better at home)
+  ppgGap: number; // homePPG - awayPPG (positive = better at home)
   homeWinPct: number;
   awayWinPct: number;
   winPctGap: number;
-  homeGD: number;            // total goal difference at home
+  homeGD: number; // total goal difference at home
   awayGD: number;
   gdGap: number;
   homeGDPerGame: number;
@@ -48,10 +48,10 @@ export interface TeamResilienceMetrics {
   homeGames: number;
   awayGames: number;
   // Squad metrics
-  squadDepthIndex: number;   // 0–100, higher = better depth
+  squadDepthIndex: number; // 0–100, higher = better depth
   weightedAvgAge: number;
   // Composite
-  resilienceScore: number;   // 0–100
+  resilienceScore: number; // 0–100
   resilienceTier: ResilienceTier;
   scoreComponents: ScoreComponents;
 }
@@ -64,7 +64,11 @@ export interface TeamResilienceMetrics {
  * Calculate the total away miles traveled by a team across all away matches.
  * Each away match contributes the distance from the team's home stadium to the opponent's stadium.
  */
-export function totalAwayMiles(teamId: string, matches: Match[], teams: Team[]): number {
+export function totalAwayMiles(
+  teamId: string,
+  matches: Match[],
+  teams: Team[]
+): number {
   const homeTeam = teams.find(t => t.id === teamId);
   if (!homeTeam) return 0;
 
@@ -73,14 +77,26 @@ export function totalAwayMiles(teamId: string, matches: Match[], teams: Team[]):
     .reduce((total, m) => {
       const opponent = teams.find(t => t.id === m.homeTeam);
       if (!opponent) return total;
-      return total + calculateDistance(homeTeam.lat, homeTeam.lng, opponent.lat, opponent.lng);
+      return (
+        total +
+        calculateDistance(
+          homeTeam.lat,
+          homeTeam.lng,
+          opponent.lat,
+          opponent.lng
+        )
+      );
     }, 0);
 }
 
 /**
  * Get per-match away trip distances for a team.
  */
-export function awayTripDistances(teamId: string, matches: Match[], teams: Team[]): { match: Match; distance: number }[] {
+export function awayTripDistances(
+  teamId: string,
+  matches: Match[],
+  teams: Team[]
+): { match: Match; distance: number }[] {
   const homeTeam = teams.find(t => t.id === teamId);
   if (!homeTeam) return [];
 
@@ -88,7 +104,14 @@ export function awayTripDistances(teamId: string, matches: Match[], teams: Team[
     .filter(m => m.awayTeam === teamId)
     .map(m => {
       const opponent = teams.find(t => t.id === m.homeTeam);
-      const distance = opponent ? calculateDistance(homeTeam.lat, homeTeam.lng, opponent.lat, opponent.lng) : 0;
+      const distance = opponent
+        ? calculateDistance(
+            homeTeam.lat,
+            homeTeam.lng,
+            opponent.lat,
+            opponent.lng
+          )
+        : 0;
       return { match: m, distance };
     })
     .sort((a, b) => b.distance - a.distance);
@@ -102,9 +125,22 @@ export function awayTripDistances(teamId: string, matches: Match[], teams: Team[
  * Calculate Points Per Game for a team in home or away matches.
  * Win = 3 pts, Draw = 1 pt, Loss = 0 pts.
  */
-function calculatePPG(teamId: string, matches: Match[], isHome: boolean): { ppg: number; winPct: number; gd: number; gdPerGame: number; games: number } {
-  const filtered = matches.filter(m => isHome ? m.homeTeam === teamId : m.awayTeam === teamId);
-  if (filtered.length === 0) return { ppg: 0, winPct: 0, gd: 0, gdPerGame: 0, games: 0 };
+function calculatePPG(
+  teamId: string,
+  matches: Match[],
+  isHome: boolean
+): {
+  ppg: number;
+  winPct: number;
+  gd: number;
+  gdPerGame: number;
+  games: number;
+} {
+  const filtered = matches.filter(m =>
+    isHome ? m.homeTeam === teamId : m.awayTeam === teamId
+  );
+  if (filtered.length === 0)
+    return { ppg: 0, winPct: 0, gd: 0, gdPerGame: 0, games: 0 };
 
   let points = 0;
   let wins = 0;
@@ -116,8 +152,12 @@ function calculatePPG(teamId: string, matches: Match[], isHome: boolean): { ppg:
     const gd = teamGoals - oppGoals;
     totalGD += gd;
 
-    if (gd > 0) { points += 3; wins++; }
-    else if (gd === 0) { points += 1; }
+    if (gd > 0) {
+      points += 3;
+      wins++;
+    } else if (gd === 0) {
+      points += 1;
+    }
   });
 
   return {
@@ -188,7 +228,12 @@ export function weightedAvgAge(teamId: string, players: Player[]): number {
 /**
  * Calculate PPG specifically for away games where travel distance exceeds a threshold.
  */
-function longHaulPPG(teamId: string, matches: Match[], teams: Team[], thresholdMiles = 1000): number {
+function longHaulPPG(
+  teamId: string,
+  matches: Match[],
+  teams: Team[],
+  thresholdMiles = 1000
+): number {
   const homeTeam = teams.find(t => t.id === teamId);
   if (!homeTeam) return 0;
 
@@ -197,7 +242,14 @@ function longHaulPPG(teamId: string, matches: Match[], teams: Team[], thresholdM
     .filter(m => {
       const opponent = teams.find(t => t.id === m.homeTeam);
       if (!opponent) return false;
-      return calculateDistance(homeTeam.lat, homeTeam.lng, opponent.lat, opponent.lng) > thresholdMiles;
+      return (
+        calculateDistance(
+          homeTeam.lat,
+          homeTeam.lng,
+          opponent.lat,
+          opponent.lng
+        ) > thresholdMiles
+      );
     });
 
   if (longHaulMatches.length === 0) return 0;
@@ -217,10 +269,10 @@ function longHaulPPG(teamId: string, matches: Match[], teams: Team[], thresholdM
 // ═══════════════════════════════════════════
 
 function assignTier(score: number): ResilienceTier {
-  if (score >= 70) return 'green';
-  if (score >= 55) return 'cyan';
-  if (score >= 40) return 'amber';
-  return 'red';
+  if (score >= 70) return "green";
+  if (score >= 55) return "cyan";
+  if (score >= 40) return "amber";
+  return "red";
 }
 
 /**
@@ -232,7 +284,7 @@ function computeTeamResilience(
   teams: Team[],
   players: Player[],
   leagueAwayPPG: number,
-  leagueLongHaulPPG: number,
+  leagueLongHaulPPG: number
 ): TeamResilienceMetrics {
   // Travel
   const trips = awayTripDistances(team.id, matches, teams);
@@ -262,7 +314,8 @@ function computeTeamResilience(
   const longHaulScore = Math.min(100, (lhPPG / 2.5) * 100);
 
   // Composite: weighted average
-  const resilienceScore = awayPerfScore * 0.4 + congestionScore * 0.3 + longHaulScore * 0.3;
+  const resilienceScore =
+    awayPerfScore * 0.4 + congestionScore * 0.3 + longHaulScore * 0.3;
 
   return {
     teamId: team.id,
@@ -310,11 +363,12 @@ function computeTeamResilience(
 export function computeAllResilienceMetrics(
   teams: Team[] = TEAMS,
   matches: Match[] = MATCHES,
-  players: Player[] = PLAYERS,
+  players: Player[] = PLAYERS
 ): TeamResilienceMetrics[] {
   // League averages for normalization context
   const leagueAwayPPG = (() => {
-    let totalPts = 0, totalGames = 0;
+    let totalPts = 0,
+      totalGames = 0;
     teams.forEach(t => {
       const awayMatches = matches.filter(m => m.awayTeam === t.id);
       awayMatches.forEach(m => {
@@ -328,27 +382,44 @@ export function computeAllResilienceMetrics(
   })();
 
   const leagueLongHaulPPG = (() => {
-    let totalPts = 0, totalGames = 0;
+    let totalPts = 0,
+      totalGames = 0;
     teams.forEach(t => {
       const homeTeam = teams.find(tm => tm.id === t.id);
       if (!homeTeam) return;
-      matches.filter(m => m.awayTeam === t.id).forEach(m => {
-        const opp = teams.find(tm => tm.id === m.homeTeam);
-        if (!opp) return;
-        const dist = calculateDistance(homeTeam.lat, homeTeam.lng, opp.lat, opp.lng);
-        if (dist > 1000) {
-          const gd = m.awayGoals - m.homeGoals;
-          if (gd > 0) totalPts += 3;
-          else if (gd === 0) totalPts += 1;
-          totalGames++;
-        }
-      });
+      matches
+        .filter(m => m.awayTeam === t.id)
+        .forEach(m => {
+          const opp = teams.find(tm => tm.id === m.homeTeam);
+          if (!opp) return;
+          const dist = calculateDistance(
+            homeTeam.lat,
+            homeTeam.lng,
+            opp.lat,
+            opp.lng
+          );
+          if (dist > 1000) {
+            const gd = m.awayGoals - m.homeGoals;
+            if (gd > 0) totalPts += 3;
+            else if (gd === 0) totalPts += 1;
+            totalGames++;
+          }
+        });
     });
     return totalGames > 0 ? totalPts / totalGames : 1;
   })();
 
   return teams
-    .map(t => computeTeamResilience(t, matches, teams, players, leagueAwayPPG, leagueLongHaulPPG))
+    .map(t =>
+      computeTeamResilience(
+        t,
+        matches,
+        teams,
+        players,
+        leagueAwayPPG,
+        leagueLongHaulPPG
+      )
+    )
     .sort((a, b) => b.resilienceScore - a.resilienceScore);
 }
 
@@ -360,7 +431,7 @@ export function computeAllResilienceMetrics(
  * Generate a two-sentence insight headline for the Dumbbell chart.
  */
 export function dumbbellHeadline(metrics: TeamResilienceMetrics[]): string {
-  if (metrics.length === 0) return '';
+  if (metrics.length === 0) return "";
 
   const sorted = [...metrics].sort((a, b) => b.ppgGap - a.ppgGap);
   const worst = sorted[0];
@@ -373,13 +444,13 @@ export function dumbbellHeadline(metrics: TeamResilienceMetrics[]): string {
  * Generate a two-sentence insight headline for the Resilience Index chart.
  */
 export function resilienceHeadline(metrics: TeamResilienceMetrics[]): string {
-  if (metrics.length === 0) return '';
+  if (metrics.length === 0) return "";
 
   const top = metrics[0];
   const bottom = metrics[metrics.length - 1];
-  const redCount = metrics.filter(m => m.resilienceTier === 'red').length;
+  const redCount = metrics.filter(m => m.resilienceTier === "red").length;
 
-  return `${top.teamShort} tops the Resilience Index at ${top.resilienceScore.toFixed(1)}, combining away form and squad depth. ${redCount} team${redCount !== 1 ? 's' : ''} fall${redCount === 1 ? 's' : ''} into “Fragile” — ${bottom.teamShort} trails at ${bottom.resilienceScore.toFixed(1)}.`;
+  return `${top.teamShort} tops the Resilience Index at ${top.resilienceScore.toFixed(1)}, combining away form and squad depth. ${redCount} team${redCount !== 1 ? "s" : ""} fall${redCount === 1 ? "s" : ""} into “Fragile” — ${bottom.teamShort} trails at ${bottom.resilienceScore.toFixed(1)}.`;
 }
 
 // ═══════════════════════════════════════════
@@ -387,17 +458,17 @@ export function resilienceHeadline(metrics: TeamResilienceMetrics[]): string {
 // ═══════════════════════════════════════════
 
 export const TIER_COLORS_DARK: Record<ResilienceTier, string> = {
-  green: '#1E3448',   // deep steel blue — excellent
-  cyan: '#1E3A28',    // deep forest green — good
-  amber: '#4A3E1A',   // deep olive-brown — vulnerable
-  red: '#6A2222',     // deep brick red — fragile
+  green: "#1E3448", // deep steel blue — excellent
+  cyan: "#1E3A28", // deep forest green — good
+  amber: "#4A3E1A", // deep olive-brown — vulnerable
+  red: "#6A2222", // deep brick red — fragile
 };
 
 export const TIER_COLORS_LIGHT: Record<ResilienceTier, string> = {
-  green: '#2A4A64',   // dark steel blue — excellent
-  cyan: '#2A4A35',    // dark forest green — good
-  amber: '#5A4A2A',   // dark olive-brown — vulnerable
-  red: '#8A2A2A',     // dark brick red — fragile
+  green: "#2A4A64", // dark steel blue — excellent
+  cyan: "#2A4A35", // dark forest green — good
+  amber: "#5A4A2A", // dark olive-brown — vulnerable
+  red: "#8A2A2A", // dark brick red — fragile
 };
 
 /** Legacy single-palette export for backward compatibility */
@@ -408,8 +479,8 @@ export function tierColor(tier: ResilienceTier, isDark: boolean): string {
 }
 
 export const TIER_LABELS: Record<ResilienceTier, string> = {
-  green: 'Excellent',
-  cyan: 'Good',
-  amber: 'Vulnerable',
-  red: 'Fragile',
+  green: "Excellent",
+  cyan: "Good",
+  amber: "Vulnerable",
+  red: "Fragile",
 };

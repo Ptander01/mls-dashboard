@@ -17,15 +17,15 @@
  *                (Away Perf, Congestion Resistance, Long-Haul Record)
  */
 
-import { useState, useMemo, memo } from 'react';
-import { useTheme } from '@/contexts/ThemeContext';
-import { lighten, darken, mutedTeamColor } from '@/lib/chartUtils';
-import type { TeamResilienceMetrics } from '@/lib/resilienceUtils';
-import { TIER_COLORS, TIER_LABELS, tierColor } from '@/lib/resilienceUtils';
-import { ChartHeader } from '@/components/ui/ChartHeader';
+import { useState, useMemo, memo } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { lighten, darken, mutedTeamColor } from "@/lib/chartUtils";
+import type { TeamResilienceMetrics } from "@/lib/resilienceUtils";
+import { TIER_COLORS, TIER_LABELS, tierColor } from "@/lib/resilienceUtils";
+import { ChartHeader } from "@/components/ui/ChartHeader";
 
-type ViewMode = 'INDEX' | 'COMPONENTS';
-type ColorMode = 'SCORE' | 'TEAM';
+type ViewMode = "INDEX" | "COMPONENTS";
+type ColorMode = "SCORE" | "TEAM";
 
 interface ResilienceIndexChartProps {
   metrics: TeamResilienceMetrics[];
@@ -51,7 +51,10 @@ interface TreemapRect {
  */
 function squarify(
   items: { value: number; data: TeamResilienceMetrics }[],
-  x: number, y: number, w: number, h: number,
+  x: number,
+  y: number,
+  w: number,
+  h: number
 ): TreemapRect[] {
   if (items.length === 0) return [];
   if (items.length === 1) {
@@ -63,7 +66,10 @@ function squarify(
 
   const results: TreemapRect[] = [];
   let remaining = [...items];
-  let cx = x, cy = y, cw = w, ch = h;
+  let cx = x,
+    cy = y,
+    cw = w,
+    ch = h;
 
   while (remaining.length > 0) {
     const remTotal = remaining.reduce((s, d) => s + d.value, 0);
@@ -84,9 +90,7 @@ function squarify(
       // The row occupies (candidateSum / remTotal) fraction of the remaining area
       const rowFraction = candidateSum / remTotal;
       const rowLen = sideLen; // the side we're stacking along
-      const rowThickness = isHorizontal
-        ? cw * rowFraction
-        : ch * rowFraction;
+      const rowThickness = isHorizontal ? cw * rowFraction : ch * rowFraction;
 
       // Compute worst aspect ratio in this candidate row
       let worstAR = 0;
@@ -157,11 +161,29 @@ function squarify(
 const GAP = 2; // gap between tiles
 
 function ExtrudedTile3D({
-  x, y, w, h, color, depth, id, isDark, label, score, subLabel,
+  x,
+  y,
+  w,
+  h,
+  color,
+  depth,
+  id,
+  isDark,
+  label,
+  score,
+  subLabel,
 }: {
-  x: number; y: number; w: number; h: number;
-  color: string; depth: number; id: string; isDark: boolean;
-  label: string; score: number; subLabel?: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+  depth: number;
+  id: string;
+  isDark: boolean;
+  label: string;
+  score: number;
+  subLabel?: string;
 }) {
   // Apply gap inset
   const gx = x + GAP / 2;
@@ -212,7 +234,7 @@ function ExtrudedTile3D({
         width={gw + extX}
         height={gh + extY}
         rx={2}
-        fill={isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.18)'}
+        fill={isDark ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.18)"}
         filter={`url(#${id}_sh)`}
       />
 
@@ -232,15 +254,18 @@ function ExtrudedTile3D({
 
       {/* Front face */}
       <rect
-        x={gx} y={gy}
-        width={gw} height={gh}
+        x={gx}
+        y={gy}
+        width={gw}
+        height={gh}
         rx={2}
         fill={`url(#${id}_fg)`}
       />
 
       {/* Top highlight bevel */}
       <rect
-        x={gx + 1} y={gy}
+        x={gx + 1}
+        y={gy}
         width={gw - 2}
         height={Math.min(2.5, gh * 0.08)}
         rx={1}
@@ -250,7 +275,8 @@ function ExtrudedTile3D({
 
       {/* Left highlight edge */}
       <rect
-        x={gx} y={gy + 1}
+        x={gx}
+        y={gy + 1}
         width={Math.min(1.5, gw * 0.03)}
         height={gh - 2}
         rx={0.5}
@@ -259,19 +285,23 @@ function ExtrudedTile3D({
       />
 
       {/* Subtle horizontal groove lines — shipping container texture */}
-      {gh > 30 && Array.from({ length: Math.min(4, Math.floor(gh / 18)) }).map((_, i) => {
-        const lineY = gy + (gh / (Math.min(4, Math.floor(gh / 18)) + 1)) * (i + 1);
-        return (
-          <line
-            key={i}
-            x1={gx + 3} y1={lineY}
-            x2={gx + gw - 3} y2={lineY}
-            stroke={shadowColor}
-            strokeWidth={0.5}
-            strokeOpacity={0.3}
-          />
-        );
-      })}
+      {gh > 30 &&
+        Array.from({ length: Math.min(4, Math.floor(gh / 18)) }).map((_, i) => {
+          const lineY =
+            gy + (gh / (Math.min(4, Math.floor(gh / 18)) + 1)) * (i + 1);
+          return (
+            <line
+              key={i}
+              x1={gx + 3}
+              y1={lineY}
+              x2={gx + gw - 3}
+              y2={lineY}
+              stroke={shadowColor}
+              strokeWidth={0.5}
+              strokeOpacity={0.3}
+            />
+          );
+        })}
 
       {/* Team name label */}
       {showLabel && (
@@ -285,7 +315,7 @@ function ExtrudedTile3D({
           fontSize={labelSize}
           fontFamily="Space Grotesk, sans-serif"
           fontWeight={700}
-          style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
+          style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}
         >
           {label}
         </text>
@@ -303,7 +333,7 @@ function ExtrudedTile3D({
           fontSize={scoreSize}
           fontFamily="JetBrains Mono, monospace"
           fontWeight={600}
-          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}
         >
           {Math.round(score)}
         </text>
@@ -333,10 +363,21 @@ function ExtrudedTile3D({
 // ═══════════════════════════════════════════
 
 function ComponentTile3D({
-  x, y, w, h, data, id, isDark,
+  x,
+  y,
+  w,
+  h,
+  data,
+  id,
+  isDark,
 }: {
-  x: number; y: number; w: number; h: number;
-  data: TeamResilienceMetrics; id: string; isDark: boolean;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  data: TeamResilienceMetrics;
+  id: string;
+  isDark: boolean;
 }) {
   const gx = x + GAP / 2;
   const gy = y + GAP / 2;
@@ -345,14 +386,15 @@ function ComponentTile3D({
 
   if (gw < 8 || gh < 8) return null;
 
-  const { awayPerformance, congestionResistance, longHaulRecord } = data.scoreComponents;
+  const { awayPerformance, congestionResistance, longHaulRecord } =
+    data.scoreComponents;
   const total = awayPerformance + congestionResistance + longHaulRecord;
   if (total <= 0) return null;
 
   const componentColors = isDark
-    ? ['#1E3A28', '#1E3448', '#4A3E1A']   // deep forest green, deep steel blue, deep olive
-    : ['#2A4A35', '#2A4A64', '#5A4A2A'];  // dark forest green, dark steel blue, dark olive;
-  const componentLabels = ['Away', 'Depth', 'L-Haul'];
+    ? ["#1E3A28", "#1E3448", "#4A3E1A"] // deep forest green, deep steel blue, deep olive
+    : ["#2A4A35", "#2A4A64", "#5A4A2A"]; // dark forest green, dark steel blue, dark olive;
+  const componentLabels = ["Away", "Depth", "L-Haul"];
   const values = [awayPerformance, congestionResistance, longHaulRecord];
 
   // Stack strips vertically within the tile
@@ -383,16 +425,18 @@ function ComponentTile3D({
         width={gw + extX}
         height={gh + extY}
         rx={2}
-        fill={isDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.15)'}
+        fill={isDark ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.15)"}
         filter={`url(#${id}_csh)`}
       />
 
       {/* Background tile face */}
       <rect
-        x={gx} y={gy}
-        width={gw} height={gh}
+        x={gx}
+        y={gy}
+        width={gw}
+        height={gh}
         rx={2}
-        fill={isDark ? 'rgba(30,30,50,0.6)' : 'rgba(200,200,220,0.4)'}
+        fill={isDark ? "rgba(30,30,50,0.6)" : "rgba(200,200,220,0.4)"}
       />
 
       {/* Team name header */}
@@ -402,7 +446,7 @@ function ComponentTile3D({
           y={gy + headerH * 0.6}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill={isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.8)'}
+          fill={isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.8)"}
           fontSize={Math.max(7, Math.min(11, Math.sqrt(gw * gh) * 0.065))}
           fontFamily="Space Grotesk, sans-serif"
           fontWeight={700}
@@ -454,8 +498,10 @@ function ComponentTile3D({
 
             {/* Front face */}
             <rect
-              x={gx} y={sy}
-              width={gw} height={stripH}
+              x={gx}
+              y={sy}
+              width={gw}
+              height={stripH}
               rx={1}
               fill={`url(#${id}_s${j})`}
             />
@@ -482,13 +528,13 @@ function ComponentTile3D({
       {/* Right side face for outer tile */}
       <path
         d={`M${gx + gw},${gy} L${gx + gw + extX},${gy + extY} L${gx + gw + extX},${gy + gh + extY} L${gx + gw},${gy + gh} Z`}
-        fill={isDark ? 'rgba(40,40,60,0.3)' : 'rgba(150,150,170,0.2)'}
+        fill={isDark ? "rgba(40,40,60,0.3)" : "rgba(150,150,170,0.2)"}
       />
 
       {/* Bottom face for outer tile */}
       <path
         d={`M${gx},${gy + gh} L${gx + extX},${gy + gh + extY} L${gx + gw + extX},${gy + gh + extY} L${gx + gw},${gy + gh} Z`}
-        fill={isDark ? 'rgba(40,40,60,0.3)' : 'rgba(150,150,170,0.2)'}
+        fill={isDark ? "rgba(40,40,60,0.3)" : "rgba(150,150,170,0.2)"}
       />
     </g>
   );
@@ -500,12 +546,12 @@ function ComponentTile3D({
 
 function ResilienceIndexChartInner({ metrics }: ResilienceIndexChartProps) {
   const { theme } = useTheme();
-  const isDark = theme === 'dark';
-  const [viewMode, setViewMode] = useState<ViewMode>('INDEX');
-  const [colorMode, setColorMode] = useState<ColorMode>('SCORE');
+  const isDark = theme === "dark";
+  const [viewMode, setViewMode] = useState<ViewMode>("INDEX");
+  const [colorMode, setColorMode] = useState<ColorMode>("SCORE");
 
-  const sortedMetrics = useMemo(() =>
-    [...metrics].sort((a, b) => b.resilienceScore - a.resilienceScore),
+  const sortedMetrics = useMemo(
+    () => [...metrics].sort((a, b) => b.resilienceScore - a.resilienceScore),
     [metrics]
   );
 
@@ -524,7 +570,7 @@ function ResilienceIndexChartInner({ metrics }: ResilienceIndexChartProps) {
 
   // Resolve tile color
   const getTileColor = (d: TeamResilienceMetrics) => {
-    if (colorMode === 'TEAM') {
+    if (colorMode === "TEAM") {
       return mutedTeamColor(d.teamId, isDark);
     }
     return tierColor(d.resilienceTier, isDark);
@@ -541,40 +587,61 @@ function ResilienceIndexChartInner({ metrics }: ResilienceIndexChartProps) {
       <ChartHeader
         title={`Travel Resilience Index — All ${sortedMetrics.length} Teams`}
         description={
-          <>Which teams hold up best when the road gets long? This treemap sizes each club by its <strong className="text-foreground/80">composite resilience score</strong> — bigger tiles mean a team copes better with travel fatigue, schedule congestion, and long-haul flights. The 3D extrusion depth shows <strong className="text-foreground/80">away PPG</strong>, so taller blocks are earning more points on the road. Switch to COMPONENTS view to see exactly which factors drive each team's ranking.</>
+          <>
+            Which teams hold up best when the road gets long? This treemap sizes
+            each club by its{" "}
+            <strong className="text-foreground/80">
+              composite resilience score
+            </strong>{" "}
+            — bigger tiles mean a team copes better with travel fatigue,
+            schedule congestion, and long-haul flights. The 3D extrusion depth
+            shows <strong className="text-foreground/80">away PPG</strong>, so
+            taller blocks are earning more points on the road. Switch to
+            COMPONENTS view to see exactly which factors drive each team's
+            ranking.
+          </>
         }
         methods={
-          <>Resilience Score = weighted composite of Away PPG (40%), Congestion Resistance (30%), and Long-Haul Record (30%). Congestion Resistance = away PPG in matches with ≤4 days rest vs. season away PPG. Long-Haul Record = away PPG in matches requiring 1,500+ mile travel. Tile area ∝ resilience score (squarified treemap layout). Extrusion depth ∝ away PPG (range 3–10px). Color modes: SCORE maps to performance tier (green/cyan/amber/red); TEAM uses muted club primary. Data: 2025 MLS regular season.</>
+          <>
+            Resilience Score = weighted composite of Away PPG (40%), Congestion
+            Resistance (30%), and Long-Haul Record (30%). Congestion Resistance
+            = away PPG in matches with ≤4 days rest vs. season away PPG.
+            Long-Haul Record = away PPG in matches requiring 1,500+ mile travel.
+            Tile area ∝ resilience score (squarified treemap layout). Extrusion
+            depth ∝ away PPG (range 3–10px). Color modes: SCORE maps to
+            performance tier (green/cyan/amber/red); TEAM uses muted club
+            primary. Data: 2025 MLS regular season.
+          </>
         }
         rightAction={
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-0">
-              {(['SCORE', 'TEAM'] as ColorMode[]).map(c => (
+              {(["SCORE", "TEAM"] as ColorMode[]).map(c => (
                 <button
                   key={c}
                   onClick={() => setColorMode(c)}
                   className={`text-[10px] px-2.5 py-1 font-semibold tracking-wider transition-all ${
                     colorMode === c
-                      ? 'neu-pressed text-cyan'
-                      : 'neu-raised text-muted-foreground hover:text-foreground'
-                  } ${c === 'SCORE' ? 'rounded-l-lg' : 'rounded-r-lg'}`}
-                  style={{ fontFamily: 'Space Grotesk' }}
+                      ? "neu-pressed text-cyan"
+                      : "neu-raised text-muted-foreground hover:text-foreground"
+                  } ${c === "SCORE" ? "rounded-l-lg" : "rounded-r-lg"}`}
+                  style={{ fontFamily: "Space Grotesk" }}
                 >
                   {c}
                 </button>
               ))}
             </div>
             <div className="flex items-center gap-0">
-              {(['INDEX', 'COMPONENTS'] as ViewMode[]).map(m => (
+              {(["INDEX", "COMPONENTS"] as ViewMode[]).map(m => (
                 <button
                   key={m}
                   onClick={() => setViewMode(m)}
                   className={`text-[10px] px-3 py-1 font-semibold tracking-wider transition-all ${
                     viewMode === m
-                      ? 'neu-pressed text-cyan'
-                      : 'neu-raised text-muted-foreground hover:text-foreground'
-                  } ${m === 'INDEX' ? 'rounded-l-lg' : 'rounded-r-lg'}`}
-                  style={{ fontFamily: 'Space Grotesk' }}
+                      ? "neu-pressed text-cyan"
+                      : "neu-raised text-muted-foreground hover:text-foreground"
+                  } ${m === "INDEX" ? "rounded-l-lg" : "rounded-r-lg"}`}
+                  style={{ fontFamily: "Space Grotesk" }}
                 >
                   {m}
                 </button>
@@ -585,24 +652,25 @@ function ResilienceIndexChartInner({ metrics }: ResilienceIndexChartProps) {
       />
 
       {/* SVG Treemap */}
-      <div style={{ overflow: 'hidden', width: '100%' }}>
+      <div style={{ overflow: "hidden", width: "100%" }}>
         <svg
           viewBox={`0 0 ${chartWidth + extrusionPadding} ${chartHeight + extrusionPadding}`}
           width="100%"
           preserveAspectRatio="xMidYMid meet"
           className="select-none"
-          style={{ display: 'block' }}
+          style={{ display: "block" }}
         >
           {treemapRects.map((rect, i) => {
             const d = rect.data;
             const uid = `tm_${d.teamId}_${i}`;
             const color = getTileColor(d);
             const depth = getDepth(d);
-            const milesStr = d.totalAwayMiles >= 1000
-              ? `${Math.round(d.totalAwayMiles / 1000)}k mi`
-              : `${d.totalAwayMiles} mi`;
+            const milesStr =
+              d.totalAwayMiles >= 1000
+                ? `${Math.round(d.totalAwayMiles / 1000)}k mi`
+                : `${d.totalAwayMiles} mi`;
 
-            if (viewMode === 'COMPONENTS') {
+            if (viewMode === "COMPONENTS") {
               return (
                 <ComponentTile3D
                   key={d.teamId}
@@ -638,38 +706,54 @@ function ResilienceIndexChartInner({ metrics }: ResilienceIndexChartProps) {
       </div>
 
       {/* Legend */}
-      {colorMode === 'SCORE' && viewMode === 'INDEX' ? (
+      {colorMode === "SCORE" && viewMode === "INDEX" ? (
         <div className="flex justify-center gap-5 mt-3 text-xs text-muted-foreground/60">
-          {(['green', 'cyan', 'amber', 'red'] as const).map(tier => (
+          {(["green", "cyan", "amber", "red"] as const).map(tier => (
             <div key={tier} className="flex items-center gap-1.5">
-              <span className="w-3.5 h-2.5 rounded-sm" style={{ backgroundColor: tierColor(tier, isDark) }} />
+              <span
+                className="w-3.5 h-2.5 rounded-sm"
+                style={{ backgroundColor: tierColor(tier, isDark) }}
+              />
               <span>{TIER_LABELS[tier]}</span>
             </div>
           ))}
         </div>
-      ) : viewMode === 'COMPONENTS' ? (
+      ) : viewMode === "COMPONENTS" ? (
         <div className="flex justify-center gap-5 mt-3 text-xs text-muted-foreground/60">
           {[
-            { color: isDark ? '#1E3A28' : '#2A4A35', label: 'Away PPG (40%)' },
-            { color: isDark ? '#1E3448' : '#2A4A64', label: 'Squad Depth (30%)' },
-            { color: isDark ? '#4A3E1A' : '#5A4A2A', label: 'Long-Haul Record (30%)' },
+            { color: isDark ? "#1E3A28" : "#2A4A35", label: "Away PPG (40%)" },
+            {
+              color: isDark ? "#1E3448" : "#2A4A64",
+              label: "Squad Depth (30%)",
+            },
+            {
+              color: isDark ? "#4A3E1A" : "#5A4A2A",
+              label: "Long-Haul Record (30%)",
+            },
           ].map(c => (
             <div key={c.label} className="flex items-center gap-1.5">
-              <span className="w-3.5 h-2.5 rounded-sm" style={{ backgroundColor: c.color }} />
+              <span
+                className="w-3.5 h-2.5 rounded-sm"
+                style={{ backgroundColor: c.color }}
+              />
               <span>{c.label}</span>
             </div>
           ))}
         </div>
       ) : (
         <div className="flex justify-center mt-3 text-xs text-muted-foreground/50">
-          <span>Tile area = resilience score · Depth = away PPG · Color = team identity</span>
+          <span>
+            Tile area = resilience score · Depth = away PPG · Color = team
+            identity
+          </span>
         </div>
       )}
     </div>
   );
 }
 
-const ResilienceIndexChart = memo(ResilienceIndexChartInner, (prev, next) =>
-  prev.metrics === next.metrics
+const ResilienceIndexChart = memo(
+  ResilienceIndexChartInner,
+  (prev, next) => prev.metrics === next.metrics
 );
 export default ResilienceIndexChart;

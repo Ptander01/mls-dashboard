@@ -3,26 +3,31 @@
 This document serves as the prioritized backlog and work plan for the MLS Analytics Dashboard, synthesized from the March 15-17, 2026 brainstorming sessions. It is organized into Epics (Priorities) and Stories (Tasks), with effort estimates (in Manus sessions) and technical dependencies mapped out.
 
 ## Epic 1: High-Priority Bug Fixes
+
 **Effort:** 1 Session (Completed)
 **Goal:** Address small, isolated, high-annoyance UI/UX issues before adding new features.
 **Files Touched:** `NeuCard.tsx`, `ChartModal.tsx`, `InsightPanel.tsx`, `Attendance.tsx`
 
 ## Epic 2: Gravitational Pull Chart Overhaul
+
 **Effort:** 1 Session (Completed)
 **Goal:** Enhance the Gravitational Pull chart with a dual perspective toggle and deeper insights.
 **Files Touched:** `Attendance.tsx`, `insightEngine.ts`, `FilterContext.tsx`, `chartUtils.tsx`
 
 ## Epic 3: Attendance Tab Insight Completion
+
 **Effort:** 1 Session (Completed)
 **Goal:** Finalize insights and trend visualizations on the Attendance tab.
 **Files Touched:** `Attendance.tsx`, `insightEngine.ts`
 
 ## Epic 4: Insight Engine Depth
+
 **Effort:** 1 Session (Completed)
 **Goal:** Enrich insights across Team Budget, Player Stats, and Pitch Match tabs.
 **Files Touched:** `insightEngine.ts`, `PlayerStats.tsx`, `TeamBudget.tsx`, `PitchMatch.tsx`
 
 ## Epic 5: Travel Map Performance Section
+
 **Effort:** 2 Sessions (Completed)
 **Goal:** Build the comprehensive "Performance & Resilience Analysis" section under the Travel Map.
 **Files Touched:** `TravelMap.tsx`, new `resilienceUtils.ts`, `insightEngine.ts`, `FilterContext.tsx`
@@ -30,6 +35,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 ---
 
 ## Epic 6: Polish & Feedback (Completed)
+
 **Effort:** 1 Session
 **Goal:** Address UX feedback and mathematical corrections from the Sprint 1-4 review.
 **Files Touched:** `resilienceUtils.ts`, `Attendance.tsx`, `DeepDivePanel.tsx`, `insightEngine.ts`, `ChartModal.tsx`
@@ -50,6 +56,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - [x] Ensure all new insight cards are punchy, max 2 sentences, and start with specific numbers/teams.
 
 ## Epic 6.5: Uniform Chart Container Template (Completed)
+
 **Effort:** 1 Session
 **Goal:** Create a reusable `ChartHeader` component with conversational descriptions and expandable METHODS panels, rolled out across all 10 chart cards. Establishes the "smart casual" tone pattern: visible conversational hook + collapsible methodology section with recessed neumorphic inset.
 **Files Touched:** New `ChartHeader.tsx`, `Attendance.tsx`, `TeamBudget.tsx`, `PlayerStats.tsx`, `TravelScatterChart.tsx`, `DumbbellChart.tsx`, `ResilienceIndexChart.tsx`, `RadarTeamCards.tsx`
@@ -67,6 +74,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 ---
 
 ## Epic 7: The Relief Scatter (Visual Overhaul)
+
 **Effort:** 1 Session
 **Goal:** Redesign the Travel Scatter chart into a monochromatic relief sculpture using SVG filters and physical depth encoding (Vaughn Horseman aesthetic).
 **Files Touched:** `TravelScatterChart.tsx`
@@ -82,6 +90,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - Implement `TERRAIN`/`TEAMS` color toggle and flood animation.
 
 ## Epic 8: Pitch Match Real Data Integration
+
 **Effort:** 2 Sessions
 **Goal:** Replace dummy data on the PitchMatch tab with real StatsBomb open data.
 **Files Touched:** `scripts/fetch_statsbomb_miami.py`, `PitchMatch.tsx`, `hooks/useStatsBombData.ts`
@@ -96,6 +105,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - Implement player passing network with Three.js lines/tubes.
 
 ## Epic 9: Travel Map deck.gl Spike
+
 **Effort:** 1 Session
 **Goal:** Upgrade the Travel Map to use `deck.gl` for geospatial accuracy and cinematic lighting.
 **Files Touched:** `vite.config.ts`, `TravelMap.tsx`, `DeckTravelMap.tsx`
@@ -110,6 +120,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - Apply directional lighting and bloom post-processing.
 
 ## Epic 10: Race Chart Tab
+
 **Effort:** 1 Session
 **Goal:** Add a high-impact animated horizontal bar chart race.
 **Files Touched:** New `RaceChart.tsx`, `Home.tsx`
@@ -120,6 +131,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - Metrics toggle: cumulative points, goals, attendance, salary spend.
 
 ## Future / Deferred Work
+
 - **Treemap & Matrix Animation Polish:** Do not use deck.gl for these. Instead, enhance current SVG/Three.js implementations with better lighting and Framer Motion transitions.
 - **Bar Chart Reorder Animation (react-spring):** Animate bars sliding horizontally to new ranked positions.
 - **Multi-Team Area Chart Compare Mode:** Layered translucent 3D area polygons.
@@ -129,11 +141,13 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 - **2026 Season Data Integration**
 
 ## Notes on Data Visualization and UI
+
 - Maximize the use of available width and height on larger displays by decreasing margins.
 - Utilize Three.js/Deck.gl for actual geometry and lighting in 3D visualizations (e.g., travel maps, pitch map visuals) to achieve a genuine 3D effect.
 - Default theme for UI and documentation screenshots should be Light Mode.
 
 ## Appendix: Data Sources Inventory
+
 - **[StatsBomb Open Data](https://github.com/statsbomb/open-data)**: Free event-level data for Inter Miami 2023 matches.
 - **[Squawka Comparison Matrix](https://www.squawka.com/us/comparison-matrix/)**: Reference for data definitions and player comparison methodologies.
 - **[MLS Conference Standings](https://www.mlssoccer.com/standings/2026/conference)**: Home/away record splits.

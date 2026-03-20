@@ -13,13 +13,13 @@
  * Cards sorted by resilience score descending (rank 1–12).
  */
 
-import { useState, useMemo, memo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useTheme } from '@/contexts/ThemeContext';
-import { mutedTeamColor, lighten, darken, hexToRgba } from '@/lib/chartUtils';
-import type { TeamResilienceMetrics } from '@/lib/resilienceUtils';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { ChartHeader } from '@/components/ui/ChartHeader';
+import { useState, useMemo, memo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "@/contexts/ThemeContext";
+import { mutedTeamColor, lighten, darken, hexToRgba } from "@/lib/chartUtils";
+import type { TeamResilienceMetrics } from "@/lib/resilienceUtils";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChartHeader } from "@/components/ui/ChartHeader";
 
 interface RadarTeamCardsProps {
   metrics: TeamResilienceMetrics[];
@@ -27,11 +27,11 @@ interface RadarTeamCardsProps {
 
 // ─── Radar axes config ───
 const AXES = [
-  { key: 'awayPPG', label: 'Away', shortLabel: 'Away' },
-  { key: 'congestion', label: 'Congestion', shortLabel: 'Conges' },
-  { key: 'longHaul', label: 'Long-haul', shortLabel: 'Long-haul' },
-  { key: 'depth', label: 'Depth', shortLabel: 'Depth' },
-  { key: 'age', label: 'Age', shortLabel: 'Age' },
+  { key: "awayPPG", label: "Away", shortLabel: "Away" },
+  { key: "congestion", label: "Congestion", shortLabel: "Conges" },
+  { key: "longHaul", label: "Long-haul", shortLabel: "Long-haul" },
+  { key: "depth", label: "Depth", shortLabel: "Depth" },
+  { key: "age", label: "Age", shortLabel: "Age" },
 ] as const;
 
 // ─── Normalize metrics to 0–1 for radar ───
@@ -91,11 +91,13 @@ function RadarChart({
     const r = v * maxR;
     return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r };
   });
-  const dataPath = dataPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ') + ' Z';
+  const dataPath =
+    dataPoints.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ") +
+    " Z";
 
-  const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-  const axisLineColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
-  const labelFill = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
+  const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
+  const axisLineColor = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
+  const labelFill = isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.35)";
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -105,7 +107,7 @@ function RadarChart({
           const angle = startAngle + i * angleStep;
           const r = ringVal * maxR;
           return `${cx + Math.cos(angle) * r},${cy + Math.sin(angle) * r}`;
-        }).join(' ');
+        }).join(" ");
         return (
           <polygon
             key={ringVal}
@@ -121,8 +123,10 @@ function RadarChart({
       {axisPoints.map((p, i) => (
         <line
           key={`axis-${i}`}
-          x1={cx} y1={cy}
-          x2={p.x} y2={p.y}
+          x1={cx}
+          y1={cy}
+          x2={p.x}
+          y2={p.y}
           stroke={axisLineColor}
           strokeWidth={0.8}
         />
@@ -172,7 +176,7 @@ function RadarChart({
 
 function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
   const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = theme === "dark";
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Top 12 teams by resilience score
@@ -185,15 +189,19 @@ function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
         onClick={() => setIsExpanded(v => !v)}
         className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg transition-all text-[12px] font-semibold tracking-wider ${
           isExpanded
-            ? 'neu-pressed text-cyan'
-            : 'neu-raised text-muted-foreground hover:text-foreground'
+            ? "neu-pressed text-cyan"
+            : "neu-raised text-muted-foreground hover:text-foreground"
         }`}
-        style={{ fontFamily: 'Space Grotesk' }}
+        style={{ fontFamily: "Space Grotesk" }}
       >
         {isExpanded ? (
-          <>Hide Team Profiles <ChevronUp size={14} /></>
+          <>
+            Hide Team Profiles <ChevronUp size={14} />
+          </>
         ) : (
-          <>View Team Profiles → <ChevronDown size={14} /></>
+          <>
+            View Team Profiles → <ChevronDown size={14} />
+          </>
         )}
       </button>
 
@@ -201,7 +209,7 @@ function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
         {isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
@@ -210,10 +218,34 @@ function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
               <ChartHeader
                 title="Team Resilience Profiles"
                 description={
-                  <>How do you read these spider charts? Each card shows a team’s <strong className="text-foreground/80">five-axis resilience fingerprint</strong>. A wider polygon means the club is strong across multiple dimensions — not just winning away, but doing it under congestion, after long flights, with a deep squad, and without relying on aging legs. Compare shapes at a glance: a lopsided polygon reveals where a team thrives and where it’s vulnerable.</>
+                  <>
+                    How do you read these spider charts? Each card shows a
+                    team’s{" "}
+                    <strong className="text-foreground/80">
+                      five-axis resilience fingerprint
+                    </strong>
+                    . A wider polygon means the club is strong across multiple
+                    dimensions — not just winning away, but doing it under
+                    congestion, after long flights, with a deep squad, and
+                    without relying on aging legs. Compare shapes at a glance: a
+                    lopsided polygon reveals where a team thrives and where it’s
+                    vulnerable.
+                  </>
                 }
                 methods={
-                  <>Five normalized axes (0–1 scale): (1) Away PPG = raw away points-per-game / league max. (2) Congestion Resistance = away PPG in matches with ≤4 days rest, normalized. (3) Long-Haul Record = away PPG in 1,500+ mile trips, normalized. (4) Squad Depth = unique starters / total squad size, normalized. (5) Age Efficiency = inverse weighted-average age, normalized (younger squads score higher). Polygon area is not used as a metric — shape comparison is qualitative. Cards sorted by composite resilience score descending. Top 12 teams shown. Data: 2025 MLS regular season.</>
+                  <>
+                    Five normalized axes (0–1 scale): (1) Away PPG = raw away
+                    points-per-game / league max. (2) Congestion Resistance =
+                    away PPG in matches with ≤4 days rest, normalized. (3)
+                    Long-Haul Record = away PPG in 1,500+ mile trips,
+                    normalized. (4) Squad Depth = unique starters / total squad
+                    size, normalized. (5) Age Efficiency = inverse
+                    weighted-average age, normalized (younger squads score
+                    higher). Polygon area is not used as a metric — shape
+                    comparison is qualitative. Cards sorted by composite
+                    resilience score descending. Top 12 teams shown. Data: 2025
+                    MLS regular season.
+                  </>
                 }
               />
 
@@ -232,11 +264,11 @@ function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
                       className="rounded-lg p-3"
                       style={{
                         background: isDark
-                          ? 'linear-gradient(145deg, rgba(30,30,45,0.6), rgba(20,20,35,0.8))'
-                          : 'linear-gradient(145deg, rgba(240,240,248,0.8), rgba(225,225,235,0.9))',
+                          ? "linear-gradient(145deg, rgba(30,30,45,0.6), rgba(20,20,35,0.8))"
+                          : "linear-gradient(145deg, rgba(240,240,248,0.8), rgba(225,225,235,0.9))",
                         boxShadow: isDark
-                          ? '3px 3px 8px rgba(0,0,0,0.4), -2px -2px 6px rgba(60,60,80,0.08)'
-                          : '3px 3px 8px rgba(0,0,0,0.08), -2px -2px 6px rgba(255,255,255,0.7)',
+                          ? "3px 3px 8px rgba(0,0,0,0.4), -2px -2px 6px rgba(60,60,80,0.08)"
+                          : "3px 3px 8px rgba(0,0,0,0.08), -2px -2px 6px rgba(255,255,255,0.7)",
                       }}
                     >
                       {/* Card header */}
@@ -246,13 +278,22 @@ function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
                             className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                             style={{ backgroundColor: teamColor }}
                           />
-                          <span className="text-[11px] font-semibold truncate" style={{ fontFamily: 'Space Grotesk', maxWidth: '100px' }}>
+                          <span
+                            className="text-[11px] font-semibold truncate"
+                            style={{
+                              fontFamily: "Space Grotesk",
+                              maxWidth: "100px",
+                            }}
+                          >
                             {m.teamShort}
                           </span>
                         </div>
                         <span
                           className="text-[11px] font-bold"
-                          style={{ fontFamily: 'Space Grotesk', color: 'var(--cyan)' }}
+                          style={{
+                            fontFamily: "Space Grotesk",
+                            color: "var(--cyan)",
+                          }}
                         >
                           #{idx + 1}
                         </span>
@@ -271,20 +312,36 @@ function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
                       {/* Stats row */}
                       <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 mt-1 text-[9px] font-mono text-muted-foreground">
                         <div>
-                          <span className="text-muted-foreground/60">Away: </span>
-                          <span className="font-semibold text-foreground">{m.awayPPG.toFixed(2)}</span>
+                          <span className="text-muted-foreground/60">
+                            Away:{" "}
+                          </span>
+                          <span className="font-semibold text-foreground">
+                            {m.awayPPG.toFixed(2)}
+                          </span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground/60">Miles: </span>
-                          <span className="font-semibold text-foreground">{(m.totalAwayMiles / 1000).toFixed(0)}k</span>
+                          <span className="text-muted-foreground/60">
+                            Miles:{" "}
+                          </span>
+                          <span className="font-semibold text-foreground">
+                            {(m.totalAwayMiles / 1000).toFixed(0)}k
+                          </span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground/60">Age: </span>
-                          <span className="font-semibold text-foreground">{m.weightedAvgAge.toFixed(1)}</span>
+                          <span className="text-muted-foreground/60">
+                            Age:{" "}
+                          </span>
+                          <span className="font-semibold text-foreground">
+                            {m.weightedAvgAge.toFixed(1)}
+                          </span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground/60">RES: </span>
-                          <span className="font-semibold text-foreground">{m.resilienceScore.toFixed(0)}</span>
+                          <span className="text-muted-foreground/60">
+                            RES:{" "}
+                          </span>
+                          <span className="font-semibold text-foreground">
+                            {m.resilienceScore.toFixed(0)}
+                          </span>
                         </div>
                       </div>
                     </motion.div>
@@ -299,7 +356,8 @@ function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
   );
 }
 
-const RadarTeamCards = memo(RadarTeamCardsInner, (prev, next) =>
-  prev.metrics === next.metrics
+const RadarTeamCards = memo(
+  RadarTeamCardsInner,
+  (prev, next) => prev.metrics === next.metrics
 );
 export default RadarTeamCards;

@@ -1,25 +1,39 @@
-import { useMemo, useState, useEffect } from 'react';
-import { useFilters } from '@/contexts/FilterContext';
-import { getTeam, TEAM_BUDGETS } from '@/lib/mlsData';
-import { Extruded3DStackedBar, Extruded3DPie } from '@/lib/chartUtils';
-import { useTheme } from '@/contexts/ThemeContext';
-import NeuCard from '@/components/NeuCard';
-import AnimatedCounter from '@/components/AnimatedCounter';
-import { ChartModal, MaximizeButton } from '@/components/ChartModal';
+import { useMemo, useState, useEffect } from "react";
+import { useFilters } from "@/contexts/FilterContext";
+import { getTeam, TEAM_BUDGETS } from "@/lib/mlsData";
+import { Extruded3DStackedBar, Extruded3DPie } from "@/lib/chartUtils";
+import { useTheme } from "@/contexts/ThemeContext";
+import NeuCard from "@/components/NeuCard";
+import AnimatedCounter from "@/components/AnimatedCounter";
+import { ChartModal, MaximizeButton } from "@/components/ChartModal";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from 'recharts';
-import { DollarSign, TrendingUp, Users, Trophy } from 'lucide-react';
-import { InsightPanel } from '@/components/InsightPanel';
-import { teamBudgetInsights, budgetBarCardInsights, salaryPieCardInsights, topEarnersCardInsights } from '@/lib/insightEngine';
-import { CardInsightToggle, CardInsightSection } from '@/components/CardInsight';
-import { ChartHeader } from '@/components/ui/ChartHeader';
-import StaggerContainer, { StaggerItem } from '@/components/StaggerContainer';
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { DollarSign, TrendingUp, Users, Trophy } from "lucide-react";
+import { InsightPanel } from "@/components/InsightPanel";
+import {
+  teamBudgetInsights,
+  budgetBarCardInsights,
+  salaryPieCardInsights,
+  topEarnersCardInsights,
+} from "@/lib/insightEngine";
+import {
+  CardInsightToggle,
+  CardInsightSection,
+} from "@/components/CardInsight";
+import { ChartHeader } from "@/components/ui/ChartHeader";
+import StaggerContainer, { StaggerItem } from "@/components/StaggerContainer";
 
 export default function TeamBudget() {
   const { filteredTeams, filteredPlayers } = useFilters();
   const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = theme === "dark";
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [maximized, setMaximized] = useState<string | null>(null);
   const [showBudgetBarInsights, setShowBudgetBarInsights] = useState(false);
@@ -34,18 +48,22 @@ export default function TeamBudget() {
     }
   }, [filteredTeams]);
 
-  const budgetData = useMemo(() =>
-    [...filteredTeams].map(t => {
-      const b = TEAM_BUDGETS[t.id];
-      return {
-        name: t.short, id: t.id,
-        total: b ? +(b.totalSalary / 1000000).toFixed(2) : 0,
-        dp: b ? +(b.dpSalary / 1000000).toFixed(2) : 0,
-        tam: b ? +(b.tamSalary / 1000000).toFixed(2) : 0,
-        regular: b ? +(b.regularSalary / 1000000).toFixed(2) : 0,
-        color: t.color,
-      };
-    }).sort((a, b) => b.total - a.total),
+  const budgetData = useMemo(
+    () =>
+      [...filteredTeams]
+        .map(t => {
+          const b = TEAM_BUDGETS[t.id];
+          return {
+            name: t.short,
+            id: t.id,
+            total: b ? +(b.totalSalary / 1000000).toFixed(2) : 0,
+            dp: b ? +(b.dpSalary / 1000000).toFixed(2) : 0,
+            tam: b ? +(b.tamSalary / 1000000).toFixed(2) : 0,
+            regular: b ? +(b.regularSalary / 1000000).toFixed(2) : 0,
+            color: t.color,
+          };
+        })
+        .sort((a, b) => b.total - a.total),
     [filteredTeams]
   );
 
@@ -54,67 +72,181 @@ export default function TeamBudget() {
   const maxBudget = Math.max(...budgetData.map(t => t.total), 0);
 
   /* Insight engine */
-  const insights = useMemo(() =>
-    teamBudgetInsights(filteredTeams, filteredPlayers),
+  const insights = useMemo(
+    () => teamBudgetInsights(filteredTeams, filteredPlayers),
     [filteredTeams, filteredPlayers]
   );
 
   const selTeam = selectedTeam ? getTeam(selectedTeam) : null;
   const selBudget = selectedTeam ? TEAM_BUDGETS[selectedTeam] : null;
-  const selPlayers = selectedTeam ? filteredPlayers.filter(p => p.team === selectedTeam) : [];
+  const selPlayers = selectedTeam
+    ? filteredPlayers.filter(p => p.team === selectedTeam)
+    : [];
 
   const salaryBreakdown = useMemo(() => {
     if (!selPlayers.length) return [];
     const byPos: Record<string, number> = {};
-    selPlayers.forEach(p => { byPos[p.position] = (byPos[p.position] || 0) + p.salary; });
+    selPlayers.forEach(p => {
+      byPos[p.position] = (byPos[p.position] || 0) + p.salary;
+    });
     return Object.entries(byPos).map(([pos, total]) => ({
-      name: pos === 'FW' ? 'Forwards' : pos === 'MF' ? 'Midfielders' : pos === 'DF' ? 'Defenders' : 'Goalkeepers',
+      name:
+        pos === "FW"
+          ? "Forwards"
+          : pos === "MF"
+            ? "Midfielders"
+            : pos === "DF"
+              ? "Defenders"
+              : "Goalkeepers",
       value: +(total / 1000000).toFixed(2),
-      color: pos === 'FW' ? (isDark ? '#7A2020' : '#8A3030') : pos === 'MF' ? (isDark ? '#1A4A6A' : '#2A5A7A') : pos === 'DF' ? (isDark ? '#1A3A1A' : '#2A4A2A') : (isDark ? '#8B6914' : '#9A7828'),
+      color:
+        pos === "FW"
+          ? isDark
+            ? "#7A2020"
+            : "#8A3030"
+          : pos === "MF"
+            ? isDark
+              ? "#1A4A6A"
+              : "#2A5A7A"
+            : pos === "DF"
+              ? isDark
+                ? "#1A3A1A"
+                : "#2A4A2A"
+              : isDark
+                ? "#8B6914"
+                : "#9A7828",
     }));
   }, [selPlayers]);
 
-  const topEarners = useMemo(() => [...selPlayers].sort((a, b) => b.salary - a.salary).slice(0, 8), [selPlayers]);
+  const topEarners = useMemo(
+    () => [...selPlayers].sort((a, b) => b.salary - a.salary).slice(0, 8),
+    [selPlayers]
+  );
 
   /* Per-card insights */
-  const budgetBarInsights = useMemo(() => budgetBarCardInsights(filteredTeams, filteredPlayers), [filteredTeams, filteredPlayers]);
-  const pieInsights = useMemo(() => salaryPieCardInsights(selTeam ?? null, filteredPlayers, filteredTeams), [selTeam, filteredPlayers, filteredTeams]);
-  const earnersInsights = useMemo(() => topEarnersCardInsights(selTeam ?? null, filteredPlayers), [selTeam, filteredPlayers]);
+  const budgetBarInsights = useMemo(
+    () => budgetBarCardInsights(filteredTeams, filteredPlayers),
+    [filteredTeams, filteredPlayers]
+  );
+  const pieInsights = useMemo(
+    () =>
+      salaryPieCardInsights(selTeam ?? null, filteredPlayers, filteredTeams),
+    [selTeam, filteredPlayers, filteredTeams]
+  );
+  const earnersInsights = useMemo(
+    () => topEarnersCardInsights(selTeam ?? null, filteredPlayers),
+    [selTeam, filteredPlayers]
+  );
 
   const BudgetBarContent = ({ height = 350 }: { height?: number }) => (
     <div style={{ height }}>
       <ResponsiveContainer>
-        <BarChart data={budgetData} margin={{ top: 5, right: 10, bottom: 60, left: 0 }}
+        <BarChart
+          data={budgetData}
+          margin={{ top: 5, right: 10, bottom: 60, left: 0 }}
           onClick={(state: any) => {
             if (state?.activePayload?.[0]?.payload?.id) {
               const id = state.activePayload[0].payload.id;
               setSelectedTeam(id === selectedTeam ? null : id);
             }
-          }}>
+          }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
-          <XAxis dataKey="name" stroke="var(--table-header-color)" fontSize={9} tickLine={false} angle={-45} textAnchor="end" interval={0} tickMargin={6} />
-          <YAxis stroke="var(--table-header-color)" fontSize={10} tickLine={false} label={{ value: '$ Millions', angle: -90, position: 'insideLeft', fill: 'var(--table-header-color)', fontSize: 10 }} />
+          <XAxis
+            dataKey="name"
+            stroke="var(--table-header-color)"
+            fontSize={9}
+            tickLine={false}
+            angle={-45}
+            textAnchor="end"
+            interval={0}
+            tickMargin={6}
+          />
+          <YAxis
+            stroke="var(--table-header-color)"
+            fontSize={10}
+            tickLine={false}
+            label={{
+              value: "$ Millions",
+              angle: -90,
+              position: "insideLeft",
+              fill: "var(--table-header-color)",
+              fontSize: 10,
+            }}
+          />
           <Tooltip
             content={({ payload }) => {
               if (!payload?.length) return null;
               const d = payload[0].payload;
               return (
-                <div className="glass-sm p-2 text-xs" style={{ fontFamily: 'JetBrains Mono' }}>
+                <div
+                  className="glass-sm p-2 text-xs"
+                  style={{ fontFamily: "JetBrains Mono" }}
+                >
                   <div className="text-amber font-semibold">{d.name}</div>
-                  <div>Total: <span className="text-amber">${d.total}M</span></div>
-                  <div>DP: <span className="text-cyan">${d.dp}M</span></div>
-                  <div>TAM: <span className="text-emerald">${d.tam}M</span></div>
-                  <div style={{ color: 'var(--glass-text-muted)' }}>Regular: ${d.regular}M</div>
+                  <div>
+                    Total: <span className="text-amber">${d.total}M</span>
+                  </div>
+                  <div>
+                    DP: <span className="text-cyan">${d.dp}M</span>
+                  </div>
+                  <div>
+                    TAM: <span className="text-emerald">${d.tam}M</span>
+                  </div>
+                  <div style={{ color: "var(--glass-text-muted)" }}>
+                    Regular: ${d.regular}M
+                  </div>
                 </div>
               );
             }}
           />
-          <Bar dataKey="dp" stackId="a" fill={isDark ? '#1A4A6A' : '#2A5A7A'} name="DP Spend" radius={[0, 0, 0, 0]}
-            shape={(props: any) => <Extruded3DStackedBar {...props} stackPosition="bottom" onBarClick={(p: any) => setSelectedTeam(p.id === selectedTeam ? null : p.id)} />} />
-          <Bar dataKey="tam" stackId="a" fill={isDark ? '#8B6914' : '#9A7828'} name="TAM Spend"
-            shape={(props: any) => <Extruded3DStackedBar {...props} stackPosition="middle" onBarClick={(p: any) => setSelectedTeam(p.id === selectedTeam ? null : p.id)} />} />
-          <Bar dataKey="regular" stackId="a" fill={isDark ? '#1A3A1A' : '#2A4A2A'} name="Regular" radius={[3, 3, 0, 0]}
-            shape={(props: any) => <Extruded3DStackedBar {...props} stackPosition="top" onBarClick={(p: any) => setSelectedTeam(p.id === selectedTeam ? null : p.id)} />} />
+          <Bar
+            dataKey="dp"
+            stackId="a"
+            fill={isDark ? "#1A4A6A" : "#2A5A7A"}
+            name="DP Spend"
+            radius={[0, 0, 0, 0]}
+            shape={(props: any) => (
+              <Extruded3DStackedBar
+                {...props}
+                stackPosition="bottom"
+                onBarClick={(p: any) =>
+                  setSelectedTeam(p.id === selectedTeam ? null : p.id)
+                }
+              />
+            )}
+          />
+          <Bar
+            dataKey="tam"
+            stackId="a"
+            fill={isDark ? "#8B6914" : "#9A7828"}
+            name="TAM Spend"
+            shape={(props: any) => (
+              <Extruded3DStackedBar
+                {...props}
+                stackPosition="middle"
+                onBarClick={(p: any) =>
+                  setSelectedTeam(p.id === selectedTeam ? null : p.id)
+                }
+              />
+            )}
+          />
+          <Bar
+            dataKey="regular"
+            stackId="a"
+            fill={isDark ? "#1A3A1A" : "#2A4A2A"}
+            name="Regular"
+            radius={[3, 3, 0, 0]}
+            shape={(props: any) => (
+              <Extruded3DStackedBar
+                {...props}
+                stackPosition="top"
+                onBarClick={(p: any) =>
+                  setSelectedTeam(p.id === selectedTeam ? null : p.id)
+                }
+              />
+            )}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -123,179 +255,362 @@ export default function TeamBudget() {
   return (
     <StaggerContainer className="space-y-6 mt-4">
       {/* Tab Header Card — elevated command center */}
-      <StaggerItem><NeuCard variant="raised" animate={false} className="p-5">
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
-          <span className="font-semibold text-foreground">Team Budget</span> — Analyze how each MLS club allocates its salary budget across Designated Players, TAM, and regular contracts. Click a bar to drill into that team's positional salary breakdown and top earners. Use this to identify which teams invest heavily in attack vs. defense and spot potential value signings.
-        </p>
-        <InsightPanel insights={insights} isDark={isDark} onToggle={setIsAnalyzing} />
-      </NeuCard></StaggerItem>
+      <StaggerItem>
+        <NeuCard variant="raised" animate={false} className="p-5">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <span className="font-semibold text-foreground">Team Budget</span> —
+            Analyze how each MLS club allocates its salary budget across
+            Designated Players, TAM, and regular contracts. Click a bar to drill
+            into that team's positional salary breakdown and top earners. Use
+            this to identify which teams invest heavily in attack vs. defense
+            and spot potential value signings.
+          </p>
+          <InsightPanel
+            insights={insights}
+            isDark={isDark}
+            onToggle={setIsAnalyzing}
+          />
+        </NeuCard>
+      </StaggerItem>
 
       {/* League-Wide Totals */}
-      <StaggerItem><div>
-        <div className="flex items-center gap-2 mb-3 px-1">
-          <div className="w-1 h-4 rounded-full bg-amber" style={{ boxShadow: '0 0 6px var(--amber)' }} />
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'Space Grotesk' }}>League-Wide Totals</h2>
-          <span className="text-[10px] text-muted-foreground/60 ml-1">Aggregate salary allocation across all clubs</span>
+      <StaggerItem>
+        <div>
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <div
+              className="w-1 h-4 rounded-full bg-amber"
+              style={{ boxShadow: "0 0 6px var(--amber)" }}
+            />
+            <h2
+              className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              style={{ fontFamily: "Space Grotesk" }}
+            >
+              League-Wide Totals
+            </h2>
+            <span className="text-[10px] text-muted-foreground/60 ml-1">
+              Aggregate salary allocation across all clubs
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <NeuCard delay={0.05} glow="amber" className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign size={14} className="text-amber" />
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Total Spend
+                </span>
+              </div>
+              <AnimatedCounter
+                value={totalBudget}
+                prefix="$"
+                suffix="M"
+                decimals={1}
+                className="text-2xl text-amber"
+              />
+            </NeuCard>
+            <NeuCard delay={0.12} glow="cyan" className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp size={14} className="text-cyan" />
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Avg Budget
+                </span>
+              </div>
+              <AnimatedCounter
+                value={avgBudget}
+                prefix="$"
+                suffix="M"
+                decimals={1}
+                className="text-2xl text-cyan"
+              />
+            </NeuCard>
+            <NeuCard delay={0.2} glow="emerald" className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Trophy size={14} className="text-emerald" />
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Highest
+                </span>
+              </div>
+              <AnimatedCounter
+                value={maxBudget}
+                prefix="$"
+                suffix="M"
+                decimals={1}
+                className="text-2xl text-emerald"
+              />
+            </NeuCard>
+            <NeuCard delay={0.3} className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Users size={14} className="text-purple-400" />
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Teams
+                </span>
+              </div>
+              <AnimatedCounter
+                value={filteredTeams.length}
+                className="text-2xl text-purple-400"
+              />
+            </NeuCard>
+          </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <NeuCard delay={0.05} glow="amber" className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <DollarSign size={14} className="text-amber" />
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">Total Spend</span>
-          </div>
-          <AnimatedCounter value={totalBudget} prefix="$" suffix="M" decimals={1} className="text-2xl text-amber" />
-        </NeuCard>
-        <NeuCard delay={0.12} glow="cyan" className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp size={14} className="text-cyan" />
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">Avg Budget</span>
-          </div>
-          <AnimatedCounter value={avgBudget} prefix="$" suffix="M" decimals={1} className="text-2xl text-cyan" />
-        </NeuCard>
-        <NeuCard delay={0.2} glow="emerald" className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Trophy size={14} className="text-emerald" />
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">Highest</span>
-          </div>
-          <AnimatedCounter value={maxBudget} prefix="$" suffix="M" decimals={1} className="text-2xl text-emerald" />
-        </NeuCard>
-        <NeuCard delay={0.3} className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Users size={14} className="text-purple-400" />
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">Teams</span>
-          </div>
-          <AnimatedCounter value={filteredTeams.length} className="text-2xl text-purple-400" />
-        </NeuCard>
-        </div>
-      </div></StaggerItem>
+      </StaggerItem>
 
       {/* Budget Breakdown */}
-      <StaggerItem><NeuCard animate={false} className="p-4">
-        <ChartHeader
-          title="Team Salary Breakdown ($ Millions)"
-          description={
-            <>Where does the money go in MLS? Each bar stacks a team's spending into three buckets: <strong className="text-foreground/80">Designated Players</strong> (the marquee stars exempt from the cap), <strong className="text-foreground/80">TAM</strong> (Targeted Allocation Money for mid-tier signings), and <strong className="text-foreground/80">regular roster</strong> slots. Click any team to drill into their positional salary split and see exactly how they invest across the pitch.</>
-          }
-          methods={
-            <>Salary data sourced from MLSPA salary disclosures (2025 season). DP = Designated Player slots (max 3 per team, salaries above the cap threshold). TAM = Targeted Allocation Money, used to sign players above the senior roster budget but below DP level. Regular = all remaining senior roster players within the salary cap. Stacked bar values in $ millions. Teams sorted descending by total payroll. Data: 2025 MLS season salary disclosures.</>
-          }
-          rightAction={
-            <div className="flex items-center gap-1">
-              <CardInsightToggle isOpen={showBudgetBarInsights} onToggle={() => setShowBudgetBarInsights(v => !v)} isDark={isDark} />
-              <MaximizeButton onClick={() => setMaximized('budget')} />
-            </div>
-          }
-        />
-        <CardInsightSection isOpen={showBudgetBarInsights} insights={budgetBarInsights} isDark={isDark} />
-        <BudgetBarContent />
-        <div className="flex flex-col items-center gap-2 mt-3">
-          <div className="flex justify-center gap-6">
-            {[
-              { label: 'Designated Players', color: isDark ? '#1A4A6A' : '#2A5A7A' },
-              { label: 'TAM', color: isDark ? '#8B6914' : '#9A7828' },
-              { label: 'Regular', color: isDark ? '#1A3A1A' : '#2A4A2A' },
-            ].map(l => (
-              <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: l.color }} />
-                {l.label}
+      <StaggerItem>
+        <NeuCard animate={false} className="p-4">
+          <ChartHeader
+            title="Team Salary Breakdown ($ Millions)"
+            description={
+              <>
+                Where does the money go in MLS? Each bar stacks a team's
+                spending into three buckets:{" "}
+                <strong className="text-foreground/80">
+                  Designated Players
+                </strong>{" "}
+                (the marquee stars exempt from the cap),{" "}
+                <strong className="text-foreground/80">TAM</strong> (Targeted
+                Allocation Money for mid-tier signings), and{" "}
+                <strong className="text-foreground/80">regular roster</strong>{" "}
+                slots. Click any team to drill into their positional salary
+                split and see exactly how they invest across the pitch.
+              </>
+            }
+            methods={
+              <>
+                Salary data sourced from MLSPA salary disclosures (2025 season).
+                DP = Designated Player slots (max 3 per team, salaries above the
+                cap threshold). TAM = Targeted Allocation Money, used to sign
+                players above the senior roster budget but below DP level.
+                Regular = all remaining senior roster players within the salary
+                cap. Stacked bar values in $ millions. Teams sorted descending
+                by total payroll. Data: 2025 MLS season salary disclosures.
+              </>
+            }
+            rightAction={
+              <div className="flex items-center gap-1">
+                <CardInsightToggle
+                  isOpen={showBudgetBarInsights}
+                  onToggle={() => setShowBudgetBarInsights(v => !v)}
+                  isDark={isDark}
+                />
+                <MaximizeButton onClick={() => setMaximized("budget")} />
               </div>
-            ))}
-          </div>
-          <div className="flex justify-center gap-4 text-[9px] text-muted-foreground/70 max-w-2xl text-center leading-relaxed">
-            <span><strong className="text-muted-foreground">DP</strong> = Designated Players, the highest-paid stars exempt from the salary cap (max 3 per team)</span>
-            <span className="border-l border-muted-foreground/20 pl-4"><strong className="text-muted-foreground">TAM</strong> = Targeted Allocation Money, extra funds to sign players above the cap but below DP level</span>
-            <span className="border-l border-muted-foreground/20 pl-4"><strong className="text-muted-foreground">Regular</strong> = Standard roster players signed within the league salary cap</span>
-          </div>
-        </div>
-      </NeuCard></StaggerItem>
-
-      <StaggerItem><div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Salary Pie */}
-        <NeuCard delay={0.25} className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>Team Salary by Position</h3>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Positional salary split — select a team to see how they invest by role</p>
+            }
+          />
+          <CardInsightSection
+            isOpen={showBudgetBarInsights}
+            insights={budgetBarInsights}
+            isDark={isDark}
+          />
+          <BudgetBarContent />
+          <div className="flex flex-col items-center gap-2 mt-3">
+            <div className="flex justify-center gap-6">
+              {[
+                {
+                  label: "Designated Players",
+                  color: isDark ? "#1A4A6A" : "#2A5A7A",
+                },
+                { label: "TAM", color: isDark ? "#8B6914" : "#9A7828" },
+                { label: "Regular", color: isDark ? "#1A3A1A" : "#2A4A2A" },
+              ].map(l => (
+                <div
+                  key={l.label}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-sm"
+                    style={{ backgroundColor: l.color }}
+                  />
+                  {l.label}
+                </div>
+              ))}
             </div>
-            <div className="flex items-center gap-1">
-              <CardInsightToggle isOpen={showPieInsights} onToggle={() => setShowPieInsights(v => !v)} isDark={isDark} />
-              <MaximizeButton onClick={() => setMaximized('salary')} />
+            <div className="flex justify-center gap-4 text-[9px] text-muted-foreground/70 max-w-2xl text-center leading-relaxed">
+              <span>
+                <strong className="text-muted-foreground">DP</strong> =
+                Designated Players, the highest-paid stars exempt from the
+                salary cap (max 3 per team)
+              </span>
+              <span className="border-l border-muted-foreground/20 pl-4">
+                <strong className="text-muted-foreground">TAM</strong> =
+                Targeted Allocation Money, extra funds to sign players above the
+                cap but below DP level
+              </span>
+              <span className="border-l border-muted-foreground/20 pl-4">
+                <strong className="text-muted-foreground">Regular</strong> =
+                Standard roster players signed within the league salary cap
+              </span>
             </div>
           </div>
-          <CardInsightSection isOpen={showPieInsights} insights={pieInsights} isDark={isDark} />
-          <div className="flex flex-wrap gap-1 mb-3">
-            {filteredTeams.slice(0, 15).map(t => (
-              <button key={t.id} onClick={() => setSelectedTeam(t.id === selectedTeam ? null : t.id)}
-                className={`text-[10px] px-2 py-1 rounded transition-all ${selectedTeam === t.id ? 'neu-pressed text-cyan' : 'neu-raised text-muted-foreground hover:text-foreground'}`}>
-                {t.short}
-              </button>
-            ))}
-          </div>
-          {salaryBreakdown.length > 0 ? (
-            <div className="flex justify-center">
-              <Extruded3DPie
-                data={salaryBreakdown}
-                width={420}
-                height={260}
-                isDark={isDark}
-                innerRadius={50}
-                outerRadius={85}
-                extrudeDepth={12}
-                formatValue={(v) => `$${v.toFixed(1)}M`}
-              />
-            </div>
-          ) : (
-            <div className="h-48 flex items-center justify-center text-xs text-muted-foreground">Select a team to view salary breakdown</div>
-          )}
         </NeuCard>
+      </StaggerItem>
 
-        {/* Top Earners */}
-        <NeuCard delay={0.35} className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="text-sm font-semibold" style={{ fontFamily: 'Space Grotesk' }}>
-                {selTeam ? `${selTeam.short} — Top Earners` : 'Top Earners (select team)'}
-              </h3>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Highest-paid players on the selected roster</p>
+      <StaggerItem>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Salary Pie */}
+          <NeuCard delay={0.25} className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3
+                  className="text-sm font-semibold"
+                  style={{ fontFamily: "Space Grotesk" }}
+                >
+                  Team Salary by Position
+                </h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Positional salary split — select a team to see how they invest
+                  by role
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <CardInsightToggle
+                  isOpen={showPieInsights}
+                  onToggle={() => setShowPieInsights(v => !v)}
+                  isDark={isDark}
+                />
+                <MaximizeButton onClick={() => setMaximized("salary")} />
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <CardInsightToggle isOpen={showEarnersInsights} onToggle={() => setShowEarnersInsights(v => !v)} isDark={isDark} />
-              {selTeam && <button onClick={() => setSelectedTeam(null)} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>}
+            <CardInsightSection
+              isOpen={showPieInsights}
+              insights={pieInsights}
+              isDark={isDark}
+            />
+            <div className="flex flex-wrap gap-1 mb-3">
+              {filteredTeams.slice(0, 15).map(t => (
+                <button
+                  key={t.id}
+                  onClick={() =>
+                    setSelectedTeam(t.id === selectedTeam ? null : t.id)
+                  }
+                  className={`text-[10px] px-2 py-1 rounded transition-all ${selectedTeam === t.id ? "neu-pressed text-cyan" : "neu-raised text-muted-foreground hover:text-foreground"}`}
+                >
+                  {t.short}
+                </button>
+              ))}
             </div>
-          </div>
-          <CardInsightSection isOpen={showEarnersInsights} insights={earnersInsights} isDark={isDark} />
-          {topEarners.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
-                  <tr><th>#</th><th>Player</th><th>Pos</th><th>Salary</th><th>Goals</th><th>Min</th><th>$/Goal</th></tr>
-                </thead>
-                <tbody>
-                  {topEarners.map((p, i) => (
-                    <tr key={p.id}>
-                      <td className="text-muted-foreground">{i + 1}</td>
-                      <td className="font-sans text-xs font-medium">{p.name}</td>
-                      <td><span className={`px-1 py-0.5 rounded text-[9px] ${p.position === 'FW' ? 'bg-red-500/15 text-red-400' : p.position === 'MF' ? 'bg-blue-500/15 text-blue-400' : p.position === 'DF' ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'}`}>{p.position}</span></td>
-                      <td className="text-amber">{p.salary >= 1000000 ? `$${(p.salary/1000000).toFixed(1)}M` : `$${(p.salary/1000).toFixed(0)}K`}</td>
-                      <td className="text-cyan">{p.goals}</td>
-                      <td>{p.minutes.toLocaleString()}</td>
-                      <td className="text-muted-foreground">{p.goals > 0 ? `$${(p.salary / p.goals / 1000).toFixed(0)}K` : '—'}</td>
+            {salaryBreakdown.length > 0 ? (
+              <div className="flex justify-center">
+                <Extruded3DPie
+                  data={salaryBreakdown}
+                  width={420}
+                  height={260}
+                  isDark={isDark}
+                  innerRadius={50}
+                  outerRadius={85}
+                  extrudeDepth={12}
+                  formatValue={v => `$${v.toFixed(1)}M`}
+                />
+              </div>
+            ) : (
+              <div className="h-48 flex items-center justify-center text-xs text-muted-foreground">
+                Select a team to view salary breakdown
+              </div>
+            )}
+          </NeuCard>
+
+          {/* Top Earners */}
+          <NeuCard delay={0.35} className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3
+                  className="text-sm font-semibold"
+                  style={{ fontFamily: "Space Grotesk" }}
+                >
+                  {selTeam
+                    ? `${selTeam.short} — Top Earners`
+                    : "Top Earners (select team)"}
+                </h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Highest-paid players on the selected roster
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <CardInsightToggle
+                  isOpen={showEarnersInsights}
+                  onToggle={() => setShowEarnersInsights(v => !v)}
+                  isDark={isDark}
+                />
+                {selTeam && (
+                  <button
+                    onClick={() => setSelectedTeam(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+            <CardInsightSection
+              isOpen={showEarnersInsights}
+              insights={earnersInsights}
+              isDark={isDark}
+            />
+            {topEarners.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Player</th>
+                      <th>Pos</th>
+                      <th>Salary</th>
+                      <th>Goals</th>
+                      <th>Min</th>
+                      <th>$/Goal</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="h-48 flex items-center justify-center text-xs text-muted-foreground">Select a team above</div>
-          )}
-        </NeuCard>
-      </div></StaggerItem>
+                  </thead>
+                  <tbody>
+                    {topEarners.map((p, i) => (
+                      <tr key={p.id}>
+                        <td className="text-muted-foreground">{i + 1}</td>
+                        <td className="font-sans text-xs font-medium">
+                          {p.name}
+                        </td>
+                        <td>
+                          <span
+                            className={`px-1 py-0.5 rounded text-[9px] ${p.position === "FW" ? "bg-red-500/15 text-red-400" : p.position === "MF" ? "bg-blue-500/15 text-blue-400" : p.position === "DF" ? "bg-green-500/15 text-green-400" : "bg-yellow-500/15 text-yellow-400"}`}
+                          >
+                            {p.position}
+                          </span>
+                        </td>
+                        <td className="text-amber">
+                          {p.salary >= 1000000
+                            ? `$${(p.salary / 1000000).toFixed(1)}M`
+                            : `$${(p.salary / 1000).toFixed(0)}K`}
+                        </td>
+                        <td className="text-cyan">{p.goals}</td>
+                        <td>{p.minutes.toLocaleString()}</td>
+                        <td className="text-muted-foreground">
+                          {p.goals > 0
+                            ? `$${(p.salary / p.goals / 1000).toFixed(0)}K`
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="h-48 flex items-center justify-center text-xs text-muted-foreground">
+                Select a team above
+              </div>
+            )}
+          </NeuCard>
+        </div>
+      </StaggerItem>
 
       {/* Maximize Modals */}
-      <ChartModal isOpen={maximized === 'budget'} onClose={() => setMaximized(null)} title="Team Salary Breakdown ($ Millions)">
+      <ChartModal
+        isOpen={maximized === "budget"}
+        onClose={() => setMaximized(null)}
+        title="Team Salary Breakdown ($ Millions)"
+      >
         <BudgetBarContent height={600} />
       </ChartModal>
-      <ChartModal isOpen={maximized === 'salary'} onClose={() => setMaximized(null)} title={`Salary by Position${selTeam ? ` — ${selTeam.name}` : ''}`}>
+      <ChartModal
+        isOpen={maximized === "salary"}
+        onClose={() => setMaximized(null)}
+        title={`Salary by Position${selTeam ? ` — ${selTeam.name}` : ""}`}
+      >
         {salaryBreakdown.length > 0 ? (
           <div className="flex justify-center">
             <Extruded3DPie
@@ -306,10 +621,14 @@ export default function TeamBudget() {
               innerRadius={100}
               outerRadius={180}
               extrudeDepth={18}
-              formatValue={(v) => `$${v.toFixed(1)}M`}
+              formatValue={v => `$${v.toFixed(1)}M`}
             />
           </div>
-        ) : <div className="h-96 flex items-center justify-center text-muted-foreground">Select a team first</div>}
+        ) : (
+          <div className="h-96 flex items-center justify-center text-muted-foreground">
+            Select a team first
+          </div>
+        )}
       </ChartModal>
     </StaggerContainer>
   );

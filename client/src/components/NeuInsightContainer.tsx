@@ -15,14 +15,14 @@
  *   THIS active: 18px/18px/40px + translateY(-6px)
  */
 
-import { ReactNode, useRef, useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { ReactNode, useRef, useState, useEffect } from "react";
+import { motion } from "framer-motion";
 
 interface NeuInsightContainerProps {
   isOpen: boolean;
   isDark: boolean;
   children: ReactNode;
-  variant?: 'full' | 'compact';
+  variant?: "full" | "compact";
   className?: string;
   showDepression?: boolean;
 }
@@ -31,11 +31,11 @@ export function NeuInsightContainer({
   isOpen,
   isDark,
   children,
-  variant = 'full',
-  className = '',
+  variant = "full",
+  className = "",
   showDepression = true,
 }: NeuInsightContainerProps) {
-  const isCompact = variant === 'compact';
+  const isCompact = variant === "compact";
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(0);
 
@@ -58,42 +58,42 @@ export function NeuInsightContainer({
   const activeShadow = isDark
     ? [
         // Primary deep shadow — long cast below
-        '0 18px 40px rgba(0,0,0,0.7)',
-        '0 8px 16px rgba(0,0,0,0.5)',
+        "0 18px 40px rgba(0,0,0,0.7)",
+        "0 8px 16px rgba(0,0,0,0.5)",
         // Lift shadow — subtle upper-left highlight
-        '-6px -6px 16px rgba(60,60,80,0.12)',
+        "-6px -6px 16px rgba(60,60,80,0.12)",
         // Inner top highlight — surface light catch
-        'inset 0 1px 0 rgba(255,255,255,0.08)',
-        'inset 0 -1px 0 rgba(0,0,0,0.3)',
-      ].join(', ')
+        "inset 0 1px 0 rgba(255,255,255,0.08)",
+        "inset 0 -1px 0 rgba(0,0,0,0.3)",
+      ].join(", ")
     : [
         // Primary deep shadow — long cast below
-        '0 18px 40px rgba(140,145,170,0.4)',
-        '0 8px 16px rgba(166,170,190,0.35)',
+        "0 18px 40px rgba(140,145,170,0.4)",
+        "0 8px 16px rgba(166,170,190,0.35)",
         // Lift shadow — bright upper-left
-        '-6px -6px 16px rgba(255,255,255,0.95)',
+        "-6px -6px 16px rgba(255,255,255,0.95)",
         // Inner top highlight — glossy surface
-        'inset 0 1px 0 rgba(255,255,255,0.85)',
-        'inset 0 -1px 0 rgba(166,170,190,0.12)',
-      ].join(', ');
+        "inset 0 1px 0 rgba(255,255,255,0.85)",
+        "inset 0 -1px 0 rgba(166,170,190,0.12)",
+      ].join(", ");
 
   const depressionShadow = isDark
-    ? 'inset 3px 3px 8px rgba(0,0,0,0.5), inset -3px -3px 8px rgba(60,60,80,0.08)'
-    : 'inset 3px 3px 8px rgba(166,170,190,0.35), inset -3px -3px 8px rgba(255,255,255,0.6)';
+    ? "inset 3px 3px 8px rgba(0,0,0,0.5), inset -3px -3px 8px rgba(60,60,80,0.08)"
+    : "inset 3px 3px 8px rgba(166,170,190,0.35), inset -3px -3px 8px rgba(255,255,255,0.6)";
 
   // ── Colors ──
-  const activeBg = isDark ? '#232340' : '#ebedf6';
-  const depressionBg = isDark ? '#141422' : '#d8d8e2';
+  const activeBg = isDark ? "#232340" : "#ebedf6";
+  const depressionBg = isDark ? "#141422" : "#d8d8e2";
 
   // Neutral border — no cyan accent
   const activeBorder = isDark
-    ? '1.5px solid rgba(255,255,255,0.06)'
-    : '1.5px solid rgba(0,0,0,0.06)';
+    ? "1.5px solid rgba(255,255,255,0.06)"
+    : "1.5px solid rgba(0,0,0,0.06)";
   const depressionBorder = isDark
-    ? '1px solid rgba(255,255,255,0.02)'
-    : '1px solid rgba(0,0,0,0.03)';
+    ? "1px solid rgba(255,255,255,0.02)"
+    : "1px solid rgba(0,0,0,0.03)";
 
-  const rounding = isCompact ? 'rounded-lg' : 'rounded-2xl';
+  const rounding = isCompact ? "rounded-lg" : "rounded-2xl";
   const padding = isCompact ? 10 : 20;
 
   // Don't render if not open and depression is disabled
@@ -103,7 +103,7 @@ export function NeuInsightContainer({
     <>
       <motion.div
         animate={{
-          height: isOpen ? contentHeight + (padding * 2) : depressionHeight,
+          height: isOpen ? contentHeight + padding * 2 : depressionHeight,
           boxShadow: isOpen ? activeShadow : depressionShadow,
           background: isOpen ? activeBg : depressionBg,
           y: isOpen ? (isCompact ? -2 : -6) : 0,
@@ -116,7 +116,7 @@ export function NeuInsightContainer({
         }}
         className={`${rounding} overflow-hidden ${className}`}
         style={{
-          position: 'relative',
+          position: "relative",
           zIndex: isOpen ? 10 : 1,
           border: isOpen ? activeBorder : depressionBorder,
         }}
@@ -130,8 +130,8 @@ export function NeuInsightContainer({
             className="absolute inset-x-0 bottom-0 h-[1px] pointer-events-none"
             style={{
               background: isDark
-                ? 'linear-gradient(90deg, transparent 10%, rgba(0,0,0,0.4) 50%, transparent 90%)'
-                : 'linear-gradient(90deg, transparent 10%, rgba(0,0,0,0.08) 50%, transparent 90%)',
+                ? "linear-gradient(90deg, transparent 10%, rgba(0,0,0,0.4) 50%, transparent 90%)"
+                : "linear-gradient(90deg, transparent 10%, rgba(0,0,0,0.08) 50%, transparent 90%)",
             }}
           />
         )}
@@ -144,7 +144,10 @@ export function NeuInsightContainer({
             padding: isOpen ? padding : 0,
           }}
           transition={{
-            opacity: { duration: isOpen ? 0.3 : 0.15, delay: isOpen ? 0.15 : 0 },
+            opacity: {
+              duration: isOpen ? 0.3 : 0.15,
+              delay: isOpen ? 0.15 : 0,
+            },
             padding: { duration: 0.3 },
           }}
         >
@@ -164,8 +167,8 @@ export function NeuInsightContainer({
             height: 8,
             marginTop: -4,
             background: isDark
-              ? 'radial-gradient(ellipse 80% 100% at 50% 0%, rgba(0,0,0,0.15) 0%, transparent 100%)'
-              : 'radial-gradient(ellipse 80% 100% at 50% 0%, rgba(140,145,170,0.1) 0%, transparent 100%)',
+              ? "radial-gradient(ellipse 80% 100% at 50% 0%, rgba(0,0,0,0.15) 0%, transparent 100%)"
+              : "radial-gradient(ellipse 80% 100% at 50% 0%, rgba(140,145,170,0.1) 0%, transparent 100%)",
           }}
         />
       )}

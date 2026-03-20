@@ -1,6 +1,6 @@
 /**
  * chartUtils.tsx — Shared chart utilities for muted earthy colors and 3D extruded shapes
- * 
+ *
  * Design Philosophy: "Sculptural Data"
  * - Data elements appear physically extruded from the chart surface
  * - Each element casts a directional shadow onto the chart background
@@ -11,106 +11,116 @@
  * - All effects adapt to light/dark theme
  */
 
-import React from 'react';
+import React from "react";
 
 // ─── MUTED EARTHY TEAM COLOR PALETTE ───
 const MUTED_DARK: Record<string, string> = {
-  ATL:  '#8B6914',
-  ATX:  '#1B5E20',
-  MTL:  '#2C3E6B',
-  CLT:  '#1A6B7A',
-  CHI:  '#7A2020',
-  COL:  '#5C2233',
-  CLB:  '#8B7B2A',
-  DC:   '#6B2030',
-  CIN:  '#9B4A1A',
-  DAL:  '#8B2030',
-  HOU:  '#9B5A1A',
-  MIA:  '#8B5A6B',
-  LAG:  '#1A3050',
-  LAFC: '#7A6A3A',
-  MIN:  '#3A6A7A',
-  NSH:  '#8B8A2A',
-  NE:   '#1A2A4A',
-  NYRB: '#8B2A2A',
-  NYC:  '#3A5A7A',
-  ORL:  '#4A2A5A',
-  PHI:  '#1A2A3A',
-  POR:  '#1A3A1A',
-  RSL:  '#7A1A2A',
-  SD:   '#4A2A5A',
-  SEA:  '#2A5A2A',
-  SJ:   '#1A4A6A',
-  SKC:  '#4A5A7A',
-  STL:  '#7A2020',
-  TOR:  '#7A1A2A',
-  VAN:  '#1A2A4A',
+  ATL: "#8B6914",
+  ATX: "#1B5E20",
+  MTL: "#2C3E6B",
+  CLT: "#1A6B7A",
+  CHI: "#7A2020",
+  COL: "#5C2233",
+  CLB: "#8B7B2A",
+  DC: "#6B2030",
+  CIN: "#9B4A1A",
+  DAL: "#8B2030",
+  HOU: "#9B5A1A",
+  MIA: "#8B5A6B",
+  LAG: "#1A3050",
+  LAFC: "#7A6A3A",
+  MIN: "#3A6A7A",
+  NSH: "#8B8A2A",
+  NE: "#1A2A4A",
+  NYRB: "#8B2A2A",
+  NYC: "#3A5A7A",
+  ORL: "#4A2A5A",
+  PHI: "#1A2A3A",
+  POR: "#1A3A1A",
+  RSL: "#7A1A2A",
+  SD: "#4A2A5A",
+  SEA: "#2A5A2A",
+  SJ: "#1A4A6A",
+  SKC: "#4A5A7A",
+  STL: "#7A2020",
+  TOR: "#7A1A2A",
+  VAN: "#1A2A4A",
 };
 
 const MUTED_LIGHT: Record<string, string> = {
-  ATL:  '#A07828',
-  ATX:  '#2D6B35',
-  MTL:  '#3A4F7A',
-  CLT:  '#2A7A8A',
-  CHI:  '#8A3030',
-  COL:  '#6A3040',
-  CLB:  '#9A8A3A',
-  DC:   '#7A3040',
-  CIN:  '#A85A2A',
-  DAL:  '#9A3040',
-  HOU:  '#A86A2A',
-  MIA:  '#9A6A7A',
-  LAG:  '#2A4060',
-  LAFC: '#8A7A4A',
-  MIN:  '#4A7A8A',
-  NSH:  '#9A9A3A',
-  NE:   '#2A3A5A',
-  NYRB: '#9A3A3A',
-  NYC:  '#4A6A8A',
-  ORL:  '#5A3A6A',
-  PHI:  '#2A3A4A',
-  POR:  '#2A4A2A',
-  RSL:  '#8A2A3A',
-  SD:   '#5A3A6A',
-  SEA:  '#3A6A3A',
-  SJ:   '#2A5A7A',
-  SKC:  '#5A6A8A',
-  STL:  '#8A3030',
-  TOR:  '#8A2A3A',
-  VAN:  '#2A3A5A',
+  ATL: "#A07828",
+  ATX: "#2D6B35",
+  MTL: "#3A4F7A",
+  CLT: "#2A7A8A",
+  CHI: "#8A3030",
+  COL: "#6A3040",
+  CLB: "#9A8A3A",
+  DC: "#7A3040",
+  CIN: "#A85A2A",
+  DAL: "#9A3040",
+  HOU: "#A86A2A",
+  MIA: "#9A6A7A",
+  LAG: "#2A4060",
+  LAFC: "#8A7A4A",
+  MIN: "#4A7A8A",
+  NSH: "#9A9A3A",
+  NE: "#2A3A5A",
+  NYRB: "#9A3A3A",
+  NYC: "#4A6A8A",
+  ORL: "#5A3A6A",
+  PHI: "#2A3A4A",
+  POR: "#2A4A2A",
+  RSL: "#8A2A3A",
+  SD: "#5A3A6A",
+  SEA: "#3A6A3A",
+  SJ: "#2A5A7A",
+  SKC: "#5A6A8A",
+  STL: "#8A3030",
+  TOR: "#8A2A3A",
+  VAN: "#2A3A5A",
 };
 
 export function mutedTeamColor(teamId: string, isDark: boolean): string {
-  return isDark ? (MUTED_DARK[teamId] || '#4A4A5A') : (MUTED_LIGHT[teamId] || '#6A6A7A');
+  return isDark
+    ? MUTED_DARK[teamId] || "#4A4A5A"
+    : MUTED_LIGHT[teamId] || "#6A6A7A";
 }
 
 // Position color palette — muted earthy tones for each position
 const POSITION_COLORS_DARK: Record<string, string> = {
-  FW: '#9A3A3A',
-  MF: '#3A5A8A',
-  DF: '#3A6A4A',
-  GK: '#8A7A3A',
+  FW: "#9A3A3A",
+  MF: "#3A5A8A",
+  DF: "#3A6A4A",
+  GK: "#8A7A3A",
 };
 
 const POSITION_COLORS_LIGHT: Record<string, string> = {
-  FW: '#B04040',
-  MF: '#4A6A9A',
-  DF: '#4A7A5A',
-  GK: '#9A8A4A',
+  FW: "#B04040",
+  MF: "#4A6A9A",
+  DF: "#4A7A5A",
+  GK: "#9A8A4A",
 };
 
 export function positionColor(position: string, isDark: boolean): string {
   return isDark
-    ? (POSITION_COLORS_DARK[position] || '#4A4A5A')
-    : (POSITION_COLORS_LIGHT[position] || '#6A6A7A');
+    ? POSITION_COLORS_DARK[position] || "#4A4A5A"
+    : POSITION_COLORS_LIGHT[position] || "#6A6A7A";
 }
 
 // Linear regression calculation
-export function linearRegression(data: { x: number; y: number }[]): { slope: number; intercept: number; r2: number } {
+export function linearRegression(data: { x: number; y: number }[]): {
+  slope: number;
+  intercept: number;
+  r2: number;
+} {
   const n = data.length;
   if (n < 2) return { slope: 0, intercept: 0, r2: 0 };
 
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+  let sumX = 0,
+    sumY = 0,
+    sumXY = 0,
+    sumX2 = 0,
+    sumY2 = 0;
   for (const d of data) {
     sumX += d.x;
     sumY += d.y;
@@ -126,7 +136,8 @@ export function linearRegression(data: { x: number; y: number }[]): { slope: num
   const intercept = (sumY - slope * sumX) / n;
 
   const yMean = sumY / n;
-  let ssTot = 0, ssRes = 0;
+  let ssTot = 0,
+    ssRes = 0;
   for (const d of data) {
     ssTot += (d.y - yMean) ** 2;
     ssRes += (d.y - (slope * d.x + intercept)) ** 2;
@@ -143,7 +154,7 @@ export function lighten(hex: string, amount: number): string {
   const nr = Math.min(255, Math.round(r + (255 - r) * amount));
   const ng = Math.min(255, Math.round(g + (255 - g) * amount));
   const nb = Math.min(255, Math.round(b + (255 - b) * amount));
-  return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
+  return `#${nr.toString(16).padStart(2, "0")}${ng.toString(16).padStart(2, "0")}${nb.toString(16).padStart(2, "0")}`;
 }
 
 export function darken(hex: string, amount: number): string {
@@ -153,7 +164,7 @@ export function darken(hex: string, amount: number): string {
   const nr = Math.max(0, Math.round(r * (1 - amount)));
   const ng = Math.max(0, Math.round(g * (1 - amount)));
   const nb = Math.max(0, Math.round(b * (1 - amount)));
-  return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
+  return `#${nr.toString(16).padStart(2, "0")}${ng.toString(16).padStart(2, "0")}${nb.toString(16).padStart(2, "0")}`;
 }
 
 export function hexToRgba(hex: string, alpha: number): string {
@@ -168,12 +179,12 @@ let gradientCounter = 0;
 // Shadow configuration — light source from upper-left
 // Enhanced for topographic relief effect: deeper, more dramatic shadows
 const SHADOW = {
-  offsetX: 6,    // shadow falls to the right (increased for more depth)
-  offsetY: 8,    // shadow falls downward (increased for elevation feel)
-  blur: 8,       // softness of shadow edge (wider penumbra)
+  offsetX: 6, // shadow falls to the right (increased for more depth)
+  offsetY: 8, // shadow falls downward (increased for elevation feel)
+  blur: 8, // softness of shadow edge (wider penumbra)
   spread: 0,
-  darkAlpha: 0.55,   // shadow opacity in dark mode (more visible)
-  lightAlpha: 0.35,  // shadow opacity in light mode (more visible)
+  darkAlpha: 0.55, // shadow opacity in dark mode (more visible)
+  lightAlpha: 0.35, // shadow opacity in light mode (more visible)
 };
 
 /**
@@ -188,7 +199,7 @@ export function Extruded3DBar(props: any) {
   const { x, y, width, height: h, fill } = props;
   if (!h || h <= 0 || !width || width <= 0) return null;
 
-  const baseColor = fill || '#4A4A5A';
+  const baseColor = fill || "#4A4A5A";
   const id = `bar3d_${gradientCounter++}`;
   const highlightColor = lighten(baseColor, 0.4);
   const shadowColor = darken(baseColor, 0.5);
@@ -205,18 +216,36 @@ export function Extruded3DBar(props: any) {
         {/* Front face gradient — lit from top */}
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={highlightColor} stopOpacity={0.95} />
-          <stop offset="8%" stopColor={lighten(baseColor, 0.15)} stopOpacity={0.92} />
+          <stop
+            offset="8%"
+            stopColor={lighten(baseColor, 0.15)}
+            stopOpacity={0.92}
+          />
           <stop offset="50%" stopColor={baseColor} stopOpacity={0.88} />
-          <stop offset="92%" stopColor={darken(baseColor, 0.15)} stopOpacity={0.88} />
+          <stop
+            offset="92%"
+            stopColor={darken(baseColor, 0.15)}
+            stopOpacity={0.88}
+          />
           <stop offset="100%" stopColor={shadowColor} stopOpacity={0.92} />
         </linearGradient>
         {/* Side face gradient — darker, showing depth */}
         <linearGradient id={`${id}_side`} x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor={sideColor} stopOpacity={0.9} />
-          <stop offset="100%" stopColor={darken(baseColor, 0.55)} stopOpacity={0.95} />
+          <stop
+            offset="100%"
+            stopColor={darken(baseColor, 0.55)}
+            stopOpacity={0.95}
+          />
         </linearGradient>
         {/* Cast shadow blur filter — enhanced for topographic depth */}
-        <filter id={`${id}_shadow`} x="-30%" y="-15%" width="170%" height="150%">
+        <filter
+          id={`${id}_shadow`}
+          x="-30%"
+          y="-15%"
+          width="170%"
+          height="150%"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="4" />
         </filter>
       </defs>
@@ -310,7 +339,7 @@ export function Extruded3DBarFillRate(props: any) {
   const { x, y, width, height: h, fill, payload } = props;
   if (!h || h <= 0 || !width || width <= 0) return null;
 
-  const baseColor = fill || '#4A4A5A';
+  const baseColor = fill || "#4A4A5A";
   const id = `barfr3d_${gradientCounter++}`;
   const highlightColor = lighten(baseColor, 0.4);
   const shadowColor = darken(baseColor, 0.5);
@@ -327,23 +356,43 @@ export function Extruded3DBarFillRate(props: any) {
   const fillPct = payload?.fillPct || 0;
   const barScale = fillPct > 0 ? adjustedH / fillPct : 0;
   const adjustedYAxis = adjustedY + adjustedH;
-  const capY100 = barScale > 0 ? adjustedYAxis - (100 * barScale) : 0;
+  const capY100 = barScale > 0 ? adjustedYAxis - 100 * barScale : 0;
 
   return (
     <g>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={highlightColor} stopOpacity={0.95} />
-          <stop offset="8%" stopColor={lighten(baseColor, 0.15)} stopOpacity={0.92} />
+          <stop
+            offset="8%"
+            stopColor={lighten(baseColor, 0.15)}
+            stopOpacity={0.92}
+          />
           <stop offset="50%" stopColor={baseColor} stopOpacity={0.88} />
-          <stop offset="92%" stopColor={darken(baseColor, 0.15)} stopOpacity={0.88} />
+          <stop
+            offset="92%"
+            stopColor={darken(baseColor, 0.15)}
+            stopOpacity={0.88}
+          />
           <stop offset="100%" stopColor={shadowColor} stopOpacity={0.92} />
         </linearGradient>
-        <filter id={`${id}_shadow`} x="-30%" y="-15%" width="170%" height="150%">
+        <filter
+          id={`${id}_shadow`}
+          x="-30%"
+          y="-15%"
+          width="170%"
+          height="150%"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="4" />
         </filter>
         {/* Braille dot shadow filter */}
-        <filter id={`${id}_dotShadow`} x="-100%" y="-100%" width="300%" height="300%">
+        <filter
+          id={`${id}_dotShadow`}
+          x="-100%"
+          y="-100%"
+          width="300%"
+          height="300%"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
         </filter>
         {/* Braille dot lighting gradient */}
@@ -391,7 +440,15 @@ export function Extruded3DBarFillRate(props: any) {
       />
 
       {/* Front face */}
-      <rect x={x} y={adjustedY} width={width} height={adjustedH} rx={2} ry={2} fill={`url(#${id})`} />
+      <rect
+        x={x}
+        y={adjustedY}
+        width={width}
+        height={adjustedH}
+        rx={2}
+        ry={2}
+        fill={`url(#${id})`}
+      />
 
       {/* Top face — reduced opacity to minimize shadow artifact */}
       <path
@@ -401,8 +458,15 @@ export function Extruded3DBarFillRate(props: any) {
       />
 
       {/* Top highlight */}
-      <rect x={x + 1} y={adjustedY} width={width - 2} height={Math.min(2.5, adjustedH * 0.06)} rx={1.5}
-        fill={highlightColor} fillOpacity={0.55} />
+      <rect
+        x={x + 1}
+        y={adjustedY}
+        width={width - 2}
+        height={Math.min(2.5, adjustedH * 0.06)}
+        rx={1.5}
+        fill={highlightColor}
+        fillOpacity={0.55}
+      />
 
       {/* Left highlight edge */}
       <rect
@@ -416,47 +480,48 @@ export function Extruded3DBarFillRate(props: any) {
       />
 
       {/* 100% Capacity braille dots */}
-      {barScale > 0 && (() => {
-        const dotRadius = 2.2;
-        const dotSpacing = 7;
-        const lineStart = x - 3;
-        const lineEnd = x + width + 3;
-        const lineLen = lineEnd - lineStart;
-        const dotCount = Math.max(2, Math.floor(lineLen / dotSpacing));
-        const actualSpacing = lineLen / dotCount;
-        const dots = [];
-        for (let di = 0; di <= dotCount; di++) {
-          const dotX = lineStart + di * actualSpacing;
-          dots.push(
-            <React.Fragment key={`dot_${di}`}>
-              {/* Cast shadow */}
-              <ellipse
-                cx={dotX + 1.5}
-                cy={capY100 + 2}
-                rx={dotRadius + 0.8}
-                ry={dotRadius * 0.5 + 0.5}
-                fill="rgba(0,0,0,0.35)"
-                filter={`url(#${id}_dotShadow)`}
-              />
-              {/* 3D dot */}
-              <circle
-                cx={dotX}
-                cy={capY100}
-                r={dotRadius}
-                fill={`url(#${id}_dotGrad)`}
-              />
-              {/* Specular highlight */}
-              <circle
-                cx={dotX - dotRadius * 0.3}
-                cy={capY100 - dotRadius * 0.3}
-                r={dotRadius * 0.35}
-                fill="rgba(255,255,255,0.7)"
-              />
-            </React.Fragment>
-          );
-        }
-        return <>{dots}</>;
-      })()}
+      {barScale > 0 &&
+        (() => {
+          const dotRadius = 2.2;
+          const dotSpacing = 7;
+          const lineStart = x - 3;
+          const lineEnd = x + width + 3;
+          const lineLen = lineEnd - lineStart;
+          const dotCount = Math.max(2, Math.floor(lineLen / dotSpacing));
+          const actualSpacing = lineLen / dotCount;
+          const dots = [];
+          for (let di = 0; di <= dotCount; di++) {
+            const dotX = lineStart + di * actualSpacing;
+            dots.push(
+              <React.Fragment key={`dot_${di}`}>
+                {/* Cast shadow */}
+                <ellipse
+                  cx={dotX + 1.5}
+                  cy={capY100 + 2}
+                  rx={dotRadius + 0.8}
+                  ry={dotRadius * 0.5 + 0.5}
+                  fill="rgba(0,0,0,0.35)"
+                  filter={`url(#${id}_dotShadow)`}
+                />
+                {/* 3D dot */}
+                <circle
+                  cx={dotX}
+                  cy={capY100}
+                  r={dotRadius}
+                  fill={`url(#${id}_dotGrad)`}
+                />
+                {/* Specular highlight */}
+                <circle
+                  cx={dotX - dotRadius * 0.3}
+                  cy={capY100 - dotRadius * 0.3}
+                  r={dotRadius * 0.35}
+                  fill="rgba(255,255,255,0.7)"
+                />
+              </React.Fragment>
+            );
+          }
+          return <>{dots}</>;
+        })()}
     </g>
   );
 }
@@ -466,17 +531,29 @@ export function Extruded3DBarFillRate(props: any) {
  * cast shadows on each other. Only the bottom segment gets the full 3D base
  * extrusion (cast shadow, bottom face, side face). Middle and top segments
  * get only a front-face gradient and a thin side face for depth.
- * 
+ *
  * stackPosition: 'bottom' | 'middle' | 'top'
  *   - bottom: full 3D treatment (shadow, side, bottom face, top highlight)
  *   - middle: front gradient + side face only, no shadow/bottom
  *   - top: front gradient + side face + top face cap, no shadow/bottom
  */
-export function Extruded3DStackedBar(props: any & { stackPosition?: 'bottom' | 'middle' | 'top' }) {
-  const { x, y: rawY, width, height: rawH, fill, stackPosition = 'bottom', onBarClick, payload, ...restProps } = props;
+export function Extruded3DStackedBar(
+  props: any & { stackPosition?: "bottom" | "middle" | "top" }
+) {
+  const {
+    x,
+    y: rawY,
+    width,
+    height: rawH,
+    fill,
+    stackPosition = "bottom",
+    onBarClick,
+    payload,
+    ...restProps
+  } = props;
   if (!rawH || rawH <= 0 || !width || width <= 0) return null;
 
-  const baseColor = fill || '#4A4A5A';
+  const baseColor = fill || "#4A4A5A";
   const id = `sbar3d_${gradientCounter++}`;
   const highlightColor = lighten(baseColor, 0.4);
   const shadowColor = darken(baseColor, 0.5);
@@ -484,8 +561,8 @@ export function Extruded3DStackedBar(props: any & { stackPosition?: 'bottom' | '
 
   const extrudeX = 4;
   const extrudeY = 4;
-  const isBottom = stackPosition === 'bottom';
-  const isTop = stackPosition === 'top';
+  const isBottom = stackPosition === "bottom";
+  const isTop = stackPosition === "top";
 
   // Shift all bars up by extrudeY so the 3D bottom-face extrusion
   // rests exactly ON the X axis line instead of hanging through it.
@@ -493,28 +570,46 @@ export function Extruded3DStackedBar(props: any & { stackPosition?: 'bottom' | '
   const h = rawH;
 
   const handleClick = () => {
-    if (typeof onBarClick === 'function' && payload) {
+    if (typeof onBarClick === "function" && payload) {
       onBarClick(payload);
     }
   };
 
   return (
-    <g style={{ cursor: 'pointer' }} onClick={handleClick}>
+    <g style={{ cursor: "pointer" }} onClick={handleClick}>
       <defs>
         {/* Front face gradient */}
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={highlightColor} stopOpacity={0.95} />
-          <stop offset="8%" stopColor={lighten(baseColor, 0.15)} stopOpacity={0.92} />
+          <stop
+            offset="8%"
+            stopColor={lighten(baseColor, 0.15)}
+            stopOpacity={0.92}
+          />
           <stop offset="50%" stopColor={baseColor} stopOpacity={0.88} />
-          <stop offset="92%" stopColor={darken(baseColor, 0.15)} stopOpacity={0.88} />
+          <stop
+            offset="92%"
+            stopColor={darken(baseColor, 0.15)}
+            stopOpacity={0.88}
+          />
           <stop offset="100%" stopColor={shadowColor} stopOpacity={0.92} />
         </linearGradient>
         <linearGradient id={`${id}_side`} x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor={sideColor} stopOpacity={0.9} />
-          <stop offset="100%" stopColor={darken(baseColor, 0.55)} stopOpacity={0.95} />
+          <stop
+            offset="100%"
+            stopColor={darken(baseColor, 0.55)}
+            stopOpacity={0.95}
+          />
         </linearGradient>
         {isBottom && (
-          <filter id={`${id}_shadow`} x="-30%" y="-15%" width="170%" height="150%">
+          <filter
+            id={`${id}_shadow`}
+            x="-30%"
+            y="-15%"
+            width="170%"
+            height="150%"
+          >
             <feGaussianBlur in="SourceGraphic" stdDeviation="4" />
           </filter>
         )}
@@ -561,13 +656,7 @@ export function Extruded3DStackedBar(props: any & { stackPosition?: 'bottom' | '
       )}
 
       {/* === FRONT FACE (main visible surface) === */}
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={h}
-        fill={`url(#${id})`}
-      />
+      <rect x={x} y={y} width={width} height={h} fill={`url(#${id})`} />
 
       {/* === TOP FACE — only on top segment (cap) === */}
       {isTop && (
@@ -609,15 +698,15 @@ export function Extruded3DStackedBar(props: any & { stackPosition?: 'bottom' | '
         width={width}
         height={h}
         fill="transparent"
-        style={{ cursor: 'pointer' }}
+        style={{ cursor: "pointer" }}
       />
     </g>
   );
 }
 
 /** Pottery-focus warm gray palette */
-const POTTERY_LIGHT = '#c8c4bc';
-const POTTERY_DARK = '#3a3830';
+const POTTERY_LIGHT = "#c8c4bc";
+const POTTERY_DARK = "#3a3830";
 
 /**
  * 3D Extruded Horizontal Bar — For layout="vertical" charts (e.g., Gravitational Pull)
@@ -626,15 +715,26 @@ const POTTERY_DARK = '#3a3830';
  * with reduced extrusion (0.6x). When `emphasized` is true, bar gets a subtle glow.
  */
 export function Extruded3DHorizontalBar(props: any) {
-  const { x, y, width, height: h, fill, emphasized, deemphasized, isDarkTheme } = props;
+  const {
+    x,
+    y,
+    width,
+    height: h,
+    fill,
+    emphasized,
+    deemphasized,
+    isDarkTheme,
+  } = props;
   if (!h || h <= 0 || !width) return null;
 
   const barWidth = Math.abs(width);
   const barX = width >= 0 ? x : x + width;
   // Pottery focus: deemphasized bars become warm gray
   const baseColor = deemphasized
-    ? (isDarkTheme ? POTTERY_DARK : POTTERY_LIGHT)
-    : (fill || '#4A4A5A');
+    ? isDarkTheme
+      ? POTTERY_DARK
+      : POTTERY_LIGHT
+    : fill || "#4A4A5A";
   const id = `hbar3d_${gradientCounter++}`;
   // Match the same highlight/shadow depth as Extruded3DBarWithCeiling — pottery
   // color alone handles the deemphasis, not transparency or reduced extrusion
@@ -647,22 +747,33 @@ export function Extruded3DHorizontalBar(props: any) {
   const extrudeY = 3;
 
   return (
-    <g style={{ transition: 'opacity 0.3s ease' }}>
+    <g style={{ transition: "opacity 0.3s ease" }}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={highlightColor} stopOpacity={0.95} />
-          <stop offset="8%" stopColor={lighten(baseColor, 0.15)} stopOpacity={0.92} />
+          <stop
+            offset="8%"
+            stopColor={lighten(baseColor, 0.15)}
+            stopOpacity={0.92}
+          />
           <stop offset="50%" stopColor={baseColor} stopOpacity={0.88} />
-          <stop offset="92%" stopColor={darken(baseColor, 0.15)} stopOpacity={0.88} />
+          <stop
+            offset="92%"
+            stopColor={darken(baseColor, 0.15)}
+            stopOpacity={0.88}
+          />
           <stop offset="100%" stopColor={shadowColor} stopOpacity={0.92} />
         </linearGradient>
-        <filter id={`${id}_shadow`} x="-25%" y="-20%" width="160%" height="150%">
+        <filter
+          id={`${id}_shadow`}
+          x="-25%"
+          y="-20%"
+          width="160%"
+          height="150%"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" />
         </filter>
-
       </defs>
-
-
 
       {/* Cast shadow — same depth as vertical bars */}
       <rect
@@ -742,9 +853,9 @@ export function Extruded3DHorizontalBar(props: any) {
 export function Extruded3DDot(props: any) {
   const { cx, cy, r = 4, fill } = props;
   if (cx == null || cy == null) return null;
-  
-  const baseColor = fill || '#4A4A5A';
-  const safeColor = baseColor.startsWith('#') ? baseColor : '#4A7A8A';
+
+  const baseColor = fill || "#4A4A5A";
+  const safeColor = baseColor.startsWith("#") ? baseColor : "#4A7A8A";
   const id = `dot3d_${gradientCounter++}`;
   const highlightColor = lighten(safeColor, 0.55);
   const shadowColor = darken(safeColor, 0.55);
@@ -758,10 +869,22 @@ export function Extruded3DDot(props: any) {
           <stop offset="35%" stopColor={safeColor} stopOpacity={0.88} />
           <stop offset="100%" stopColor={shadowColor} stopOpacity={0.8} />
         </radialGradient>
-        <filter id={`${id}_shadow`} x="-60%" y="-60%" width="220%" height="220%">
+        <filter
+          id={`${id}_shadow`}
+          x="-60%"
+          y="-60%"
+          width="220%"
+          height="220%"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" />
         </filter>
-        <filter id={`${id}_ambient`} x="-40%" y="-40%" width="180%" height="180%">
+        <filter
+          id={`${id}_ambient`}
+          x="-40%"
+          y="-40%"
+          width="180%"
+          height="180%"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
         </filter>
       </defs>
@@ -813,17 +936,28 @@ export function Extruded3DDot(props: any) {
 /**
  * Generate SVG defs for 3D area gradient with enhanced depth
  */
-export function create3DAreaGradient(baseColor: string, isDark: boolean): { id: string; defs: React.ReactNode } {
+export function create3DAreaGradient(
+  baseColor: string,
+  isDark: boolean
+): { id: string; defs: React.ReactNode } {
   const id = `area3d_${gradientCounter++}`;
-  const safeColor = baseColor.startsWith('#') ? baseColor : '#00d4ff';
+  const safeColor = baseColor.startsWith("#") ? baseColor : "#00d4ff";
   const topColor = lighten(safeColor, isDark ? 0.2 : 0.15);
   const bottomColor = darken(safeColor, isDark ? 0.35 : 0.2);
 
   const defs = (
     <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stopColor={topColor} stopOpacity={isDark ? 0.5 : 0.4} />
-      <stop offset="30%" stopColor={baseColor} stopOpacity={isDark ? 0.3 : 0.25} />
-      <stop offset="70%" stopColor={bottomColor} stopOpacity={isDark ? 0.12 : 0.08} />
+      <stop
+        offset="30%"
+        stopColor={baseColor}
+        stopOpacity={isDark ? 0.3 : 0.25}
+      />
+      <stop
+        offset="70%"
+        stopColor={bottomColor}
+        stopOpacity={isDark ? 0.12 : 0.08}
+      />
       <stop offset="100%" stopColor={bottomColor} stopOpacity={0.02} />
     </linearGradient>
   );
@@ -836,21 +970,37 @@ export function create3DAreaGradient(baseColor: string, isDark: boolean): { id: 
  * The line appears as a physical ridge casting shadow on the chart surface
  */
 export const LINE_3D_STYLE = {
-  filter: 'drop-shadow(4px 6px 5px rgba(0,0,0,0.5)) drop-shadow(2px 3px 3px rgba(0,0,0,0.25)) drop-shadow(0px 1px 1px rgba(0,0,0,0.15))',
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
+  filter:
+    "drop-shadow(4px 6px 5px rgba(0,0,0,0.5)) drop-shadow(2px 3px 3px rgba(0,0,0,0.25)) drop-shadow(0px 1px 1px rgba(0,0,0,0.15))",
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
 };
 
 /**
  * SVG filter definition for 3D line shadow — use this in chart <defs>
  * Creates a more realistic cast shadow than CSS drop-shadow
  */
-export function LineShadowFilter({ id = 'lineShadow3d' }: { id?: string }) {
+export function LineShadowFilter({ id = "lineShadow3d" }: { id?: string }) {
   return (
     <filter id={id} x="-15%" y="-15%" width="140%" height="150%">
-      <feDropShadow dx="4" dy="6" stdDeviation="4" floodColor="rgba(0,0,0,0.45)" />
-      <feDropShadow dx="2" dy="3" stdDeviation="2" floodColor="rgba(0,0,0,0.25)" />
-      <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="rgba(0,0,0,0.1)" />
+      <feDropShadow
+        dx="4"
+        dy="6"
+        stdDeviation="4"
+        floodColor="rgba(0,0,0,0.45)"
+      />
+      <feDropShadow
+        dx="2"
+        dy="3"
+        stdDeviation="2"
+        floodColor="rgba(0,0,0,0.25)"
+      />
+      <feDropShadow
+        dx="0"
+        dy="1"
+        stdDeviation="1"
+        floodColor="rgba(0,0,0,0.1)"
+      />
     </filter>
   );
 }
@@ -862,7 +1012,7 @@ export function Extruded3DBarWithCeiling(props: any) {
   const { x, y, width, height: h, fill, payload } = props;
   if (!h || h <= 0 || !width || width <= 0) return null;
 
-  const baseColor = fill || '#4A4A5A';
+  const baseColor = fill || "#4A4A5A";
   const id = `barceil3d_${gradientCounter++}`;
   const highlightColor = lighten(baseColor, 0.4);
   const shadowColor = darken(baseColor, 0.5);
@@ -872,7 +1022,7 @@ export function Extruded3DBarWithCeiling(props: any) {
   const avg = payload?.avg || 0;
   const yAxis = y + h;
   const barScale = avg > 0 ? h / avg : 0;
-  const capY = cap > 0 ? yAxis - (cap * barScale) : 0;
+  const capY = cap > 0 ? yAxis - cap * barScale : 0;
 
   const extrudeX = 3;
   const extrudeY = 3;
@@ -883,23 +1033,43 @@ export function Extruded3DBarWithCeiling(props: any) {
 
   // Recalculate capY with the offset
   const adjustedYAxis = adjustedY + adjustedH;
-  const adjustedCapY = cap > 0 ? adjustedYAxis - (cap * barScale) : 0;
+  const adjustedCapY = cap > 0 ? adjustedYAxis - cap * barScale : 0;
 
   return (
     <g>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={highlightColor} stopOpacity={0.95} />
-          <stop offset="8%" stopColor={lighten(baseColor, 0.15)} stopOpacity={0.92} />
+          <stop
+            offset="8%"
+            stopColor={lighten(baseColor, 0.15)}
+            stopOpacity={0.92}
+          />
           <stop offset="50%" stopColor={baseColor} stopOpacity={0.88} />
-          <stop offset="92%" stopColor={darken(baseColor, 0.15)} stopOpacity={0.88} />
+          <stop
+            offset="92%"
+            stopColor={darken(baseColor, 0.15)}
+            stopOpacity={0.88}
+          />
           <stop offset="100%" stopColor={shadowColor} stopOpacity={0.92} />
         </linearGradient>
-        <filter id={`${id}_shadow`} x="-30%" y="-15%" width="170%" height="150%">
+        <filter
+          id={`${id}_shadow`}
+          x="-30%"
+          y="-15%"
+          width="170%"
+          height="150%"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="4" />
         </filter>
         {/* Braille dot shadow filter */}
-        <filter id={`${id}_dotShadow`} x="-100%" y="-100%" width="300%" height="300%">
+        <filter
+          id={`${id}_dotShadow`}
+          x="-100%"
+          y="-100%"
+          width="300%"
+          height="300%"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
         </filter>
         {/* Braille dot lighting gradient */}
@@ -953,7 +1123,15 @@ export function Extruded3DBarWithCeiling(props: any) {
       />
 
       {/* Front face */}
-      <rect x={x} y={adjustedY} width={width} height={adjustedH} rx={2} ry={2} fill={`url(#${id})`} />
+      <rect
+        x={x}
+        y={adjustedY}
+        width={width}
+        height={adjustedH}
+        rx={2}
+        ry={2}
+        fill={`url(#${id})`}
+      />
 
       {/* Top face — reduced opacity to minimize shadow artifact */}
       <path
@@ -963,56 +1141,63 @@ export function Extruded3DBarWithCeiling(props: any) {
       />
 
       {/* Top highlight */}
-      <rect x={x + 1} y={adjustedY} width={width - 2} height={Math.min(2.5, adjustedH * 0.06)} rx={1.5}
-        fill={highlightColor} fillOpacity={0.55} />
+      <rect
+        x={x + 1}
+        y={adjustedY}
+        width={width - 2}
+        height={Math.min(2.5, adjustedH * 0.06)}
+        rx={1.5}
+        fill={highlightColor}
+        fillOpacity={0.55}
+      />
 
       {/* Capacity ceiling marker — 3D braille dots with lighting and cast shadows */}
-      {cap > 0 && (() => {
-        const dotRadius = 2.2;
-        const dotSpacing = 7;
-        const lineStart = x - 3;
-        const lineEnd = x + width + 3;
-        const lineLen = lineEnd - lineStart;
-        const dotCount = Math.max(2, Math.floor(lineLen / dotSpacing));
-        const actualSpacing = lineLen / dotCount;
-        const isDarkTheme = baseColor.length > 0; // always true, we use the prop from parent
-        const dots = [];
-        for (let di = 0; di <= dotCount; di++) {
-          const dotX = lineStart + di * actualSpacing;
-          dots.push(
-            <React.Fragment key={`dot_${di}`}>
-              {/* Cast shadow — offset down-right like all other 3D elements */}
-              <ellipse
-                cx={dotX + 1.5}
-                cy={adjustedCapY + 2}
-                rx={dotRadius + 0.8}
-                ry={dotRadius * 0.5 + 0.5}
-                fill="rgba(0,0,0,0.35)"
-                filter={`url(#${id}_dotShadow)`}
-              />
-              {/* 3D dot with radial gradient lighting */}
-              <circle
-                cx={dotX}
-                cy={adjustedCapY}
-                r={dotRadius}
-                fill={`url(#${id}_dotGrad)`}
-              />
-              {/* Specular highlight — tiny bright spot upper-left */}
-              <circle
-                cx={dotX - dotRadius * 0.3}
-                cy={adjustedCapY - dotRadius * 0.3}
-                r={dotRadius * 0.35}
-                fill="rgba(255,255,255,0.7)"
-              />
-            </React.Fragment>
-          );
-        }
-        return <>{dots}</>;
-      })()}
+      {cap > 0 &&
+        (() => {
+          const dotRadius = 2.2;
+          const dotSpacing = 7;
+          const lineStart = x - 3;
+          const lineEnd = x + width + 3;
+          const lineLen = lineEnd - lineStart;
+          const dotCount = Math.max(2, Math.floor(lineLen / dotSpacing));
+          const actualSpacing = lineLen / dotCount;
+          const isDarkTheme = baseColor.length > 0; // always true, we use the prop from parent
+          const dots = [];
+          for (let di = 0; di <= dotCount; di++) {
+            const dotX = lineStart + di * actualSpacing;
+            dots.push(
+              <React.Fragment key={`dot_${di}`}>
+                {/* Cast shadow — offset down-right like all other 3D elements */}
+                <ellipse
+                  cx={dotX + 1.5}
+                  cy={adjustedCapY + 2}
+                  rx={dotRadius + 0.8}
+                  ry={dotRadius * 0.5 + 0.5}
+                  fill="rgba(0,0,0,0.35)"
+                  filter={`url(#${id}_dotShadow)`}
+                />
+                {/* 3D dot with radial gradient lighting */}
+                <circle
+                  cx={dotX}
+                  cy={adjustedCapY}
+                  r={dotRadius}
+                  fill={`url(#${id}_dotGrad)`}
+                />
+                {/* Specular highlight — tiny bright spot upper-left */}
+                <circle
+                  cx={dotX - dotRadius * 0.3}
+                  cy={adjustedCapY - dotRadius * 0.3}
+                  r={dotRadius * 0.35}
+                  fill="rgba(255,255,255,0.7)"
+                />
+              </React.Fragment>
+            );
+          }
+          return <>{dots}</>;
+        })()}
     </g>
   );
 }
-
 
 // ─── 3D EXTRUDED PIE / DONUT CHART (Flat Circular with Neumorphic Shadows) ───
 
@@ -1055,13 +1240,20 @@ export function Extruded3DPie({
   const id = `pie3d_${gradientCounter++}`;
 
   // Build slice geometry
-  const slices: Array<PieSlice & { startAngle: number; endAngle: number; midAngle: number }> = [];
+  const slices: Array<
+    PieSlice & { startAngle: number; endAngle: number; midAngle: number }
+  > = [];
   let currentAngle = -Math.PI / 2; // start at 12 o'clock
-  data.forEach((d) => {
+  data.forEach(d => {
     const sliceAngle = (d.value / total) * Math.PI * 2;
     const start = currentAngle + gapAngle / 2;
     const end = currentAngle + sliceAngle - gapAngle / 2;
-    slices.push({ ...d, startAngle: start, endAngle: end, midAngle: (start + end) / 2 });
+    slices.push({
+      ...d,
+      startAngle: start,
+      endAngle: end,
+      midAngle: (start + end) / 2,
+    });
     currentAngle += sliceAngle;
   });
 
@@ -1070,21 +1262,42 @@ export function Extruded3DPie({
   const pty = (angle: number, r: number) => cy + Math.sin(angle) * r;
 
   // Helper: arc path for a donut segment (flat, no squash)
-  const arcPath = (startA: number, endA: number, rOuter: number, rInner: number, offsetX = 0, offsetY = 0) => {
+  const arcPath = (
+    startA: number,
+    endA: number,
+    rOuter: number,
+    rInner: number,
+    offsetX = 0,
+    offsetY = 0
+  ) => {
     const largeArc = endA - startA > Math.PI ? 1 : 0;
-    const os = { x: ptx(startA, rOuter) + offsetX, y: pty(startA, rOuter) + offsetY };
-    const oe = { x: ptx(endA, rOuter) + offsetX, y: pty(endA, rOuter) + offsetY };
-    const is_ = { x: ptx(startA, rInner) + offsetX, y: pty(startA, rInner) + offsetY };
-    const ie = { x: ptx(endA, rInner) + offsetX, y: pty(endA, rInner) + offsetY };
+    const os = {
+      x: ptx(startA, rOuter) + offsetX,
+      y: pty(startA, rOuter) + offsetY,
+    };
+    const oe = {
+      x: ptx(endA, rOuter) + offsetX,
+      y: pty(endA, rOuter) + offsetY,
+    };
+    const is_ = {
+      x: ptx(startA, rInner) + offsetX,
+      y: pty(startA, rInner) + offsetY,
+    };
+    const ie = {
+      x: ptx(endA, rInner) + offsetX,
+      y: pty(endA, rInner) + offsetY,
+    };
     if (rInner > 0) {
       return `M${os.x},${os.y} A${rOuter},${rOuter} 0 ${largeArc} 1 ${oe.x},${oe.y} L${ie.x},${ie.y} A${rInner},${rInner} 0 ${largeArc} 0 ${is_.x},${is_.y} Z`;
     }
     return `M${cx + offsetX},${cy + offsetY} L${os.x},${os.y} A${rOuter},${rOuter} 0 ${largeArc} 1 ${oe.x},${oe.y} Z`;
   };
 
-  const bgStroke = isDark ? 'rgba(20,20,38,0.9)' : 'rgba(220,216,210,0.9)';
-  const textColor = isDark ? 'rgba(255,255,255,0.88)' : 'rgba(30,30,30,0.88)';
-  const subTextColor = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(30,30,30,0.55)';
+  const bgStroke = isDark ? "rgba(20,20,38,0.9)" : "rgba(220,216,210,0.9)";
+  const textColor = isDark ? "rgba(255,255,255,0.88)" : "rgba(30,30,30,0.88)";
+  const subTextColor = isDark
+    ? "rgba(255,255,255,0.55)"
+    : "rgba(30,30,30,0.55)";
 
   // Light source direction (upper-left)
   const lightAngle = -Math.PI * 0.75; // 135 degrees from right = upper-left
@@ -1093,17 +1306,35 @@ export function Extruded3DPie({
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
       <defs>
         {/* Primary cast shadow filter — deep, soft blur */}
-        <filter id={`${id}_segShadow`} x="-60%" y="-60%" width="220%" height="220%">
+        <filter
+          id={`${id}_segShadow`}
+          x="-60%"
+          y="-60%"
+          width="220%"
+          height="220%"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
         </filter>
 
         {/* Secondary ambient shadow — tighter */}
-        <filter id={`${id}_ambientShadow`} x="-40%" y="-40%" width="180%" height="180%">
+        <filter
+          id={`${id}_ambientShadow`}
+          x="-40%"
+          y="-40%"
+          width="180%"
+          height="180%"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" />
         </filter>
 
         {/* Inner hole inset shadow filter */}
-        <filter id={`${id}_innerShadow`} x="-50%" y="-50%" width="200%" height="200%">
+        <filter
+          id={`${id}_innerShadow`}
+          x="-50%"
+          y="-50%"
+          width="200%"
+          height="200%"
+        >
           <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="blur" />
           <feOffset dx="3" dy="4" result="offsetBlur" />
           <feComposite in="SourceGraphic" in2="offsetBlur" operator="over" />
@@ -1111,20 +1342,48 @@ export function Extruded3DPie({
 
         {/* Specular radial highlight — upper-left glow */}
         <radialGradient id={`${id}_specular`} cx="30%" cy="30%" r="70%">
-          <stop offset="0%" stopColor={isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.35)'} />
-          <stop offset="50%" stopColor={isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.08)'} />
+          <stop
+            offset="0%"
+            stopColor={
+              isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.35)"
+            }
+          />
+          <stop
+            offset="50%"
+            stopColor={
+              isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.08)"
+            }
+          />
           <stop offset="100%" stopColor="rgba(255,255,255,0)" />
         </radialGradient>
 
         {/* Inner hole — recessed floor look (darker center, shadow from above) */}
         <radialGradient id={`${id}_innerHole`} cx="55%" cy="58%" r="60%">
-          <stop offset="0%" stopColor={isDark ? '#1a1a30' : '#d8d4cc'} stopOpacity={isDark ? 0.95 : 0.75} />
-          <stop offset="50%" stopColor={isDark ? '#161628' : '#c8c2b8'} stopOpacity={isDark ? 0.9 : 0.65} />
-          <stop offset="100%" stopColor={isDark ? '#121222' : '#bab4a8'} stopOpacity={isDark ? 0.95 : 0.55} />
+          <stop
+            offset="0%"
+            stopColor={isDark ? "#1a1a30" : "#d8d4cc"}
+            stopOpacity={isDark ? 0.95 : 0.75}
+          />
+          <stop
+            offset="50%"
+            stopColor={isDark ? "#161628" : "#c8c2b8"}
+            stopOpacity={isDark ? 0.9 : 0.65}
+          />
+          <stop
+            offset="100%"
+            stopColor={isDark ? "#121222" : "#bab4a8"}
+            stopOpacity={isDark ? 0.95 : 0.55}
+          />
         </radialGradient>
 
         {/* Inner hole inward shadow filter — for segments casting shadows onto the floor */}
-        <filter id={`${id}_innerFloorShadow`} x="-80%" y="-80%" width="260%" height="260%">
+        <filter
+          id={`${id}_innerFloorShadow`}
+          x="-80%"
+          y="-80%"
+          width="260%"
+          height="260%"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="5" />
         </filter>
 
@@ -1142,12 +1401,35 @@ export function Extruded3DPie({
           const lightBoost = facingLight * 0.14; // toned down from 0.18
 
           return (
-            <linearGradient key={i} id={`${id}_grad_${i}`} x1={gx1} y1={gy1} x2={gx2} y2={gy2}>
-              <stop offset="0%" stopColor={lighten(s.color, 0.28 + lightBoost)} stopOpacity={0.97} />
-              <stop offset="25%" stopColor={lighten(s.color, 0.1 + lightBoost)} stopOpacity={0.94} />
+            <linearGradient
+              key={i}
+              id={`${id}_grad_${i}`}
+              x1={gx1}
+              y1={gy1}
+              x2={gx2}
+              y2={gy2}
+            >
+              <stop
+                offset="0%"
+                stopColor={lighten(s.color, 0.28 + lightBoost)}
+                stopOpacity={0.97}
+              />
+              <stop
+                offset="25%"
+                stopColor={lighten(s.color, 0.1 + lightBoost)}
+                stopOpacity={0.94}
+              />
               <stop offset="60%" stopColor={s.color} stopOpacity={0.92} />
-              <stop offset="85%" stopColor={darken(s.color, 0.15 - lightBoost * 0.3)} stopOpacity={0.94} />
-              <stop offset="100%" stopColor={darken(s.color, 0.3 - lightBoost * 0.4)} stopOpacity={0.97} />
+              <stop
+                offset="85%"
+                stopColor={darken(s.color, 0.15 - lightBoost * 0.3)}
+                stopOpacity={0.94}
+              />
+              <stop
+                offset="100%"
+                stopColor={darken(s.color, 0.3 - lightBoost * 0.4)}
+                stopOpacity={0.97}
+              />
             </linearGradient>
           );
         })}
@@ -1158,10 +1440,17 @@ export function Extruded3DPie({
       {slices.map((s, i) => (
         <path
           key={`deepShadow_${i}`}
-          d={arcPath(s.startAngle, s.endAngle, outerRadius + 2, innerRadius > 0 ? innerRadius - 2 : 0, shadowOffsetX, shadowOffsetY)}
-          fill={isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.2)'}
+          d={arcPath(
+            s.startAngle,
+            s.endAngle,
+            outerRadius + 2,
+            innerRadius > 0 ? innerRadius - 2 : 0,
+            shadowOffsetX,
+            shadowOffsetY
+          )}
+          fill={isDark ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.2)"}
           filter={`url(#${id}_segShadow)`}
-          style={{ pointerEvents: 'none' }}
+          style={{ pointerEvents: "none" }}
         />
       ))}
 
@@ -1169,10 +1458,17 @@ export function Extruded3DPie({
       {slices.map((s, i) => (
         <path
           key={`ambientShadow_${i}`}
-          d={arcPath(s.startAngle, s.endAngle, outerRadius, innerRadius > 0 ? innerRadius : 0, shadowOffsetX * 0.4, shadowOffsetY * 0.5)}
-          fill={isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.1)'}
+          d={arcPath(
+            s.startAngle,
+            s.endAngle,
+            outerRadius,
+            innerRadius > 0 ? innerRadius : 0,
+            shadowOffsetX * 0.4,
+            shadowOffsetY * 0.5
+          )}
+          fill={isDark ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.1)"}
           filter={`url(#${id}_ambientShadow)`}
-          style={{ pointerEvents: 'none' }}
+          style={{ pointerEvents: "none" }}
         />
       ))}
 
@@ -1197,7 +1493,7 @@ export function Extruded3DPie({
             key={`outerHighlight_${i}`}
             d={arcPath(s.startAngle, s.endAngle, outerRadius, outerRadius - 3)}
             fill={`rgba(255,255,255,${highlightOpacity})`}
-            style={{ pointerEvents: 'none' }}
+            style={{ pointerEvents: "none" }}
           />
         );
       })}
@@ -1210,9 +1506,14 @@ export function Extruded3DPie({
         return (
           <path
             key={`innerHighlight_${i}`}
-            d={arcPath(s.startAngle, s.endAngle, innerRadius + 5, innerRadius + 1)}
+            d={arcPath(
+              s.startAngle,
+              s.endAngle,
+              innerRadius + 5,
+              innerRadius + 1
+            )}
             fill={`rgba(255,255,255,${highlightOpacity})`}
-            style={{ pointerEvents: 'none' }}
+            style={{ pointerEvents: "none" }}
           />
         );
       })}
@@ -1227,7 +1528,7 @@ export function Extruded3DPie({
             key={`outerEdgeShadow_${i}`}
             d={arcPath(s.startAngle, s.endAngle, outerRadius, outerRadius - 4)}
             fill={`rgba(0,0,0,${shadowOpacity})`}
-            style={{ pointerEvents: 'none' }}
+            style={{ pointerEvents: "none" }}
           />
         );
       })}
@@ -1242,7 +1543,7 @@ export function Extruded3DPie({
             key={`innerEdgeShadow_${i}`}
             d={arcPath(s.startAngle, s.endAngle, innerRadius + 4, innerRadius)}
             fill={`rgba(0,0,0,${shadowOpacity})`}
-            style={{ pointerEvents: 'none' }}
+            style={{ pointerEvents: "none" }}
           />
         );
       })}
@@ -1253,7 +1554,7 @@ export function Extruded3DPie({
         cy={cy - outerRadius * 0.18}
         r={outerRadius * 0.9}
         fill={`url(#${id}_specular)`}
-        style={{ pointerEvents: 'none' }}
+        style={{ pointerEvents: "none" }}
       />
 
       {/* ── Layer 9: Inner donut hole — recessed floor ── */}
@@ -1279,10 +1580,21 @@ export function Extruded3DPie({
             return (
               <path
                 key={`innerFloorShadow_${i}`}
-                d={arcPath(s.startAngle - 0.03, s.endAngle + 0.03, innerRadius + 1, Math.max(innerRadius * 0.5, innerRadius - 18), -inShadowX, -inShadowY)}
-                fill={isDark ? `rgba(0,0,0,${shadowStrength * 0.7})` : `rgba(0,0,0,${shadowStrength * 0.25})`}
+                d={arcPath(
+                  s.startAngle - 0.03,
+                  s.endAngle + 0.03,
+                  innerRadius + 1,
+                  Math.max(innerRadius * 0.5, innerRadius - 18),
+                  -inShadowX,
+                  -inShadowY
+                )}
+                fill={
+                  isDark
+                    ? `rgba(0,0,0,${shadowStrength * 0.7})`
+                    : `rgba(0,0,0,${shadowStrength * 0.25})`
+                }
                 filter={`url(#${id}_innerFloorShadow)`}
-                style={{ pointerEvents: 'none' }}
+                style={{ pointerEvents: "none" }}
                 clipPath={`circle(${innerRadius}px at ${cx}px ${cy}px)`}
               />
             );
@@ -1296,9 +1608,18 @@ export function Extruded3DPie({
             return (
               <path
                 key={`innerWallGlow_${i}`}
-                d={arcPath(s.startAngle, s.endAngle, innerRadius + 6, innerRadius + 1)}
-                fill={isDark ? `rgba(255,255,255,${glowOpacity * 0.7})` : `rgba(255,255,255,${glowOpacity * 1.2})`}
-                style={{ pointerEvents: 'none' }}
+                d={arcPath(
+                  s.startAngle,
+                  s.endAngle,
+                  innerRadius + 6,
+                  innerRadius + 1
+                )}
+                fill={
+                  isDark
+                    ? `rgba(255,255,255,${glowOpacity * 0.7})`
+                    : `rgba(255,255,255,${glowOpacity * 1.2})`
+                }
+                style={{ pointerEvents: "none" }}
               />
             );
           })}
@@ -1309,18 +1630,18 @@ export function Extruded3DPie({
             cy={cy + 2}
             r={innerRadius}
             fill="none"
-            stroke={isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.12)'}
+            stroke={isDark ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.12)"}
             strokeWidth={3}
-            style={{ pointerEvents: 'none' }}
+            style={{ pointerEvents: "none" }}
           />
 
           {/* Recessed rim highlight — upper-left edge lighter (light catches the lip) */}
           <path
             d={`M${cx},${cy - innerRadius} A${innerRadius},${innerRadius} 0 0 0 ${cx - innerRadius},${cy}`}
             fill="none"
-            stroke={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.35)'}
+            stroke={isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.35)"}
             strokeWidth={2}
-            style={{ pointerEvents: 'none' }}
+            style={{ pointerEvents: "none" }}
           />
         </>
       )}
@@ -1333,15 +1654,24 @@ export function Extruded3DPie({
         const connR = outerRadius + 4;
         const connX = ptx(s.midAngle, connR);
         const connY = pty(s.midAngle, connR);
-        const anchor = Math.cos(s.midAngle) > 0.1 ? 'start' : Math.cos(s.midAngle) < -0.1 ? 'end' : 'middle';
-        const fmtVal = formatValue ? formatValue(s.value) : `$${(s.value / 1e6).toFixed(1)}M`;
+        const anchor =
+          Math.cos(s.midAngle) > 0.1
+            ? "start"
+            : Math.cos(s.midAngle) < -0.1
+              ? "end"
+              : "middle";
+        const fmtVal = formatValue
+          ? formatValue(s.value)
+          : `$${(s.value / 1e6).toFixed(1)}M`;
         const pct = ((s.value / total) * 100).toFixed(1);
         return (
           <React.Fragment key={`label_${i}`}>
             <line
-              x1={connX} y1={connY}
-              x2={lx} y2={ly}
-              stroke={isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.18)'}
+              x1={connX}
+              y1={connY}
+              x2={lx}
+              y2={ly}
+              stroke={isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.18)"}
               strokeWidth={1}
             />
             <text
@@ -1351,7 +1681,7 @@ export function Extruded3DPie({
               fill={textColor}
               fontSize={11}
               fontWeight={600}
-              style={{ fontFamily: 'Space Grotesk, sans-serif' }}
+              style={{ fontFamily: "Space Grotesk, sans-serif" }}
             >
               {s.name}
             </text>
@@ -1361,7 +1691,7 @@ export function Extruded3DPie({
               textAnchor={anchor as any}
               fill={subTextColor}
               fontSize={10}
-              style={{ fontFamily: 'Space Grotesk, sans-serif' }}
+              style={{ fontFamily: "Space Grotesk, sans-serif" }}
             >
               {fmtVal} ({pct}%)
             </text>

@@ -1,14 +1,14 @@
-import { useState, useMemo } from 'react';
-import { useFilters } from '@/contexts/FilterContext';
-import { TEAMS } from '@/lib/mlsData';
-import { ChevronLeft, ChevronRight, Filter, RotateCcw } from 'lucide-react';
+import { useState, useMemo } from "react";
+import { useFilters } from "@/contexts/FilterContext";
+import { TEAMS } from "@/lib/mlsData";
+import { ChevronLeft, ChevronRight, Filter, RotateCcw } from "lucide-react";
 
 export default function FilterPanel() {
   const { filters, setFilters, resetFilters, isFilterActive } = useFilters();
   const [collapsed, setCollapsed] = useState(true);
 
-  const positions = ['GK', 'DF', 'MF', 'FW'];
-  const conferences = ['Eastern', 'Western'];
+  const positions = ["GK", "DF", "MF", "FW"];
+  const conferences = ["Eastern", "Western"];
 
   const toggleTeam = (id: string) => {
     setFilters(prev => ({
@@ -43,7 +43,10 @@ export default function FilterPanel() {
     return `$${val}`;
   };
 
-  const sortedTeams = useMemo(() => [...TEAMS].sort((a, b) => a.short.localeCompare(b.short)), []);
+  const sortedTeams = useMemo(
+    () => [...TEAMS].sort((a, b) => a.short.localeCompare(b.short)),
+    []
+  );
 
   return (
     <>
@@ -51,28 +54,33 @@ export default function FilterPanel() {
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="fixed left-0 top-1/2 -translate-y-1/2 z-50 neu-raised rounded-r-lg p-2 flex items-center gap-1 transition-all duration-300"
-        style={{ left: collapsed ? 0 : '280px' }}
+        style={{ left: collapsed ? 0 : "280px" }}
       >
         {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         {collapsed && (
           <span className="flex items-center gap-1">
             <Filter size={14} className="text-cyan" />
-            {isFilterActive && <span className="w-2 h-2 rounded-full bg-cyan animate-glow-pulse" />}
+            {isFilterActive && (
+              <span className="w-2 h-2 rounded-full bg-cyan animate-glow-pulse" />
+            )}
           </span>
         )}
       </button>
 
       {/* Filter Panel */}
       <div
-        className={`fixed left-0 top-0 h-full z-40 transition-transform duration-300 ease-out ${collapsed ? '-translate-x-full' : 'translate-x-0'}`}
-        style={{ width: '280px' }}
+        className={`fixed left-0 top-0 h-full z-40 transition-transform duration-300 ease-out ${collapsed ? "-translate-x-full" : "translate-x-0"}`}
+        style={{ width: "280px" }}
       >
         <div className="h-full neu-flat overflow-y-auto border-r flex flex-col">
           {/* Header */}
           <div className="p-4 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Filter size={16} className="text-cyan" />
-              <span className="text-sm font-semibold tracking-wide" style={{ fontFamily: 'Space Grotesk' }}>
+              <span
+                className="text-sm font-semibold tracking-wide"
+                style={{ fontFamily: "Space Grotesk" }}
+              >
                 GLOBAL FILTERS
               </span>
             </div>
@@ -100,8 +108,8 @@ export default function FilterPanel() {
                     onClick={() => toggleConference(conf)}
                     className={`flex-1 text-xs py-1.5 rounded-md transition-all ${
                       filters.conferenceFilter.includes(conf)
-                        ? 'neu-pressed text-cyan'
-                        : 'neu-raised text-muted-foreground hover:text-foreground'
+                        ? "neu-pressed text-cyan"
+                        : "neu-raised text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {conf}
@@ -122,8 +130,8 @@ export default function FilterPanel() {
                     onClick={() => togglePosition(pos)}
                     className={`flex-1 text-xs py-1.5 rounded-md transition-all font-mono ${
                       filters.positionFilter.includes(pos)
-                        ? 'neu-pressed text-cyan'
-                        : 'neu-raised text-muted-foreground hover:text-foreground'
+                        ? "neu-pressed text-cyan"
+                        : "neu-raised text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {pos}
@@ -135,7 +143,11 @@ export default function FilterPanel() {
             {/* Teams */}
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
-                Teams ({filters.selectedTeams.length > 0 ? filters.selectedTeams.length : 'All'})
+                Teams (
+                {filters.selectedTeams.length > 0
+                  ? filters.selectedTeams.length
+                  : "All"}
+                )
               </label>
               <div className="neu-concave rounded-lg p-2 max-h-48 overflow-y-auto space-y-0.5">
                 {sortedTeams.map(team => (
@@ -144,8 +156,8 @@ export default function FilterPanel() {
                     onClick={() => toggleTeam(team.id)}
                     className={`w-full text-left text-xs py-1 px-2 rounded flex items-center gap-2 transition-colors ${
                       filters.selectedTeams.includes(team.id)
-                        ? 'text-cyan bg-accent'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                        ? "text-cyan bg-accent"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     }`}
                   >
                     <span
@@ -174,7 +186,12 @@ export default function FilterPanel() {
                   min={16}
                   max={42}
                   value={filters.ageRange[0]}
-                  onChange={e => setFilters(prev => ({ ...prev, ageRange: [+e.target.value, prev.ageRange[1]] }))}
+                  onChange={e =>
+                    setFilters(prev => ({
+                      ...prev,
+                      ageRange: [+e.target.value, prev.ageRange[1]],
+                    }))
+                  }
                   className="flex-1"
                 />
                 <input
@@ -182,7 +199,12 @@ export default function FilterPanel() {
                   min={16}
                   max={42}
                   value={filters.ageRange[1]}
-                  onChange={e => setFilters(prev => ({ ...prev, ageRange: [prev.ageRange[0], +e.target.value] }))}
+                  onChange={e =>
+                    setFilters(prev => ({
+                      ...prev,
+                      ageRange: [prev.ageRange[0], +e.target.value],
+                    }))
+                  }
                   className="flex-1"
                 />
               </div>
@@ -200,7 +222,9 @@ export default function FilterPanel() {
               </div>
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">Min</span>
+                  <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">
+                    Min
+                  </span>
                   <input
                     type="range"
                     min={0}
@@ -209,13 +233,21 @@ export default function FilterPanel() {
                     value={filters.minutesRange[0]}
                     onChange={e => {
                       const val = +e.target.value;
-                      setFilters(prev => ({ ...prev, minutesRange: [Math.min(val, prev.minutesRange[1]), prev.minutesRange[1]] }));
+                      setFilters(prev => ({
+                        ...prev,
+                        minutesRange: [
+                          Math.min(val, prev.minutesRange[1]),
+                          prev.minutesRange[1],
+                        ],
+                      }));
                     }}
                     className="flex-1"
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">Max</span>
+                  <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">
+                    Max
+                  </span>
                   <input
                     type="range"
                     min={0}
@@ -224,7 +256,13 @@ export default function FilterPanel() {
                     value={filters.minutesRange[1]}
                     onChange={e => {
                       const val = +e.target.value;
-                      setFilters(prev => ({ ...prev, minutesRange: [prev.minutesRange[0], Math.max(val, prev.minutesRange[0])] }));
+                      setFilters(prev => ({
+                        ...prev,
+                        minutesRange: [
+                          prev.minutesRange[0],
+                          Math.max(val, prev.minutesRange[0]),
+                        ],
+                      }));
                     }}
                     className="flex-1"
                   />
@@ -244,7 +282,9 @@ export default function FilterPanel() {
               </div>
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">Min</span>
+                  <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">
+                    Min
+                  </span>
                   <input
                     type="range"
                     min={0}
@@ -253,13 +293,21 @@ export default function FilterPanel() {
                     value={filters.salaryRange[0]}
                     onChange={e => {
                       const val = +e.target.value;
-                      setFilters(prev => ({ ...prev, salaryRange: [Math.min(val, prev.salaryRange[1]), prev.salaryRange[1]] }));
+                      setFilters(prev => ({
+                        ...prev,
+                        salaryRange: [
+                          Math.min(val, prev.salaryRange[1]),
+                          prev.salaryRange[1],
+                        ],
+                      }));
                     }}
                     className="flex-1"
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">Max</span>
+                  <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">
+                    Max
+                  </span>
                   <input
                     type="range"
                     min={0}
@@ -268,7 +316,13 @@ export default function FilterPanel() {
                     value={filters.salaryRange[1]}
                     onChange={e => {
                       const val = +e.target.value;
-                      setFilters(prev => ({ ...prev, salaryRange: [prev.salaryRange[0], Math.max(val, prev.salaryRange[0])] }));
+                      setFilters(prev => ({
+                        ...prev,
+                        salaryRange: [
+                          prev.salaryRange[0],
+                          Math.max(val, prev.salaryRange[0]),
+                        ],
+                      }));
                     }}
                     className="flex-1"
                   />

@@ -27,7 +27,7 @@ let scriptPromise: Promise<unknown> | null = null;
 function loadMapScript() {
   if (scriptLoaded && window.google?.maps) return Promise.resolve();
   if (scriptPromise) return scriptPromise;
-  
+
   scriptPromise = new Promise(resolve => {
     const script = document.createElement("script");
     script.src = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry`;
@@ -57,20 +57,56 @@ interface MapViewProps {
 
 // Dark map styles
 const DARK_STYLES: google.maps.MapTypeStyle[] = [
-  { elementType: 'geometry', stylers: [{ color: '#0d0d1a' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0d0d1a' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#4a4a6a' }] },
-  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#1a1a2e' }] },
-  { featureType: 'administrative.land_parcel', elementType: 'labels.text.fill', stylers: [{ color: '#3a3a5a' }] },
-  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#111122' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1a1a30' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1a1a2e' }] },
-  { featureType: 'road', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#1e1e35' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#080815' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#2a2a4a' }] },
+  { elementType: "geometry", stylers: [{ color: "#0d0d1a" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#0d0d1a" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#4a4a6a" }] },
+  {
+    featureType: "administrative",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#1a1a2e" }],
+  },
+  {
+    featureType: "administrative.land_parcel",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#3a3a5a" }],
+  },
+  {
+    featureType: "landscape",
+    elementType: "geometry",
+    stylers: [{ color: "#111122" }],
+  },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#1a1a30" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#1a1a2e" }],
+  },
+  {
+    featureType: "road",
+    elementType: "labels",
+    stylers: [{ visibility: "off" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#1e1e35" }],
+  },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#080815" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#2a2a4a" }],
+  },
 ];
 
 export function MapView({
@@ -89,7 +125,7 @@ export function MapView({
       console.error("Map container not found");
       return;
     }
-    
+
     const mapOptions: google.maps.MapOptions = {
       zoom: initialZoom,
       center: initialCenter,
@@ -99,16 +135,18 @@ export function MapView({
       streetViewControl: false,
       mapId: "DEMO_MAP_ID",
     };
-    
+
     map.current = new window.google!.maps.Map(mapContainer.current, mapOptions);
-    
+
     // Apply dark styles via StyledMapType as an overlay
     if (darkMode) {
-      const styledMap = new google.maps.StyledMapType(DARK_STYLES, { name: 'Dark' });
-      map.current.mapTypes.set('dark', styledMap);
-      map.current.setMapTypeId('dark');
+      const styledMap = new google.maps.StyledMapType(DARK_STYLES, {
+        name: "Dark",
+      });
+      map.current.mapTypes.set("dark", styledMap);
+      map.current.setMapTypeId("dark");
     }
-    
+
     if (onMapReady) {
       onMapReady(map.current);
     }
