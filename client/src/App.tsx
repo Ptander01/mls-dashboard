@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -29,6 +30,7 @@ function App() {
           </TooltipProvider>
         </FilterProvider>
       </ThemeProvider>
+      <Analytics />
       <SpeedInsights />
     </ErrorBoundary>
   );
