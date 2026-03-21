@@ -166,12 +166,12 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - [x] Auto-detect inflection events (streaks, collapses, surges, upsets, milestones)
   - [x] Snapshot table: 30 teams ranked by power score, with week selector, conference filter, rank-by toggle
   - [x] Tier groupings (Title Contenders / Playoff / Bubble / Rebuilding) via quartile breaks
-- **Session 2: Bump Chart (#75)**
-  - [ ] Custom SVG bump chart: 30 curved lines across 33 matchweeks
-  - [ ] Deemphasis interaction: hover highlights one line, click locks + triggers timeline
-  - [ ] Week window range slider with presets (Full Season / First Half / Second Half / Last 10)
-  - [ ] Play button: animate rankings unfolding week by week
-  - [ ] Inflection markers on selected team's line
+- **Session 2: Bump Chart (#75) — COMPLETE (PR #78)**
+  - [x] Custom SVG bump chart: 30 curved lines across 33 matchweeks
+  - [x] Deemphasis interaction: hover highlights one line, click locks + triggers timeline
+  - [x] Week window range slider with presets (Full Season / First Half / Second Half / Last 10)
+  - [x] Play button: animate rankings unfolding week by week
+  - [x] Inflection markers on selected team's line
 - **Session 3: Narrative Timeline + Polish (#76)**
   - [ ] Horizontal timeline aligned with bump chart x-axis, triggered by team selection
   - [ ] Event nodes sized by severity, colored by type, with expandable narrative cards
