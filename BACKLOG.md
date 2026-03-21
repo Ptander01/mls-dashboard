@@ -153,6 +153,34 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - Animated horizontal bar chart race synchronized to a matchweek timeline scrubber.
   - Metrics toggle: cumulative points, goals, attendance, salary spend.
 
+## Epic 11: Season Pulse Tab (Merged from former Epics 11+12)
+
+**Effort:** 3 Sessions
+**Goal:** Build a unified "Season Pulse" tab combining power rankings, a bump chart (rank flow visualization), and a narrative season timeline. Three layers of the same question — "How has the season unfolded?" — at macro, meso, and micro zoom levels. Consolidates former Power Rankings (#45-47) and Season Timeline (#48-50) issues.
+**Sprint Brief:** `docs/sprint-briefs/season-pulse-brief.md`
+**Dependencies:** Epics 1-6
+
+- **Session 1: Data Engine + Snapshot Table (#74)**
+  - [ ] Weekly standings engine computing cumulative records at each matchweek (1-33)
+  - [ ] Composite Power Score: Points (35%) + Form (25%) + GD (20%) + H/A Consistency (10%) + Momentum (10%)
+  - [ ] Auto-detect inflection events (streaks, collapses, surges, upsets, milestones)
+  - [ ] Snapshot table: 30 teams ranked by power score, with week selector, conference filter, rank-by toggle
+  - [ ] Tier groupings (Title Contenders / Playoff / Bubble / Rebuilding) via quartile breaks
+- **Session 2: Bump Chart (#75)**
+  - [ ] Custom SVG bump chart: 30 curved lines across 33 matchweeks
+  - [ ] Deemphasis interaction: hover highlights one line, click locks + triggers timeline
+  - [ ] Week window range slider with presets (Full Season / First Half / Second Half / Last 10)
+  - [ ] Play button: animate rankings unfolding week by week
+  - [ ] Inflection markers on selected team's line
+- **Session 3: Narrative Timeline + Polish (#76)**
+  - [ ] Horizontal timeline aligned with bump chart x-axis, triggered by team selection
+  - [ ] Event nodes sized by severity, colored by type, with expandable narrative cards
+  - [ ] Narrative text generation via `insightEngine.ts`
+  - [ ] Sticky context panel (team crest, sparkline, key stats)
+  - [ ] Bidirectional selection state across all three layers
+
+**Superseded Issues (closed):** #45, #46, #47, #48, #49, #50
+
 ## Future / Deferred Work
 
 - **Treemap & Matrix Animation Polish:** Do not use deck.gl for these. Instead, enhance current SVG/Three.js implementations with better lighting and Framer Motion transitions.
