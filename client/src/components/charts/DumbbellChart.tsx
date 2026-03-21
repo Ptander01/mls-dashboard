@@ -251,12 +251,12 @@ function ChromeKnob({
         {/* Cast shadow */}
         <filter
           id={`${id}_shadow`}
-          x="-60%"
-          y="-30%"
-          width="220%"
-          height="220%"
+          x="-80%"
+          y="-40%"
+          width="260%"
+          height="260%"
         >
-          <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" />
+          <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
         </filter>
 
         {/* Rim gradient — metallic edge ring */}
@@ -281,11 +281,11 @@ function ChromeKnob({
 
       {/* Cast shadow */}
       <ellipse
-        cx={cx + 1.2}
-        cy={cy + r * 0.7}
-        rx={r * 1.5}
-        ry={r * 0.55}
-        fill={isDark ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)"}
+        cx={cx + 1.5}
+        cy={cy + r * 0.85}
+        rx={r * 1.6}
+        ry={r * 0.65}
+        fill={isDark ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.25)"}
         filter={`url(#${id}_shadow)`}
       />
 
