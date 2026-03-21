@@ -160,12 +160,12 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 **Sprint Brief:** `docs/sprint-briefs/season-pulse-brief.md`
 **Dependencies:** Epics 1-6
 
-- **Session 1: Data Engine + Snapshot Table (#74)**
-  - [ ] Weekly standings engine computing cumulative records at each matchweek (1-33)
-  - [ ] Composite Power Score: Points (35%) + Form (25%) + GD (20%) + H/A Consistency (10%) + Momentum (10%)
-  - [ ] Auto-detect inflection events (streaks, collapses, surges, upsets, milestones)
-  - [ ] Snapshot table: 30 teams ranked by power score, with week selector, conference filter, rank-by toggle
-  - [ ] Tier groupings (Title Contenders / Playoff / Bubble / Rebuilding) via quartile breaks
+- **Session 1: Data Engine + Snapshot Table (#74) — COMPLETE (PR #77)**
+  - [x] Weekly standings engine computing cumulative records at each matchweek (1-33)
+  - [x] Composite Power Score: Points (35%) + Form (25%) + GD (20%) + H/A Consistency (10%) + Momentum (10%)
+  - [x] Auto-detect inflection events (streaks, collapses, surges, upsets, milestones)
+  - [x] Snapshot table: 30 teams ranked by power score, with week selector, conference filter, rank-by toggle
+  - [x] Tier groupings (Title Contenders / Playoff / Bubble / Rebuilding) via quartile breaks
 - **Session 2: Bump Chart (#75)**
   - [ ] Custom SVG bump chart: 30 curved lines across 33 matchweeks
   - [ ] Deemphasis interaction: hover highlights one line, click locks + triggers timeline
