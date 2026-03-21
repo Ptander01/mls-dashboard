@@ -491,8 +491,8 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
       };
     }
     return {
-      homeKnob: lighten(teamColor, 0.1),
-      awayKnob: darken(teamColor, 0.2),
+      homeKnob: lighten(teamColor, 0.3),
+      awayKnob: darken(teamColor, 0.4),
       fillColor: teamColor,
     };
   };
