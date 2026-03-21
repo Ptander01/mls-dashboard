@@ -71,6 +71,29 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - [x] Integrate `ChartHeader` into all 10 chart cards across Attendance, Travel Performance, Team Budget, and Player Stats tabs.
   - [x] Write unique descriptions and methodology text for each chart.
 
+## Epic 6.6: Dumbbell Chart Polish (Completed)
+
+**Effort:** 1 Session
+**Goal:** Polish the Dumbbell Chart across sizing, visual contrast, and interpretation text. Tighten dimensions to match adjacent Travel tab cards, fix grooved track shadow direction to read as recessed, deepen toggle contrast, and add dynamic metric context paragraphs with sort-order indicator.
+**Files Touched:** `DumbbellChart.tsx`
+**Dependencies:** Epic 6.5
+**PR:** #73 (merged)
+**Issues:** #64 (closed), #65 (closed), #66 (closed)
+
+- **Task 6.6.1: Sizing Consistency (#64)**
+  - [x] Reduce row height (38→28), knob radius (10→7.5), track height (7→5), margins, and font sizes.
+  - [x] Chart now proportional to Scatter, Resilience Index, and Radar cards on Travel tab.
+- **Task 6.6.2: Visual Contrast & Neumorphic Depth (#65)**
+  - [x] Stronger active/inactive toggle styling with deeper neumorphic shadows.
+  - [x] Light-mode fill bar darkened for visibility.
+  - [x] Grooved track SVG filter shadow directions inverted — reads as recessed channel.
+  - [x] Deepened knob cast shadows for stronger 3D lifted look.
+  - [x] Widened home/away lightness split in team color mode for mobile readability.
+- **Task 6.6.3: Interpretation Text & Metric Explanations (#66)**
+  - [x] Enhanced ChartHeader description with expected-pattern and outlier-spotting guidance.
+  - [x] Dynamic metric context paragraph that updates per PPG/WIN%/GD toggle.
+  - [x] Sort-order indicator label ("Sorted by gap magnitude").
+
 ---
 
 ## Epic 7: The Relief Scatter (Visual Overhaul)
