@@ -12,6 +12,7 @@ import {
   Sun,
   Moon,
   Filter,
+  Activity,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -21,6 +22,7 @@ const TeamBudget = lazy(() => import("@/components/tabs/TeamBudget"));
 const Attendance = lazy(() => import("@/components/tabs/Attendance"));
 const TravelMap = lazy(() => import("@/components/tabs/TravelMap"));
 const PitchMatch = lazy(() => import("@/components/tabs/PitchMatch"));
+const SeasonPulse = lazy(() => import("@/components/tabs/SeasonPulse"));
 
 const HERO_IMG =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/hero-stadium-YUnnMoGMi6PoZPwoH5aXFc.webp";
@@ -31,6 +33,7 @@ const tabs = [
   { id: "attendance", label: "Attendance", icon: BarChart3 },
   { id: "travel", label: "Travel Map", icon: Map },
   { id: "pitch", label: "Pitch Match", icon: Target },
+  { id: "pulse", label: "Season Pulse", icon: Activity },
 ];
 
 /** Tab content transition variants */
@@ -63,6 +66,8 @@ function TabContent({ activeTab }: { activeTab: string }) {
       return <TravelMap />;
     case "pitch":
       return <PitchMatch />;
+    case "pulse":
+      return <SeasonPulse />;
     default:
       return null;
   }
