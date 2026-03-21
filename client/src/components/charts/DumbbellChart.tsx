@@ -62,7 +62,7 @@ function GroovedTrack({
             operator="in"
             result="darkIn"
           />
-          <feOffset dx="1.5" dy="1.5" result="darkOffset" />
+          <feOffset dx="-1.5" dy="-1.5" result="darkOffset" />
           <feGaussianBlur
             in="darkOffset"
             stdDeviation="1.5"
@@ -75,7 +75,7 @@ function GroovedTrack({
             operator="in"
             result="lightIn"
           />
-          <feOffset dx="-1" dy="-1" result="lightOffset" />
+          <feOffset dx="1" dy="1" result="lightOffset" />
           <feGaussianBlur
             in="lightOffset"
             stdDeviation="1.2"
@@ -88,9 +88,9 @@ function GroovedTrack({
           </feMerge>
         </filter>
         <linearGradient id={`${id}_grooveGrad`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={isDark ? "#111120" : "#c8c8d4"} />
+          <stop offset="0%" stopColor={isDark ? "#1e1e30" : "#dcdce8"} />
           <stop offset="50%" stopColor={grooveBg} />
-          <stop offset="100%" stopColor={isDark ? "#1e1e30" : "#dcdce8"} />
+          <stop offset="100%" stopColor={isDark ? "#111120" : "#c8c8d4"} />
         </linearGradient>
       </defs>
       <rect
@@ -251,12 +251,12 @@ function ChromeKnob({
         {/* Cast shadow */}
         <filter
           id={`${id}_shadow`}
-          x="-60%"
-          y="-30%"
-          width="220%"
-          height="220%"
+          x="-80%"
+          y="-40%"
+          width="260%"
+          height="260%"
         >
-          <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" />
+          <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
         </filter>
 
         {/* Rim gradient — metallic edge ring */}
@@ -281,11 +281,11 @@ function ChromeKnob({
 
       {/* Cast shadow */}
       <ellipse
-        cx={cx + 1.2}
-        cy={cy + r * 0.7}
-        rx={r * 1.5}
-        ry={r * 0.55}
-        fill={isDark ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)"}
+        cx={cx + 1.5}
+        cy={cy + r * 0.85}
+        rx={r * 1.6}
+        ry={r * 0.65}
+        fill={isDark ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.25)"}
         filter={`url(#${id}_shadow)`}
       />
 
@@ -439,12 +439,12 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
       .sort((a, b) => b.absGap - a.absGap);
   }, [metrics, mode]);
 
-  const marginLeft = 160;
-  const marginRight = 70;
-  const marginTop = 40;
-  const rowHeight = 38;
-  const trackHeight = 7;
-  const knobRadius = 10;
+  const marginLeft = 135;
+  const marginRight = 60;
+  const marginTop = 30;
+  const rowHeight = 28;
+  const trackHeight = 5;
+  const knobRadius = 7;
 
   const chartWidth = 1200;
   const plotWidth = chartWidth - marginLeft - marginRight;
@@ -487,12 +487,12 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
       return {
         homeKnob: stdHomeColor,
         awayKnob: stdAwayColor,
-        fillColor: isDark ? "#3a8a9a" : "#5aacbc",
+        fillColor: isDark ? "#3a8a9a" : "#1a7a8a",
       };
     }
     return {
-      homeKnob: lighten(teamColor, 0.1),
-      awayKnob: darken(teamColor, 0.2),
+      homeKnob: lighten(teamColor, 0.3),
+      awayKnob: darken(teamColor, 0.4),
       fillColor: teamColor,
     };
   };
@@ -507,7 +507,14 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
             <strong className="text-foreground/80">home-field advantage</strong>
             ? This dumbbell chart lines up every MLS club and shows the gap
             between what they earn at home versus on the road. The wider the
-            bar, the more a team relies on its own fans. Toggle between{" "}
+            bar, the more a team relies on its own fans.{" "}
+            <strong className="text-foreground/80">Most teams</strong> skew
+            right (better at home) — that's the expected pattern. Look for the
+            outliers: a narrow gap means a team is{" "}
+            <strong className="text-foreground/80">road-proof</strong>; an
+            unusually wide gap signals a club that{" "}
+            <strong className="text-foreground/80">can't take it on the road</strong>.
+            Toggle between{" "}
             <strong className="text-foreground/80">PPG</strong>,{" "}
             <strong className="text-foreground/80">Win%</strong>, or{" "}
             <strong className="text-foreground/80">Goal Difference</strong> to
@@ -537,13 +544,24 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
                   }}
                   className={`text-[10px] px-2.5 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
                     symbology === s
-                      ? "neu-pressed text-cyan"
+                      ? "neu-pressed"
                       : "neu-raised text-muted-foreground hover:text-foreground"
                   } ${s === "STANDARD" ? "rounded-l-lg" : "rounded-r-lg"}`}
                   style={{
                     fontFamily: "Space Grotesk",
                     minWidth: "40px",
                     minHeight: "28px",
+                    ...(symbology === s
+                      ? {
+                          color: "var(--cyan)",
+                          background: isDark
+                            ? "rgba(0,212,255,0.06)"
+                            : "rgba(8,145,178,0.08)",
+                          boxShadow: isDark
+                            ? "inset 3px 3px 6px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(60,60,80,0.08)"
+                            : "inset 3px 3px 6px rgba(166,170,190,0.45), inset -2px -2px 4px rgba(255,255,255,0.7)",
+                        }
+                      : {}),
                   }}
                 >
                   {s === "STANDARD" ? "H/A" : "TEAM"}
@@ -560,13 +578,24 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
                   }}
                   className={`text-[10px] px-3 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
                     mode === m
-                      ? "neu-pressed text-cyan"
+                      ? "neu-pressed"
                       : "neu-raised text-muted-foreground hover:text-foreground"
                   } ${m === "PPG" ? "rounded-l-lg" : m === "GD" ? "rounded-r-lg" : ""}`}
                   style={{
                     fontFamily: "Space Grotesk",
                     minWidth: "40px",
                     minHeight: "28px",
+                    ...(mode === m
+                      ? {
+                          color: "var(--cyan)",
+                          background: isDark
+                            ? "rgba(0,212,255,0.06)"
+                            : "rgba(8,145,178,0.08)",
+                          boxShadow: isDark
+                            ? "inset 3px 3px 6px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(60,60,80,0.08)"
+                            : "inset 3px 3px 6px rgba(166,170,190,0.45), inset -2px -2px 4px rgba(255,255,255,0.7)",
+                        }
+                      : {}),
                   }}
                 >
                   {m}
@@ -576,6 +605,29 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
           </div>
         }
       />
+
+      {/* Dynamic metric context */}
+      <p
+        className="text-[10.5px] text-muted-foreground/70 italic mb-2 px-1 leading-relaxed"
+        style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+      >
+        {mode === "PPG" &&
+          "PPG (points per game) is the broadest measure of results — it rewards wins (3 pts) and draws (1 pt), so a high home PPG with a low away PPG means a team banks almost all its points in front of its own supporters."}
+        {mode === "WIN%" &&
+          "Win percentage strips out draws and focuses purely on victories. A team can have a decent away PPG through draws but a terrible away Win% — that gap tells you they settle for ties on the road."}
+        {mode === "GD" &&
+          "Goal difference per game captures dominance, not just results. A team winning 1-0 every home match and losing 0-1 away has a GD gap of +2.0 per game — the same record looks very different through this lens."}
+      </p>
+
+      {/* Sort order indicator */}
+      <div className="flex items-center gap-2 mb-2 px-1">
+        <span
+          className="text-[9.5px] text-muted-foreground/45 tracking-wide"
+          style={{ fontFamily: "JetBrains Mono, monospace" }}
+        >
+          Sorted by gap magnitude (largest first)
+        </span>
+      </div>
 
       {/* Legend */}
       <div className="flex items-center gap-3 mb-2 px-1 text-[11px] text-muted-foreground">
@@ -699,7 +751,7 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
                   y={marginTop - 20}
                   textAnchor="middle"
                   fill={isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.35)"}
-                  fontSize={9.5}
+                  fontSize={8.5}
                   fontFamily="JetBrains Mono, monospace"
                 >
                   {mode === "WIN%" ? `${tick}%` : tick.toFixed(1)}
@@ -732,7 +784,7 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
             return (
               <g key={d.teamId}>
                 {/* Team color dot */}
-                <circle cx={12} cy={cy} r={4.5} fill={d.teamColor} />
+                <circle cx={12} cy={cy} r={3.5} fill={d.teamColor} />
 
                 {/* Team name */}
                 <text
@@ -740,7 +792,7 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
                   y={cy + 1}
                   dominantBaseline="middle"
                   fill={isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.8)"}
-                  fontSize={11.5}
+                  fontSize={10}
                   fontFamily="Space Grotesk, sans-serif"
                   fontWeight={600}
                 >
@@ -795,7 +847,7 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
                   dominantBaseline="middle"
                   textAnchor="end"
                   fill={gapColor}
-                  fontSize={11}
+                  fontSize={9.5}
                   fontFamily="JetBrains Mono, monospace"
                   fontWeight={700}
                 >
