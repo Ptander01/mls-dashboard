@@ -34,6 +34,7 @@ import { mutedTeamColor, hexToRgba } from "@/lib/chartUtils";
 import NeuCard from "@/components/NeuCard";
 import { ChartHeader } from "@/components/ui/ChartHeader";
 import StaggerContainer, { StaggerItem } from "@/components/StaggerContainer";
+import BumpChart from "@/components/charts/BumpChart";
 
 // ═══════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -708,7 +709,22 @@ export default function SeasonPulse() {
           </NeuCard>
         </StaggerItem>
 
-        {/* Placeholder for Layer 2: Bump Chart (Session 2) */}
+        {/* ═══ BUMP CHART (Layer 2) ═══ */}
+        <StaggerItem>
+          <NeuCard className="p-4 md:p-5">
+            <BumpChart
+              selectedTeam={selectedTeam}
+              onSelectTeam={setSelectedTeam}
+              hoveredTeam={hoveredTeam}
+              onHoverTeam={setHoveredTeam}
+              conferenceFilter={conferenceFilter}
+              rankMode={rankMode}
+              selectedWeek={selectedWeek}
+              onSelectWeek={setSelectedWeek}
+            />
+          </NeuCard>
+        </StaggerItem>
+
         {/* Placeholder for Layer 3: Narrative Timeline (Session 3) */}
       </StaggerContainer>
     </div>
