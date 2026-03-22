@@ -116,16 +116,22 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 **Effort:** 2 Sessions
 **Goal:** Replace dummy data on the PitchMatch tab with real StatsBomb open data.
-**Files Touched:** `scripts/fetch_statsbomb_miami.py`, `PitchMatch.tsx`, `hooks/useStatsBombData.ts`
+**Files Touched:** `scripts/fetch_miami_network.py`, `PitchMatch.tsx`, `PassingNetwork3D.tsx`, `GlassNode.tsx`, `NeonTube.tsx`
 **Dependencies:** None
 
 - **Task 8.1: Data Preparation**
-  - Write Python script to fetch, parse, and save Inter Miami 2023 event data to static JSON.
+  - [x] Python script (`scripts/fetch_miami_network.py`) fetches, parses, and computes centrality metrics for Inter Miami 2023 event data. Outputs `miami_network.json`.
 - **Task 8.2: Shot Map Visualization**
-  - Build frontend data loading hooks and match selector UI.
-  - Implement 3D Shot Map (spheres colored by outcome mapped to Three.js coordinates).
-- **Task 8.3: Passing Network (Stretch)**
-  - Implement player passing network with Three.js lines/tubes.
+  - [ ] Build frontend data loading hooks and match selector UI.
+  - [ ] Implement 3D Shot Map (spheres colored by outcome mapped to Three.js coordinates).
+- **Task 8.3: Cinematic 3D Passing Network — COMPLETE (Commits `24bb251`, `8791e89`; Issue #41 closed)**
+  - [x] `PassingNetwork3D.tsx` (1,003 lines): Three.js scene with stadium floodlights, atmospheric haze, exponential fog, Bloom post-processing.
+  - [x] `GlassNode.tsx` (231 lines): MeshPhysicalMaterial glass spheres with radial glow halos, sized by combined Degree (60%) + Betweenness (40%) centrality.
+  - [x] `NeonTube.tsx` (101 lines): Position-colored neon tube conduits (DF=pink, MF=purple, AM=cyan, FW=gold) with thickness scaled by pass frequency.
+  - [x] ChartHeader with insight-driven description and expandable METHODS panel (C_D, C_B formulas, network density).
+  - [x] Deemphasis interaction pattern (hover/click to isolate passing lanes).
+  - [x] On-canvas glassmorphism NETWORK METRICS card.
+  - [x] Maximize modal with full-viewport 3D scene, lazy-loaded with Suspense fallback.
 
 ## Epic 9: Travel Map deck.gl Spike
 
