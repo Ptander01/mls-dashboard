@@ -1,9 +1,12 @@
 /**
- * NeonTube — Glowing neon tube connecting two player nodes.
+ * NeonTube — Thick glowing plasma conduit connecting two player nodes.
  *
- * Rendered as a TubeGeometry with emissive material. The tube thickness
- * and opacity scale with the pass frequency between the two players.
- * Uses additive blending for the glow-through-bloom effect.
+ * Visual polish v2:
+ *   - Triple-layer rendering: bright core + mid glow + wide atmospheric halo
+ *   - Position-colored tubes (color passed from source node's posGroup)
+ *   - Thicker base radius with pass-frequency scaling
+ *   - Subtle arc lift proportional to distance for depth perception
+ *   - toneMapped=false on all layers so bloom picks them up strongly
  */
 
 import { useMemo } from "react";
@@ -26,59 +29,68 @@ export default function NeonTube({
 }: NeonTubeProps) {
   const threeColor = useMemo(() => new THREE.Color(color), [color]);
 
-  // Build a curved path between start and end with a slight arc
-  const { tubeGeometry, linePoints } = useMemo(() => {
+  // Brighten the color for the hot core
+  const coreColor = useMemo(() => {
+    const c = new THREE.Color(color);
+    c.lerp(new THREE.Color("#ffffff"), 0.4);
+    return c;
+  }, [color]);
+
+  // Build curved path with distance-proportional arc
+  const { coreGeo, midGeo, haloGeo } = useMemo(() => {
     const s = new THREE.Vector3(...start);
     const e = new THREE.Vector3(...end);
+    const dist = s.distanceTo(e);
     const mid = new THREE.Vector3().lerpVectors(s, e, 0.5);
-    // Lift the midpoint up slightly for a subtle arc
-    mid.y += 0.3 + thickness * 2;
+    // Arc height scales with distance and thickness
+    mid.y += 0.2 + dist * 0.02 + thickness * 3;
 
     const curve = new THREE.QuadraticBezierCurve3(s, mid, e);
-    const tubeGeo = new THREE.TubeGeometry(curve, 20, thickness, 8, false);
-    const pts = curve.getPoints(30);
-    return { tubeGeometry: tubeGeo, linePoints: pts };
+
+    // Core: tight bright tube
+    const core = new THREE.TubeGeometry(curve, 24, thickness, 8, false);
+    // Mid glow: 2.5x radius
+    const midG = new THREE.TubeGeometry(curve, 24, thickness * 2.5, 8, false);
+    // Halo: 5x radius, very faint
+    const halo = new THREE.TubeGeometry(curve, 24, thickness * 5, 8, false);
+
+    return { coreGeo: core, midGeo: midG, haloGeo: halo };
   }, [start, end, thickness]);
 
   if (opacity < 0.01) return null;
 
   return (
     <group>
-      {/* Core neon tube — emissive glow */}
-      <mesh geometry={tubeGeometry}>
+      {/* Layer 1: Hot bright core */}
+      <mesh geometry={coreGeo}>
         <meshBasicMaterial
-          color={threeColor}
+          color={coreColor}
           transparent
-          opacity={opacity * 0.9}
+          opacity={opacity * 0.95}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           toneMapped={false}
         />
       </mesh>
 
-      {/* Outer glow tube — slightly larger, more transparent */}
-      <mesh>
-        <tubeGeometry
-          args={[
-            new THREE.QuadraticBezierCurve3(
-              new THREE.Vector3(...start),
-              new THREE.Vector3(
-                (start[0] + end[0]) / 2,
-                (start[1] + end[1]) / 2 + 0.3 + thickness * 2,
-                (start[2] + end[2]) / 2
-              ),
-              new THREE.Vector3(...end)
-            ),
-            20,
-            thickness * 2.5,
-            8,
-            false,
-          ]}
-        />
+      {/* Layer 2: Mid glow — saturated color */}
+      <mesh geometry={midGeo}>
         <meshBasicMaterial
           color={threeColor}
           transparent
-          opacity={opacity * 0.15}
+          opacity={opacity * 0.35}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+
+      {/* Layer 3: Wide atmospheric halo */}
+      <mesh geometry={haloGeo}>
+        <meshBasicMaterial
+          color={threeColor}
+          transparent
+          opacity={opacity * 0.1}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           toneMapped={false}

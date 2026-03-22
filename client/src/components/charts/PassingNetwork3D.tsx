@@ -1,16 +1,13 @@
 /**
  * PassingNetwork3D — Cinematic 3D passing network & centrality visualization.
  *
- * Renders Inter Miami's passing network from the 4-0 win over Toronto FC
- * (Sept 21, 2023) as a "glass & neon" 3D scene using React Three Fiber.
- *
- * Features:
- *   - Glass sphere nodes (MeshPhysicalMaterial with transmission)
- *   - Neon tube edges scaled by pass frequency
- *   - Bloom post-processing for genuine glow
- *   - Hover/click deemphasis interaction
- *   - Floating glassmorphism player info overlay
- *   - Position-based color coding
+ * Visual polish v2:
+ *   - Stadium atmosphere: exponential fog, floodlight cones, volumetric haze
+ *   - Position-colored neon tubes (DF=pink, MF=purple, AM=cyan, FW=gold)
+ *   - Aggressive node size scaling for centrality hierarchy
+ *   - On-canvas glassmorphism "NETWORK METRICS" card
+ *   - Stronger bloom with lower threshold for plasma glow
+ *   - Richer pitch ground with grass-like dark texture
  */
 
 import {
@@ -21,7 +18,7 @@ import {
   useRef,
   Suspense,
 } from "react";
-import { Canvas, useThree, useFrame, type ThreeElements } from "@react-three/fiber";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrthographicCamera, Html, Line } from "@react-three/drei";
 import {
   EffectComposer,
@@ -77,39 +74,72 @@ interface NetworkData {
 }
 
 // ═══════════════════════════════════════════
-// CONSTANTS
+// CONSTANTS — v2 aggressive scaling
 // ═══════════════════════════════════════════
 
-const NODE_Y = 0.8; // Height of nodes above pitch
-const MIN_NODE_RADIUS = 0.6;
-const MAX_NODE_RADIUS = 1.8;
-const MIN_TUBE_THICKNESS = 0.02;
-const MAX_TUBE_THICKNESS = 0.12;
-const DEEMPHASIS_OPACITY = 0.08;
+const NODE_Y = 1.0;
+const MIN_NODE_RADIUS = 0.8;
+const MAX_NODE_RADIUS = 2.6;
+const MIN_TUBE_THICKNESS = 0.04;
+const MAX_TUBE_THICKNESS = 0.22;
+const DEEMPHASIS_OPACITY = 0.06;
 const PITCH_HALF_X = 60;
 const PITCH_HALF_Z = 40;
 
+// Position group color map
+const POS_COLOR: Record<string, string> = {
+  Defender: "#ff69b4",
+  Midfielder: "#9b59b6",
+  "Attacking Mid": "#00d4ff",
+  Wing: "#00d4ff",
+  Striker: "#ffd700",
+};
+
+function getEdgeColor(srcNode: NetworkNode, tgtNode: NetworkNode): string {
+  // Blend source and target colors for a gradient-like feel
+  const srcC = new THREE.Color(POS_COLOR[srcNode.posGroup] || srcNode.color);
+  const tgtC = new THREE.Color(POS_COLOR[tgtNode.posGroup] || tgtNode.color);
+  const blended = new THREE.Color().lerpColors(srcC, tgtC, 0.5);
+  return "#" + blended.getHexString();
+}
+
 // ═══════════════════════════════════════════
-// PITCH GROUND
+// PITCH GROUND — dark grass with subtle texture
 // ═══════════════════════════════════════════
 
 function PitchGround() {
-  const gridTexture = useMemo(() => {
-    const size = 512;
+  const texture = useMemo(() => {
+    const size = 1024;
     const canvas = document.createElement("canvas");
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext("2d")!;
 
-    // Dark base
-    ctx.fillStyle = "#0a0a14";
+    // Dark base with slight green tint (like night pitch)
+    ctx.fillStyle = "#080e08";
     ctx.fillRect(0, 0, size, size);
 
-    // Subtle grid lines
-    ctx.strokeStyle = "rgba(0, 212, 255, 0.04)";
+    // Grass stripe pattern
+    for (let i = 0; i < size; i += 32) {
+      ctx.fillStyle = i % 64 === 0 ? "rgba(15,30,15,0.4)" : "rgba(10,20,10,0.3)";
+      ctx.fillRect(0, i, size, 16);
+    }
+
+    // Subtle noise for texture
+    const imgData = ctx.getImageData(0, 0, size, size);
+    for (let i = 0; i < imgData.data.length; i += 4) {
+      const noise = (Math.random() - 0.5) * 8;
+      imgData.data[i] = Math.max(0, Math.min(255, imgData.data[i] + noise));
+      imgData.data[i + 1] = Math.max(0, Math.min(255, imgData.data[i + 1] + noise));
+      imgData.data[i + 2] = Math.max(0, Math.min(255, imgData.data[i + 2] + noise));
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    // Subtle grid overlay
+    ctx.strokeStyle = "rgba(0, 212, 255, 0.025)";
     ctx.lineWidth = 1;
-    const step = size / 16;
-    for (let i = 0; i <= 16; i++) {
+    const step = size / 20;
+    for (let i = 0; i <= 20; i++) {
       ctx.beginPath();
       ctx.moveTo(i * step, 0);
       ctx.lineTo(i * step, size);
@@ -128,28 +158,28 @@ function PitchGround() {
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-      <planeGeometry args={[PITCH_HALF_X * 2 + 10, PITCH_HALF_Z * 2 + 10]} />
+      <planeGeometry args={[PITCH_HALF_X * 2 + 20, PITCH_HALF_Z * 2 + 20]} />
       <meshStandardMaterial
-        map={gridTexture}
-        color="#0a0a14"
-        roughness={0.95}
-        metalness={0.05}
+        map={texture}
+        color="#0a1a0a"
+        roughness={0.92}
+        metalness={0.02}
       />
     </mesh>
   );
 }
 
 // ═══════════════════════════════════════════
-// PITCH LINES (SVG-style on the ground)
+// PITCH LINES
 // ═══════════════════════════════════════════
 
 function PitchLines() {
-  const lineColor = "#00d4ff";
-  const lineOpacity = 0.12;
+  const lineColor = "#ffffff";
+  const lineOpacity = 0.15;
 
   const points = useMemo(() => {
     const lines: { start: THREE.Vector3; end: THREE.Vector3 }[] = [];
-    const y = 0.01;
+    const y = 0.02;
     const hx = PITCH_HALF_X;
     const hz = PITCH_HALF_Z;
 
@@ -164,19 +194,31 @@ function PitchLines() {
     );
 
     // Penalty areas
-    const paW = 16.5 * (hx / 52.5); // Scale from real pitch
+    const paW = 16.5 * (hx / 52.5);
     const paH = 20.15 * (hz / 34);
-    // Left
     lines.push(
       { start: new THREE.Vector3(-hx, y, -paH), end: new THREE.Vector3(-hx + paW, y, -paH) },
       { start: new THREE.Vector3(-hx + paW, y, -paH), end: new THREE.Vector3(-hx + paW, y, paH) },
       { start: new THREE.Vector3(-hx + paW, y, paH), end: new THREE.Vector3(-hx, y, paH) },
     );
-    // Right
     lines.push(
       { start: new THREE.Vector3(hx, y, -paH), end: new THREE.Vector3(hx - paW, y, -paH) },
       { start: new THREE.Vector3(hx - paW, y, -paH), end: new THREE.Vector3(hx - paW, y, paH) },
       { start: new THREE.Vector3(hx - paW, y, paH), end: new THREE.Vector3(hx, y, paH) },
+    );
+
+    // Goal areas (6-yard box)
+    const gaW = 5.5 * (hx / 52.5);
+    const gaH = 9.16 * (hz / 34);
+    lines.push(
+      { start: new THREE.Vector3(-hx, y, -gaH), end: new THREE.Vector3(-hx + gaW, y, -gaH) },
+      { start: new THREE.Vector3(-hx + gaW, y, -gaH), end: new THREE.Vector3(-hx + gaW, y, gaH) },
+      { start: new THREE.Vector3(-hx + gaW, y, gaH), end: new THREE.Vector3(-hx, y, gaH) },
+    );
+    lines.push(
+      { start: new THREE.Vector3(hx, y, -gaH), end: new THREE.Vector3(hx - gaW, y, -gaH) },
+      { start: new THREE.Vector3(hx - gaW, y, -gaH), end: new THREE.Vector3(hx - gaW, y, gaH) },
+      { start: new THREE.Vector3(hx - gaW, y, gaH), end: new THREE.Vector3(hx, y, gaH) },
     );
 
     return lines;
@@ -185,11 +227,11 @@ function PitchLines() {
   // Center circle
   const circlePoints = useMemo(() => {
     const pts: THREE.Vector3[] = [];
-    const segments = 48;
+    const segments = 64;
     const r = 9.15 * (PITCH_HALF_X / 52.5);
     for (let i = 0; i <= segments; i++) {
       const angle = (i / segments) * Math.PI * 2;
-      pts.push(new THREE.Vector3(Math.cos(angle) * r, 0.01, Math.sin(angle) * r));
+      pts.push(new THREE.Vector3(Math.cos(angle) * r, 0.02, Math.sin(angle) * r));
     }
     return pts;
   }, []);
@@ -203,7 +245,7 @@ function PitchLines() {
           color={lineColor}
           transparent
           opacity={lineOpacity}
-          lineWidth={1}
+          lineWidth={1.5}
         />
       ))}
       <Line
@@ -211,9 +253,132 @@ function PitchLines() {
         color={lineColor}
         transparent
         opacity={lineOpacity}
-        lineWidth={1}
+        lineWidth={1.5}
       />
     </group>
+  );
+}
+
+// ═══════════════════════════════════════════
+// STADIUM FLOODLIGHTS
+// ═══════════════════════════════════════════
+
+function StadiumLights() {
+  return (
+    <group>
+      {/* Four corner floodlight towers */}
+      {[
+        [-PITCH_HALF_X - 10, 60, -PITCH_HALF_Z - 10],
+        [PITCH_HALF_X + 10, 60, -PITCH_HALF_Z - 10],
+        [-PITCH_HALF_X - 10, 60, PITCH_HALF_Z + 10],
+        [PITCH_HALF_X + 10, 60, PITCH_HALF_Z + 10],
+      ].map((pos, i) => (
+        <group key={i}>
+          <spotLight
+            position={pos as [number, number, number]}
+            target-position={[0, 0, 0]}
+            angle={Math.PI / 4}
+            penumbra={0.8}
+            intensity={0.4}
+            color="#e8e0d0"
+            distance={150}
+            decay={1.5}
+          />
+          {/* Visible light cone glow */}
+          <pointLight
+            position={pos as [number, number, number]}
+            intensity={0.15}
+            color="#ffe8c0"
+            distance={40}
+          />
+        </group>
+      ))}
+
+      {/* Overhead key light — warm white */}
+      <directionalLight
+        position={[0, 80, -20]}
+        intensity={0.35}
+        color="#fff5e6"
+      />
+
+      {/* Fill light from below-camera angle */}
+      <directionalLight
+        position={[0, 30, 50]}
+        intensity={0.15}
+        color="#c0d0ff"
+      />
+
+      {/* Ambient base */}
+      <ambientLight intensity={0.08} color="#1a1a2e" />
+
+      {/* Hemisphere light: sky blue top, dark ground */}
+      <hemisphereLight
+        args={["#1a2040", "#050808", 0.2]}
+      />
+
+      {/* Central overhead cyan accent */}
+      <pointLight
+        position={[0, 25, 0]}
+        intensity={0.3}
+        color="#00d4ff"
+        distance={100}
+        decay={2}
+      />
+    </group>
+  );
+}
+
+// ═══════════════════════════════════════════
+// ATMOSPHERIC HAZE PARTICLES
+// ═══════════════════════════════════════════
+
+function AtmosphericHaze() {
+  const particlesRef = useRef<THREE.Points>(null);
+  const count = 200;
+
+  const { positions, opacities } = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const ops = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 160;
+      pos[i * 3 + 1] = Math.random() * 40 + 5;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 100;
+      ops[i] = Math.random() * 0.15 + 0.02;
+    }
+    return { positions: pos, opacities: ops };
+  }, []);
+
+  useFrame(({ clock }) => {
+    if (particlesRef.current) {
+      const geo = particlesRef.current.geometry;
+      const posAttr = geo.getAttribute("position") as THREE.BufferAttribute;
+      const arr = posAttr.array as Float32Array;
+      for (let i = 0; i < count; i++) {
+        arr[i * 3 + 1] += Math.sin(clock.elapsedTime * 0.2 + i) * 0.01;
+        arr[i * 3] += Math.cos(clock.elapsedTime * 0.1 + i * 0.5) * 0.005;
+      }
+      posAttr.needsUpdate = true;
+    }
+  });
+
+  return (
+    <points ref={particlesRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          args={[positions, 3]}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        color="#e8e0d0"
+        size={1.5}
+        transparent
+        opacity={0.06}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        sizeAttenuation
+      />
+    </points>
   );
 }
 
@@ -225,11 +390,13 @@ function PlayerLabel({
   position,
   name,
   jersey,
+  color,
   opacity,
 }: {
   position: [number, number, number];
   name: string;
   jersey: number;
+  color: string;
   opacity: number;
 }) {
   if (opacity < 0.05) return null;
@@ -237,7 +404,7 @@ function PlayerLabel({
 
   return (
     <Html
-      position={[position[0], position[1] + 2.2, position[2]]}
+      position={[position[0], position[1] + 2.8, position[2]]}
       center
       style={{
         pointerEvents: "none",
@@ -250,15 +417,14 @@ function PlayerLabel({
       <div
         style={{
           fontFamily: "JetBrains Mono, monospace",
-          fontSize: "10px",
+          fontSize: "11px",
           fontWeight: 700,
-          color: "rgba(255,255,255,0.9)",
-          textShadow: "0 0 8px rgba(0,212,255,0.5), 0 1px 3px rgba(0,0,0,0.8)",
+          color: "rgba(255,255,255,0.95)",
+          textShadow: `0 0 10px ${color}80, 0 0 20px ${color}40, 0 2px 4px rgba(0,0,0,0.9)`,
           textAlign: "center",
-          lineHeight: 1.2,
+          lineHeight: 1.3,
         }}
       >
-        <div style={{ fontSize: "8px", opacity: 0.6 }}>#{jersey}</div>
         <div>{shortName}</div>
       </div>
     </Html>
@@ -278,26 +444,25 @@ function HoverPanel({
 }) {
   return (
     <Html
-      position={[position[0], position[1] + 4.5, position[2]]}
+      position={[position[0], position[1] + 5, position[2]]}
       center
       style={{ pointerEvents: "none", userSelect: "none" }}
     >
       <div
         style={{
-          background: "rgba(10, 10, 20, 0.85)",
-          backdropFilter: "blur(12px)",
-          border: "1px solid rgba(0, 212, 255, 0.2)",
+          background: "rgba(8, 8, 16, 0.9)",
+          backdropFilter: "blur(16px)",
+          border: `1px solid ${node.color}40`,
           borderRadius: "10px",
           padding: "10px 14px",
-          minWidth: "160px",
-          boxShadow:
-            "0 4px 20px rgba(0,0,0,0.5), 0 0 15px rgba(0,212,255,0.1)",
+          minWidth: "170px",
+          boxShadow: `0 4px 24px rgba(0,0,0,0.6), 0 0 20px ${node.color}20`,
         }}
       >
         <div
           style={{
             fontFamily: "Space Grotesk, sans-serif",
-            fontSize: "12px",
+            fontSize: "13px",
             fontWeight: 700,
             color: "#fff",
             marginBottom: "2px",
@@ -317,34 +482,16 @@ function HoverPanel({
         >
           {node.position} — {node.posGroup}
         </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "6px",
-          }}
-        >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
           <MetricBox label="Degree" value={node.degree.toString()} color="#00d4ff" />
-          <MetricBox
-            label="Betweenness"
-            value={node.betweenness.toFixed(4)}
-            color="#ffd700"
-          />
+          <MetricBox label="C_B" value={node.betweenness.toFixed(4)} color="#ffd700" />
         </div>
       </div>
     </Html>
   );
 }
 
-function MetricBox({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string;
-  color: string;
-}) {
+function MetricBox({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div
       style={{
@@ -408,6 +555,15 @@ function NetworkScene({ data }: { data: NetworkData }) {
     return map;
   }, [data.nodes]);
 
+  // Find top betweenness and top degree nodes for metrics card
+  const topBetweenness = useMemo(() => {
+    return data.nodes.reduce((a, b) => (a.betweenness > b.betweenness ? a : b));
+  }, [data.nodes]);
+
+  const topDegree = useMemo(() => {
+    return data.nodes.reduce((a, b) => (a.degree > b.degree ? a : b));
+  }, [data.nodes]);
+
   const handleNodeHover = useCallback(
     (id: number | null) => {
       if (lockedId === null) setHoveredId(id);
@@ -423,7 +579,6 @@ function NetworkScene({ data }: { data: NetworkData }) {
     []
   );
 
-  // Click on background to unlock
   const handleBgClick = useCallback(() => {
     setLockedId(null);
     setHoveredId(null);
@@ -443,35 +598,39 @@ function NetworkScene({ data }: { data: NetworkData }) {
 
       <PitchGround />
       <PitchLines />
+      <StadiumLights />
+      <AtmosphericHaze />
 
-      {/* Ambient + directional lighting */}
-      <ambientLight intensity={0.15} />
-      <directionalLight position={[30, 40, 20]} intensity={0.3} color="#ffffff" />
-      <pointLight position={[0, 15, 0]} intensity={0.5} color="#00d4ff" distance={80} />
+      {/* Scene fog for depth */}
+      <fogExp2 attach="fog" args={["#060810", 0.006]} />
 
-      {/* Neon tube edges */}
+      {/* Neon tube edges — position-colored */}
       {data.edges.map((edge) => {
         const srcNode = nodeMap.get(edge.source);
         const tgtNode = nodeMap.get(edge.target);
         if (!srcNode || !tgtNode) return null;
 
         // Determine opacity based on selection state
-        let edgeOpacity = 0.3 + edge.weightNorm * 0.7;
+        let edgeOpacity = 0.25 + edge.weightNorm * 0.75;
         if (activeId !== null && connectedIds) {
           const isConnected =
-            (edge.source === activeId || edge.target === activeId);
+            edge.source === activeId || edge.target === activeId;
           edgeOpacity = isConnected
             ? 0.5 + edge.weightNorm * 0.5
             : DEEMPHASIS_OPACITY;
         }
 
-        // Use the color of the passer (source) for the tube
-        const tubeColor =
-          activeId !== null && connectedIds
-            ? (edge.source === activeId || edge.target === activeId)
-              ? nodeMap.get(activeId)?.color || "#00d4ff"
-              : "#222233"
-            : "#00d4ff";
+        // Position-colored: blend source and target colors
+        let tubeColor: string;
+        if (activeId !== null && connectedIds) {
+          const isConnected =
+            edge.source === activeId || edge.target === activeId;
+          tubeColor = isConnected
+            ? getEdgeColor(srcNode, tgtNode)
+            : "#111118";
+        } else {
+          tubeColor = getEdgeColor(srcNode, tgtNode);
+        }
 
         const thickness =
           MIN_TUBE_THICKNESS + edge.weightNorm * (MAX_TUBE_THICKNESS - MIN_TUBE_THICKNESS);
@@ -490,18 +649,20 @@ function NetworkScene({ data }: { data: NetworkData }) {
 
       {/* Glass node spheres */}
       {data.nodes.map((node) => {
+        // Aggressive scaling: use a mix of degree and betweenness
+        const combinedNorm = node.degreeNorm * 0.6 + node.betweennessNorm * 0.4;
         const radius =
-          MIN_NODE_RADIUS + node.degreeNorm * (MAX_NODE_RADIUS - MIN_NODE_RADIUS);
+          MIN_NODE_RADIUS + combinedNorm * (MAX_NODE_RADIUS - MIN_NODE_RADIUS);
 
         let nodeOpacity = 1;
         let glowIntensity = 1;
         if (activeId !== null && connectedIds) {
           if (connectedIds.has(node.playerId)) {
             nodeOpacity = 1;
-            glowIntensity = node.playerId === activeId ? 1.5 : 1;
+            glowIntensity = node.playerId === activeId ? 1.8 : 1.1;
           } else {
             nodeOpacity = DEEMPHASIS_OPACITY;
-            glowIntensity = 0.1;
+            glowIntensity = 0.05;
           }
         }
 
@@ -521,12 +682,13 @@ function NetworkScene({ data }: { data: NetworkData }) {
               position={[node.x, NODE_Y, node.z]}
               name={node.name}
               jersey={node.jersey}
+              color={node.color}
               opacity={
                 activeId === null
-                  ? 0.8
+                  ? 0.85
                   : connectedIds?.has(node.playerId)
                     ? 1
-                    : 0.05
+                    : 0.04
               }
             />
           </group>
@@ -545,15 +707,15 @@ function NetworkScene({ data }: { data: NetworkData }) {
         />
       )}
 
-      {/* Post-processing: Bloom + Vignette */}
+      {/* Post-processing: Stronger Bloom + Vignette */}
       <EffectComposer>
         <Bloom
-          intensity={1.2}
-          luminanceThreshold={0.15}
-          luminanceSmoothing={0.9}
+          intensity={1.8}
+          luminanceThreshold={0.08}
+          luminanceSmoothing={0.85}
           mipmapBlur
         />
-        <Vignette offset={0.3} darkness={0.7} />
+        <Vignette offset={0.25} darkness={0.75} />
       </EffectComposer>
     </>
   );
@@ -573,25 +735,26 @@ function CameraSetup() {
 }
 
 // ═══════════════════════════════════════════
-// POSITION LEGEND
+// POSITION LEGEND (bottom-left overlay)
 // ═══════════════════════════════════════════
 
 function PositionLegend() {
   const items = [
     { label: "Defenders", color: "#ff69b4" },
     { label: "Midfielders", color: "#9b59b6" },
-    { label: "Att. Mids / Wings", color: "#00d4ff" },
-    { label: "Strikers", color: "#ffd700" },
+    { label: "Att. Mids/Wings", color: "#00d4ff" },
+    { label: "Striker", color: "#ffd700" },
   ];
 
   return (
     <div
       style={{
         position: "absolute",
-        bottom: "12px",
-        left: "12px",
+        top: "10px",
+        left: "10px",
         display: "flex",
-        gap: "12px",
+        flexDirection: "column",
+        gap: "4px",
         zIndex: 10,
         pointerEvents: "none",
       }}
@@ -602,26 +765,122 @@ function PositionLegend() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "5px",
+            gap: "6px",
             fontFamily: "JetBrains Mono, monospace",
             fontSize: "9px",
-            color: "rgba(255,255,255,0.5)",
+            color: "rgba(255,255,255,0.6)",
             letterSpacing: "0.03em",
           }}
         >
           <span
             style={{
-              width: "8px",
-              height: "8px",
+              width: "10px",
+              height: "10px",
               borderRadius: "50%",
-              background: item.color,
-              boxShadow: `0 0 6px ${item.color}`,
+              background: `radial-gradient(circle at 35% 35%, ${item.color}, ${item.color}88)`,
+              boxShadow: `0 0 8px ${item.color}80`,
               display: "inline-block",
+              border: `1px solid ${item.color}60`,
             }}
           />
           {item.label}
         </div>
       ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// ON-CANVAS NETWORK METRICS CARD
+// ═══════════════════════════════════════════
+
+function NetworkMetricsCard({ data }: { data: NetworkData }) {
+  const topBetweenness = useMemo(() => {
+    return data.nodes.reduce((a, b) => (a.betweenness > b.betweenness ? a : b));
+  }, [data.nodes]);
+
+  const topDegree = useMemo(() => {
+    return data.nodes.reduce((a, b) => (a.degree > b.degree ? a : b));
+  }, [data.nodes]);
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: "12px",
+        right: "12px",
+        zIndex: 10,
+        pointerEvents: "none",
+        background: "rgba(8, 8, 16, 0.8)",
+        backdropFilter: "blur(12px)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "8px",
+        padding: "10px 14px",
+        minWidth: "200px",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "JetBrains Mono, monospace",
+          fontSize: "9px",
+          fontWeight: 700,
+          color: "rgba(255,255,255,0.5)",
+          textTransform: "uppercase",
+          letterSpacing: "0.1em",
+          marginBottom: "8px",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          paddingBottom: "5px",
+        }}
+      >
+        Network Metrics
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+        <MetricRow
+          label={`Betweenness: ${topBetweenness.shortName}`}
+          metric="C_B"
+          value={topBetweenness.betweenness.toFixed(4)}
+        />
+        <MetricRow
+          label={`Degree: ${topDegree.shortName}`}
+          metric="C_D"
+          value={topDegree.degree.toString()}
+        />
+        <MetricRow
+          label="Density"
+          metric=""
+          value={data.meta.density.toFixed(3)}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MetricRow({
+  label,
+  metric,
+  value,
+}: {
+  label: string;
+  metric: string;
+  value: string;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        fontFamily: "JetBrains Mono, monospace",
+        fontSize: "9px",
+        lineHeight: 1.5,
+      }}
+    >
+      <span style={{ color: "rgba(255,255,255,0.45)" }}>{label}</span>
+      <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 700 }}>
+        {metric ? `${metric}=` : ""}
+        {value}
+      </span>
     </div>
   );
 }
@@ -655,7 +914,7 @@ export default function PassingNetwork3D({ isModal = false }: PassingNetwork3DPr
         style={{
           aspectRatio: isModal ? undefined : "16/9",
           height: isModal ? "100%" : undefined,
-          background: "#0a0a14",
+          background: "#060810",
           color: "#ff6b6b",
           fontFamily: "JetBrains Mono, monospace",
           fontSize: "12px",
@@ -673,7 +932,7 @@ export default function PassingNetwork3D({ isModal = false }: PassingNetwork3DPr
         style={{
           aspectRatio: isModal ? undefined : "16/9",
           height: isModal ? "100%" : undefined,
-          background: "#0a0a14",
+          background: "#060810",
         }}
       >
         <div
@@ -695,16 +954,16 @@ export default function PassingNetwork3D({ isModal = false }: PassingNetwork3DPr
       style={{
         aspectRatio: isModal ? undefined : "16/9",
         height: isModal ? "100%" : undefined,
-        background: "#0a0a14",
+        background: "#060810",
       }}
     >
       <Canvas
         gl={{
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.2,
+          toneMappingExposure: 1.0,
         }}
-        style={{ background: "#0a0a14" }}
+        style={{ background: "#060810" }}
       >
         <Suspense fallback={null}>
           <CameraSetup />
@@ -718,9 +977,11 @@ export default function PassingNetwork3D({ isModal = false }: PassingNetwork3DPr
           <NetworkScene data={data} />
         </Suspense>
       </Canvas>
-      <PositionLegend />
 
-      {/* Match info badge */}
+      <PositionLegend />
+      <NetworkMetricsCard data={data} />
+
+      {/* Match info badge — top right */}
       <div
         style={{
           position: "absolute",
@@ -728,7 +989,7 @@ export default function PassingNetwork3D({ isModal = false }: PassingNetwork3DPr
           right: "10px",
           fontFamily: "JetBrains Mono, monospace",
           fontSize: "9px",
-          color: "rgba(255,255,255,0.3)",
+          color: "rgba(255,255,255,0.35)",
           textAlign: "right",
           pointerEvents: "none",
           lineHeight: 1.4,
