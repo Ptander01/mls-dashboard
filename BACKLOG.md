@@ -187,6 +187,40 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 **Superseded Issues (closed):** #45, #46, #47, #48, #49, #50
 
+## Epic 12: 2026 Season Data Integration (Completed)
+
+**Effort:** 1 Session
+**Goal:** Integrate live 2026 MLS season data from the American Soccer Analysis (ASA) API, enabling a global season toggle (2025/2026) and surfacing early-season storylines via the Insight Engine.
+**Sprint Brief:** `docs/sprint-briefs/2026-data-integration.md`
+**Verification:** `docs/verification/2026-integration-verification.md`
+**Commit:** `77416fe`
+**Issue:** #26 (closed)
+**Data Source:** `itscalledsoccer` Python client → ASA public API (no auth required)
+
+- **Task 12.1: Data Pipeline**
+  - [x] `scripts/fetch_2026_season.py` — fetches game xGoals, player xGoals, team standings from ASA API.
+  - [x] Maps ASA team IDs to dashboard abbreviations (4 manual overrides: DCU→DC, FCD→DAL, NER→NE, SJE→SJ).
+  - [x] Infers matchweek numbers from date groupings.
+  - [x] Outputs `client/public/data/mls2026.json` (69 matches, 614 players, 5 matchweeks).
+  - [x] NaN sanitizer prevents invalid JSON output.
+- **Task 12.2: Season-Aware Architecture**
+  - [x] `seasonDataLoader.ts` — lazy-loads 2026 JSON with singleton cache pattern.
+  - [x] `FilterContext.tsx` — `selectedSeason` state, `activeSeasonData` resolver.
+  - [x] `seasonPulse.ts` — refactored from module-level cache to function-parameter pattern.
+  - [x] `BumpChart.tsx` — dynamic `WEEK_PRESETS` based on active season's total weeks.
+- **Task 12.3: Season Toggle UI**
+  - [x] 2025 / 2026 LIVE segmented control in `FilterPanel.tsx` sidebar.
+  - [x] Dynamic season badge in `Home.tsx` ("2026 SEASON LIVE" with green indicator).
+  - [x] Dynamic match/player counts update on toggle.
+- **Task 12.4: 2026 Insight Engine**
+  - [x] `insightEngine.ts` — `seasonPulseInsights()` with 4 storyline detectors:
+    - "The LAFC Wall: 5 games, 0 goals conceded"
+    - "Philly Collapse: 0 points through 5 games"
+    - "Vancouver Surge: 14 goals in 5 games (2.8/game)"
+    - "Golden Boot Race: Sam Surridge leads with 7 goals in 4 games"
+
+---
+
 ## Future / Deferred Work
 
 - **Treemap & Matrix Animation Polish:** Do not use deck.gl for these. Instead, enhance current SVG/Three.js implementations with better lighting and Framer Motion transitions.
@@ -195,7 +229,6 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 - **Cross-chart pottery linking**
 - **Ultrawide layout optimization**
 - **Statistical hypothesis tests UI**
-- **2026 Season Data Integration**
 
 ## Notes on Data Visualization and UI
 
@@ -205,6 +238,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 ## Appendix: Data Sources Inventory
 
+- **[American Soccer Analysis API](https://app.americansocceranalysis.com/api/v1/__docs__/)**: 2026 season data via `itscalledsoccer` Python client. Game xGoals, player xGoals, team standings, xPass, goals added. No auth required.
 - **[StatsBomb Open Data](https://github.com/statsbomb/open-data)**: Free event-level data for Inter Miami 2023 matches.
 - **[Squawka Comparison Matrix](https://www.squawka.com/us/comparison-matrix/)**: Reference for data definitions and player comparison methodologies.
 - **[MLS Conference Standings](https://www.mlssoccer.com/standings/2026/conference)**: Home/away record splits.
