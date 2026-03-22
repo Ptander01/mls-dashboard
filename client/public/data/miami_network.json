@@ -1,0 +1,774 @@
+{
+  "matchId": 3877115,
+  "matchLabel": "Inter Miami 4-0 Toronto FC",
+  "matchDate": "2023-09-20",
+  "team": "Inter Miami",
+  "nodes": [
+    {
+      "playerId": 23828,
+      "name": "Kamal Miller",
+      "shortName": "Miller",
+      "jersey": 4,
+      "position": "CB",
+      "posGroup": "Defender",
+      "color": "#ff69b4",
+      "x": -16.17,
+      "z": -20.24,
+      "degree": 142,
+      "degreeNorm": 1.0,
+      "betweenness": 0.034237,
+      "betweennessNorm": 0.5641
+    },
+    {
+      "playerId": 5203,
+      "name": "Sergio Busquets i Burgos",
+      "shortName": "Burgos",
+      "jersey": 5,
+      "position": "CDM",
+      "posGroup": "Midfielder",
+      "color": "#9b59b6",
+      "x": -1.87,
+      "z": -2.18,
+      "degree": 134,
+      "degreeNorm": 0.9437,
+      "betweenness": 0.060688,
+      "betweennessNorm": 1.0
+    },
+    {
+      "playerId": 32878,
+      "name": "Facundo Far\u00edas",
+      "shortName": "Far\u00edas",
+      "jersey": 11,
+      "position": "AM",
+      "posGroup": "Attacking Mid",
+      "color": "#00d4ff",
+      "x": 12.09,
+      "z": -6.98,
+      "degree": 129,
+      "degreeNorm": 0.9085,
+      "betweenness": 0.046153,
+      "betweennessNorm": 0.7605
+    },
+    {
+      "playerId": 18618,
+      "name": "Serhiy Kryvtsov",
+      "shortName": "Kryvtsov",
+      "jersey": 23,
+      "position": "CB",
+      "posGroup": "Defender",
+      "color": "#ff69b4",
+      "x": -10.36,
+      "z": 4.66,
+      "degree": 122,
+      "degreeNorm": 0.8592,
+      "betweenness": 0.044894,
+      "betweennessNorm": 0.7398
+    },
+    {
+      "playerId": 205682,
+      "name": "Noah Allen",
+      "shortName": "Allen",
+      "jersey": 42,
+      "position": "CB",
+      "posGroup": "Defender",
+      "color": "#ff69b4",
+      "x": 0.9,
+      "z": -31.02,
+      "degree": 97,
+      "degreeNorm": 0.6831,
+      "betweenness": 0.023738,
+      "betweennessNorm": 0.3911
+    },
+    {
+      "playerId": 3658,
+      "name": "DeAndre Yedlin",
+      "shortName": "Yedlin",
+      "jersey": 2,
+      "position": "RB",
+      "posGroup": "Defender",
+      "color": "#ff69b4",
+      "x": 10.68,
+      "z": 28.42,
+      "degree": 95,
+      "degreeNorm": 0.669,
+      "betweenness": 0.051587,
+      "betweennessNorm": 0.85
+    },
+    {
+      "playerId": 29946,
+      "name": "Robert Taylor",
+      "shortName": "Taylor",
+      "jersey": 7,
+      "position": "RW",
+      "posGroup": "Attacking Mid",
+      "color": "#00d4ff",
+      "x": 14.56,
+      "z": 2.15,
+      "degree": 95,
+      "degreeNorm": 0.669,
+      "betweenness": 0.012695,
+      "betweennessNorm": 0.2092
+    },
+    {
+      "playerId": 225210,
+      "name": "David Ruiz",
+      "shortName": "Ruiz",
+      "jersey": 8,
+      "position": "CM",
+      "posGroup": "Midfielder",
+      "color": "#9b59b6",
+      "x": 5.35,
+      "z": 2.0,
+      "degree": 92,
+      "degreeNorm": 0.6479,
+      "betweenness": 0.017834,
+      "betweennessNorm": 0.2939
+    },
+    {
+      "playerId": 366752,
+      "name": "Tom\u00e1s Agust\u00edn Avil\u00e9s Mancilla",
+      "shortName": "Mancilla",
+      "jersey": 77,
+      "position": "AM",
+      "posGroup": "Attacking Mid",
+      "color": "#00d4ff",
+      "x": -8.56,
+      "z": 24.53,
+      "degree": 69,
+      "degreeNorm": 0.4859,
+      "betweenness": 0.008874,
+      "betweennessNorm": 0.1462
+    },
+    {
+      "playerId": 5211,
+      "name": "Jordi Alba Ramos",
+      "shortName": "Ramos",
+      "jersey": 18,
+      "position": "LB",
+      "posGroup": "Defender",
+      "color": "#ff69b4",
+      "x": 14.17,
+      "z": -26.23,
+      "degree": 64,
+      "degreeNorm": 0.4507,
+      "betweenness": 0.004667,
+      "betweennessNorm": 0.0769
+    },
+    {
+      "playerId": 225209,
+      "name": "Benjamin Cremaschi",
+      "shortName": "Cremaschi",
+      "jersey": 30,
+      "position": "CM",
+      "posGroup": "Midfielder",
+      "color": "#9b59b6",
+      "x": 4.75,
+      "z": -6.37,
+      "degree": 52,
+      "degreeNorm": 0.3662,
+      "betweenness": 0.00119,
+      "betweennessNorm": 0.0196
+    },
+    {
+      "playerId": 42373,
+      "name": "Drake Callender",
+      "shortName": "Callender",
+      "jersey": 1,
+      "position": "GK",
+      "posGroup": "Defender",
+      "color": "#ff69b4",
+      "x": -47.8,
+      "z": -1.27,
+      "degree": 48,
+      "degreeNorm": 0.338,
+      "betweenness": 0.002551,
+      "betweennessNorm": 0.042
+    },
+    {
+      "playerId": 36430,
+      "name": "Dixon Jair Arroyo Espinoza",
+      "shortName": "Espinoza",
+      "jersey": 16,
+      "position": "CM",
+      "posGroup": "Midfielder",
+      "color": "#9b59b6",
+      "x": -0.86,
+      "z": -3.31,
+      "degree": 44,
+      "degreeNorm": 0.3099,
+      "betweenness": 0.00119,
+      "betweennessNorm": 0.0196
+    },
+    {
+      "playerId": 5503,
+      "name": "Lionel Andr\u00e9s Messi Cuccittini",
+      "shortName": "Cuccittini",
+      "jersey": 10,
+      "position": "RW",
+      "posGroup": "Attacking Mid",
+      "color": "#00d4ff",
+      "x": 18.76,
+      "z": 0.06,
+      "degree": 37,
+      "degreeNorm": 0.2606,
+      "betweenness": 0.002116,
+      "betweennessNorm": 0.0349
+    },
+    {
+      "playerId": 41824,
+      "name": "Leonardo Campana Romero",
+      "shortName": "Romero",
+      "jersey": 9,
+      "position": "ST",
+      "posGroup": "Striker",
+      "color": "#ffd700",
+      "x": 16.81,
+      "z": -10.47,
+      "degree": 32,
+      "degreeNorm": 0.2254,
+      "betweenness": 0.0,
+      "betweennessNorm": 0.0
+    },
+    {
+      "playerId": 12619,
+      "name": "Josef Alexander Mart\u00ednez Mencia",
+      "shortName": "Mencia",
+      "jersey": 17,
+      "position": "ST",
+      "posGroup": "Striker",
+      "color": "#ffd700",
+      "x": 21.17,
+      "z": -9.2,
+      "degree": 30,
+      "degreeNorm": 0.2113,
+      "betweenness": 0.011395,
+      "betweennessNorm": 0.1878
+    }
+  ],
+  "edges": [
+    {
+      "source": 18618,
+      "target": 23828,
+      "weight": 33,
+      "weightNorm": 1.0
+    },
+    {
+      "source": 3658,
+      "target": 29946,
+      "weight": 25,
+      "weightNorm": 0.7576
+    },
+    {
+      "source": 5203,
+      "target": 23828,
+      "weight": 24,
+      "weightNorm": 0.7273
+    },
+    {
+      "source": 225210,
+      "target": 366752,
+      "weight": 21,
+      "weightNorm": 0.6364
+    },
+    {
+      "source": 23828,
+      "target": 205682,
+      "weight": 20,
+      "weightNorm": 0.6061
+    },
+    {
+      "source": 29946,
+      "target": 205682,
+      "weight": 20,
+      "weightNorm": 0.6061
+    },
+    {
+      "source": 18618,
+      "target": 366752,
+      "weight": 18,
+      "weightNorm": 0.5455
+    },
+    {
+      "source": 5203,
+      "target": 32878,
+      "weight": 18,
+      "weightNorm": 0.5455
+    },
+    {
+      "source": 5211,
+      "target": 32878,
+      "weight": 16,
+      "weightNorm": 0.4848
+    },
+    {
+      "source": 23828,
+      "target": 42373,
+      "weight": 16,
+      "weightNorm": 0.4848
+    },
+    {
+      "source": 18618,
+      "target": 225210,
+      "weight": 15,
+      "weightNorm": 0.4545
+    },
+    {
+      "source": 32878,
+      "target": 225210,
+      "weight": 14,
+      "weightNorm": 0.4242
+    },
+    {
+      "source": 32878,
+      "target": 205682,
+      "weight": 14,
+      "weightNorm": 0.4242
+    },
+    {
+      "source": 5211,
+      "target": 225210,
+      "weight": 12,
+      "weightNorm": 0.3636
+    },
+    {
+      "source": 23828,
+      "target": 29946,
+      "weight": 12,
+      "weightNorm": 0.3636
+    },
+    {
+      "source": 32878,
+      "target": 41824,
+      "weight": 12,
+      "weightNorm": 0.3636
+    },
+    {
+      "source": 5203,
+      "target": 36430,
+      "weight": 12,
+      "weightNorm": 0.3636
+    },
+    {
+      "source": 5203,
+      "target": 18618,
+      "weight": 11,
+      "weightNorm": 0.3333
+    },
+    {
+      "source": 3658,
+      "target": 32878,
+      "weight": 11,
+      "weightNorm": 0.3333
+    },
+    {
+      "source": 5211,
+      "target": 23828,
+      "weight": 10,
+      "weightNorm": 0.303
+    },
+    {
+      "source": 18618,
+      "target": 42373,
+      "weight": 9,
+      "weightNorm": 0.2727
+    },
+    {
+      "source": 3658,
+      "target": 5203,
+      "weight": 9,
+      "weightNorm": 0.2727
+    },
+    {
+      "source": 5203,
+      "target": 205682,
+      "weight": 9,
+      "weightNorm": 0.2727
+    },
+    {
+      "source": 5203,
+      "target": 5503,
+      "weight": 8,
+      "weightNorm": 0.2424
+    },
+    {
+      "source": 5203,
+      "target": 29946,
+      "weight": 8,
+      "weightNorm": 0.2424
+    },
+    {
+      "source": 205682,
+      "target": 225209,
+      "weight": 8,
+      "weightNorm": 0.2424
+    },
+    {
+      "source": 32878,
+      "target": 225209,
+      "weight": 8,
+      "weightNorm": 0.2424
+    },
+    {
+      "source": 5203,
+      "target": 225209,
+      "weight": 8,
+      "weightNorm": 0.2424
+    },
+    {
+      "source": 5203,
+      "target": 225210,
+      "weight": 7,
+      "weightNorm": 0.2121
+    },
+    {
+      "source": 5211,
+      "target": 18618,
+      "weight": 7,
+      "weightNorm": 0.2121
+    },
+    {
+      "source": 5503,
+      "target": 32878,
+      "weight": 7,
+      "weightNorm": 0.2121
+    },
+    {
+      "source": 42373,
+      "target": 366752,
+      "weight": 7,
+      "weightNorm": 0.2121
+    },
+    {
+      "source": 3658,
+      "target": 366752,
+      "weight": 7,
+      "weightNorm": 0.2121
+    },
+    {
+      "source": 32878,
+      "target": 366752,
+      "weight": 7,
+      "weightNorm": 0.2121
+    },
+    {
+      "source": 3658,
+      "target": 225210,
+      "weight": 7,
+      "weightNorm": 0.2121
+    },
+    {
+      "source": 3658,
+      "target": 36430,
+      "weight": 7,
+      "weightNorm": 0.2121
+    },
+    {
+      "source": 3658,
+      "target": 18618,
+      "weight": 7,
+      "weightNorm": 0.2121
+    },
+    {
+      "source": 23828,
+      "target": 32878,
+      "weight": 6,
+      "weightNorm": 0.1818
+    },
+    {
+      "source": 5211,
+      "target": 12619,
+      "weight": 6,
+      "weightNorm": 0.1818
+    },
+    {
+      "source": 5211,
+      "target": 5503,
+      "weight": 6,
+      "weightNorm": 0.1818
+    },
+    {
+      "source": 18618,
+      "target": 32878,
+      "weight": 6,
+      "weightNorm": 0.1818
+    },
+    {
+      "source": 23828,
+      "target": 225210,
+      "weight": 6,
+      "weightNorm": 0.1818
+    },
+    {
+      "source": 12619,
+      "target": 205682,
+      "weight": 6,
+      "weightNorm": 0.1818
+    },
+    {
+      "source": 42373,
+      "target": 205682,
+      "weight": 6,
+      "weightNorm": 0.1818
+    },
+    {
+      "source": 29946,
+      "target": 32878,
+      "weight": 6,
+      "weightNorm": 0.1818
+    },
+    {
+      "source": 41824,
+      "target": 225209,
+      "weight": 6,
+      "weightNorm": 0.1818
+    },
+    {
+      "source": 36430,
+      "target": 205682,
+      "weight": 6,
+      "weightNorm": 0.1818
+    },
+    {
+      "source": 3658,
+      "target": 225209,
+      "weight": 6,
+      "weightNorm": 0.1818
+    },
+    {
+      "source": 5203,
+      "target": 5211,
+      "weight": 5,
+      "weightNorm": 0.1515
+    },
+    {
+      "source": 3658,
+      "target": 5503,
+      "weight": 5,
+      "weightNorm": 0.1515
+    },
+    {
+      "source": 5503,
+      "target": 225210,
+      "weight": 5,
+      "weightNorm": 0.1515
+    },
+    {
+      "source": 5203,
+      "target": 42373,
+      "weight": 5,
+      "weightNorm": 0.1515
+    },
+    {
+      "source": 18618,
+      "target": 29946,
+      "weight": 5,
+      "weightNorm": 0.1515
+    },
+    {
+      "source": 5203,
+      "target": 366752,
+      "weight": 5,
+      "weightNorm": 0.1515
+    },
+    {
+      "source": 12619,
+      "target": 29946,
+      "weight": 5,
+      "weightNorm": 0.1515
+    },
+    {
+      "source": 29946,
+      "target": 41824,
+      "weight": 5,
+      "weightNorm": 0.1515
+    },
+    {
+      "source": 23828,
+      "target": 225209,
+      "weight": 5,
+      "weightNorm": 0.1515
+    },
+    {
+      "source": 3658,
+      "target": 42373,
+      "weight": 4,
+      "weightNorm": 0.1212
+    },
+    {
+      "source": 5503,
+      "target": 12619,
+      "weight": 4,
+      "weightNorm": 0.1212
+    },
+    {
+      "source": 23828,
+      "target": 36430,
+      "weight": 4,
+      "weightNorm": 0.1212
+    },
+    {
+      "source": 18618,
+      "target": 36430,
+      "weight": 4,
+      "weightNorm": 0.1212
+    },
+    {
+      "source": 29946,
+      "target": 225209,
+      "weight": 4,
+      "weightNorm": 0.1212
+    },
+    {
+      "source": 36430,
+      "target": 225209,
+      "weight": 4,
+      "weightNorm": 0.1212
+    },
+    {
+      "source": 5203,
+      "target": 12619,
+      "weight": 3,
+      "weightNorm": 0.0909
+    },
+    {
+      "source": 3658,
+      "target": 23828,
+      "weight": 3,
+      "weightNorm": 0.0909
+    },
+    {
+      "source": 29946,
+      "target": 36430,
+      "weight": 3,
+      "weightNorm": 0.0909
+    },
+    {
+      "source": 32878,
+      "target": 36430,
+      "weight": 3,
+      "weightNorm": 0.0909
+    },
+    {
+      "source": 18618,
+      "target": 225209,
+      "weight": 3,
+      "weightNorm": 0.0909
+    },
+    {
+      "source": 41824,
+      "target": 205682,
+      "weight": 3,
+      "weightNorm": 0.0909
+    },
+    {
+      "source": 12619,
+      "target": 23828,
+      "weight": 2,
+      "weightNorm": 0.0606
+    },
+    {
+      "source": 205682,
+      "target": 225210,
+      "weight": 2,
+      "weightNorm": 0.0606
+    },
+    {
+      "source": 18618,
+      "target": 205682,
+      "weight": 2,
+      "weightNorm": 0.0606
+    },
+    {
+      "source": 29946,
+      "target": 225210,
+      "weight": 2,
+      "weightNorm": 0.0606
+    },
+    {
+      "source": 12619,
+      "target": 366752,
+      "weight": 2,
+      "weightNorm": 0.0606
+    },
+    {
+      "source": 5203,
+      "target": 41824,
+      "weight": 2,
+      "weightNorm": 0.0606
+    },
+    {
+      "source": 3658,
+      "target": 41824,
+      "weight": 2,
+      "weightNorm": 0.0606
+    },
+    {
+      "source": 12619,
+      "target": 32878,
+      "weight": 1,
+      "weightNorm": 0.0303
+    },
+    {
+      "source": 3658,
+      "target": 5211,
+      "weight": 1,
+      "weightNorm": 0.0303
+    },
+    {
+      "source": 5211,
+      "target": 366752,
+      "weight": 1,
+      "weightNorm": 0.0303
+    },
+    {
+      "source": 12619,
+      "target": 18618,
+      "weight": 1,
+      "weightNorm": 0.0303
+    },
+    {
+      "source": 5503,
+      "target": 366752,
+      "weight": 1,
+      "weightNorm": 0.0303
+    },
+    {
+      "source": 5503,
+      "target": 18618,
+      "weight": 1,
+      "weightNorm": 0.0303
+    },
+    {
+      "source": 3658,
+      "target": 205682,
+      "weight": 1,
+      "weightNorm": 0.0303
+    },
+    {
+      "source": 42373,
+      "target": 225210,
+      "weight": 1,
+      "weightNorm": 0.0303
+    },
+    {
+      "source": 36430,
+      "target": 41824,
+      "weight": 1,
+      "weightNorm": 0.0303
+    },
+    {
+      "source": 23828,
+      "target": 41824,
+      "weight": 1,
+      "weightNorm": 0.0303
+    }
+  ],
+  "meta": {
+    "playerCount": 16,
+    "edgeCount": 86,
+    "totalPasses": 641,
+    "density": 0.7167,
+    "maxDegree": 142,
+    "maxBetweenness": 0.060688
+  }
+}

@@ -1,14 +1,21 @@
 /**
  * PitchMatch — Heatmaps, Shot Maps, Passing Networks
  * Uses procedurally generated pitch data derived from real player statistics
+ * for heatmaps and shot maps, and real StatsBomb event data for the
+ * cinematic 3D passing network & centrality analysis.
  */
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, lazy, Suspense } from "react";
 import { useFilters } from "@/contexts/FilterContext";
 import { PLAYERS, getTeam } from "@/lib/mlsData";
 import NeuCard from "@/components/NeuCard";
+import { ChartHeader } from "@/components/ui/ChartHeader";
 import { ChartModal, MaximizeButton } from "@/components/ChartModal";
 import { Flame, Crosshair, Share2 } from "lucide-react";
 import StaggerContainer, { StaggerItem } from "@/components/StaggerContainer";
+
+const PassingNetwork3D = lazy(
+  () => import("@/components/charts/PassingNetwork3D")
+);
 
 const PITCH_BG =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/pitch-bg-SCSoxY6mUL64vxkYMYHLEF.webp";
@@ -30,7 +37,6 @@ function generateHeatmap(player: (typeof PLAYERS)[0]): number[][] {
   const zones: number[][] = Array.from({ length: 8 }, () => Array(12).fill(0));
   const pos = player.position;
 
-  // Position-based base distribution
   for (let y = 0; y < 8; y++) {
     for (let x = 0; x < 12; x++) {
       let base = 5 + rng() * 10;
@@ -45,7 +51,6 @@ function generateHeatmap(player: (typeof PLAYERS)[0]): number[][] {
         base += Math.max(0, 35 - center * 8);
         if (y >= 2 && y <= 5) base += 10;
       } else {
-        // FW
         base += x > 7 ? 45 : x > 5 ? 25 : 5;
         if (y >= 2 && y <= 5 && x > 8) base += 20;
       }
@@ -97,57 +102,6 @@ function generateTeamShots(
     allShots.push(...generateShots(p));
   });
   return allShots;
-}
-
-// Generate passing network
-function generatePassingNetwork(teamId: string) {
-  const teamPlayers = PLAYERS.filter(
-    p => p.team === teamId && p.starts > 3
-  ).slice(0, 11);
-  if (teamPlayers.length < 5) return null;
-
-  const rng = seededRandom(teamId.charCodeAt(0) * 100 + teamPlayers.length);
-
-  const nodes = teamPlayers.map(p => {
-    let x: number, y: number;
-    if (p.position === "GK") {
-      x = 10 + rng() * 5;
-      y = 28 + rng() * 10;
-    } else if (p.position === "DF") {
-      x = 20 + rng() * 15;
-      y = 10 + rng() * 45;
-    } else if (p.position === "MF") {
-      x = 40 + rng() * 20;
-      y = 10 + rng() * 45;
-    } else {
-      x = 65 + rng() * 25;
-      y = 15 + rng() * 35;
-    }
-    return {
-      playerId: p.id,
-      name: p.name,
-      x,
-      y,
-      passes: Math.round(p.minutes / 10 + rng() * 30),
-    };
-  });
-
-  const links: { source: number; target: number; weight: number }[] = [];
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-      const dist = Math.sqrt(
-        (nodes[i].x - nodes[j].x) ** 2 + (nodes[i].y - nodes[j].y) ** 2
-      );
-      if (dist < 40 && rng() > 0.3) {
-        links.push({
-          source: nodes[i].playerId,
-          target: nodes[j].playerId,
-          weight: Math.round(5 + rng() * 20 * (1 - dist / 50)),
-        });
-      }
-    }
-  }
-  return { nodes, links };
 }
 
 function PitchLines() {
@@ -266,11 +220,6 @@ export default function PitchMatch() {
     return player ? generateShots(player) : teamShots;
   }, [selectedPlayer, teamShots]);
 
-  const passNetwork = useMemo(
-    () => generatePassingNetwork(selectedTeam),
-    [selectedTeam]
-  );
-
   const selPlayerData = selectedPlayer
     ? PLAYERS.find(p => p.id === selectedPlayer)
     : null;
@@ -331,7 +280,9 @@ export default function PitchMatch() {
       offTarget: shots.filter(s => s.result === "off_target").length,
       avgXG:
         shots.length > 0
-          ? +(shots.reduce((s, sh) => s + sh.xG, 0) / shots.length).toFixed(3)
+          ? +(
+              shots.reduce((s, sh) => s + sh.xG, 0) / shots.length
+            ).toFixed(3)
           : 0,
     };
   }, [playerShots]);
@@ -405,69 +356,6 @@ export default function PitchMatch() {
           })}
         </svg>
       )}
-
-      {view === "passing" && passNetwork && (
-        <svg
-          viewBox="0 0 100 65"
-          className="absolute inset-0 w-full h-full"
-          style={{ zIndex: 2 }}
-        >
-          {passNetwork.links.map((link, i) => {
-            const source = passNetwork.nodes.find(
-              n => n.playerId === link.source
-            );
-            const target = passNetwork.nodes.find(
-              n => n.playerId === link.target
-            );
-            if (!source || !target) return null;
-            const opacity = Math.min(0.8, link.weight / 25);
-            const width = Math.max(0.3, link.weight / 15);
-            return (
-              <line
-                key={i}
-                x1={source.x}
-                y1={source.y}
-                x2={target.x}
-                y2={target.y}
-                stroke="var(--cyan)"
-                strokeWidth={width}
-                strokeOpacity={opacity}
-              />
-            );
-          })}
-          {passNetwork.nodes.map((node, i) => {
-            const size = Math.max(1.5, node.passes / 20);
-            return (
-              <g key={i}>
-                <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r={size + 0.5}
-                  fill="var(--pitch-line-soft)"
-                />
-                <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r={size}
-                  fill={getTeam(selectedTeam)?.color || "var(--cyan)"}
-                  stroke="#fff"
-                  strokeWidth={0.3}
-                />
-                <text
-                  x={node.x}
-                  y={node.y - size - 1.5}
-                  textAnchor="middle"
-                  fill="var(--foreground)"
-                  fontSize={2.5}
-                  fontFamily="Space Grotesk"
-                >
-                  {node.name.split(" ").pop() || ""}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      )}
     </div>
   );
 
@@ -525,240 +413,333 @@ export default function PitchMatch() {
         </div>
       </StaggerItem>
 
-      <StaggerItem>
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-          {/* Team/Player Selector */}
-          <NeuCard delay={0.05} className="p-4 lg:col-span-1">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Select Team
-            </h4>
-            <div className="space-y-0.5 max-h-32 overflow-y-auto mb-3">
-              {filteredTeams.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => {
-                    setSelectedTeam(t.id);
-                    setSelectedPlayer(null);
+      {/* Passing Network — Full-width cinematic 3D card */}
+      {view === "passing" && (
+        <StaggerItem>
+          <NeuCard delay={0.08} className="p-5">
+            <ChartHeader
+              title="Passing Network x Centrality Analysis"
+              description={
+                <>
+                  In Inter Miami's dominant 4-0 win over Toronto FC, the passing network reveals how the team's shape funneled possession through key architects.{" "}
+                  <strong>Kamal Miller</strong> touched the ball more than anyone (Degree: 142), anchoring build-up from the back, while{" "}
+                  <strong>Sergio Busquets</strong> acted as the critical bridge connecting the defense to the attack (Betweenness: 0.061).{" "}
+                  <strong>Facundo Farías</strong> was the second-highest betweenness node (0.046), channeling the ball into the final third.
+                  Hover over a player to isolate their passing lanes; click to lock the selection.
+                </>
+              }
+              methods={
+                <>
+                  <p style={{ marginBottom: "8px" }}>
+                    <strong>Data Source:</strong> StatsBomb Open Data, Match ID 3877115 (Inter Miami 4-0 Toronto FC, Sept 20, 2023).
+                    641 completed passes by Inter Miami players were extracted (type.name == 'Pass', pass.outcome == null).
+                  </p>
+                  <p style={{ marginBottom: "8px" }}>
+                    <strong>Node Positioning:</strong> Each player's average [x, y] location is computed from the coordinates of their pass attempts
+                    in StatsBomb's 120×80 coordinate system, then mapped to Three.js world coordinates (X: -60 to 60, Z: -40 to 40).
+                  </p>
+                  <p style={{ marginBottom: "8px" }}>
+                    <strong>Degree Centrality (C<sub>D</sub>):</strong> The total number of completed passes involving the player (both as passer and recipient).
+                    This metric determines the size of the glass node — higher degree = larger sphere.
+                    <br />
+                    <code style={{ fontSize: "9px" }}>C_D(v) = Σ passes_in(v) + Σ passes_out(v)</code>
+                  </p>
+                  <p style={{ marginBottom: "8px" }}>
+                    <strong>Betweenness Centrality (C<sub>B</sub>):</strong> Measures the fraction of shortest paths between all pairs of players
+                    that pass through a given player (Freeman, 1977). Computed via Brandes' algorithm on the undirected passing graph.
+                    Identifies "bridge" players who connect otherwise distant parts of the team structure.
+                    <br />
+                    <code style={{ fontSize: "9px" }}>C_B(v) = Σ_(s≠v≠t) σ_st(v) / σ_st</code>
+                    <br />
+                    where σ_st = total shortest paths from s to t, σ_st(v) = those passing through v.
+                    Normalized by (n-1)(n-2) for the undirected case.
+                  </p>
+                  <p style={{ marginBottom: "8px" }}>
+                    <strong>Network Density:</strong> Ratio of actual passing connections to possible connections = 2|E| / (n(n-1)).
+                    This match: 86 / 120 = 0.717, indicating a highly interconnected passing structure.
+                  </p>
+                  <p>
+                    <strong>Edge Weight:</strong> The thickness and opacity of each neon tube scales linearly with the number of completed passes
+                    between the two players. The maximum edge weight in this match is used as the normalization factor.
+                  </p>
+                </>
+              }
+              rightAction={
+                <MaximizeButton onClick={() => setMaximized("passing3d")} />
+              }
+            />
+            <Suspense
+              fallback={
+                <div
+                  className="flex items-center justify-center rounded-xl"
+                  style={{
+                    aspectRatio: "16/9",
+                    background: "#0a0a14",
+                    color: "rgba(255,255,255,0.3)",
+                    fontFamily: "JetBrains Mono, monospace",
+                    fontSize: "11px",
                   }}
-                  className={`w-full text-left text-xs py-1 px-2 rounded flex items-center gap-2 transition-colors ${
-                    selectedTeam === t.id
-                      ? "text-cyan bg-white/5"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
                 >
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: t.color }}
-                  />
-                  {t.short}
-                </button>
+                  Loading 3D scene…
+                </div>
+              }
+            >
+              <PassingNetwork3D />
+            </Suspense>
+
+            {/* Network stats below the 3D canvas */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+              {[
+                { label: "Total Passes", value: "641", color: "var(--cyan)" },
+                { label: "Players", value: "16", color: "var(--cyan)" },
+                { label: "Connections", value: "86", color: "var(--table-header-color)" },
+                { label: "Density", value: "0.717", color: "var(--table-header-color)" },
+              ].map(s => (
+                <div
+                  key={s.label}
+                  className="neu-concave rounded-lg p-2 text-center"
+                >
+                  <div className="text-[10px] text-muted-foreground uppercase">
+                    {s.label}
+                  </div>
+                  <div
+                    className="font-mono text-sm font-bold"
+                    style={{ color: s.color }}
+                  >
+                    {s.value}
+                  </div>
+                </div>
               ))}
             </div>
+          </NeuCard>
+        </StaggerItem>
+      )}
 
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Select Player
-            </h4>
-            <div className="space-y-0.5 max-h-48 overflow-y-auto">
-              <button
-                onClick={() => setSelectedPlayer(null)}
-                className={`w-full text-left text-xs py-1 px-2 rounded transition-colors ${
-                  !selectedPlayer
-                    ? "text-cyan bg-white/5"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                All Players (Team)
-              </button>
-              {teamPlayers.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => setSelectedPlayer(p.id)}
-                  className={`w-full text-left text-xs py-1 px-2 rounded flex items-center justify-between transition-colors ${
-                    selectedPlayer === p.id
-                      ? "text-cyan bg-white/5"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <span className="truncate">{p.name}</span>
-                  <span
-                    className={`text-[10px] px-1 rounded ${
-                      p.position === "FW"
-                        ? "bg-red-500/15 text-red-400"
-                        : p.position === "MF"
-                          ? "bg-blue-500/15 text-blue-400"
-                          : p.position === "DF"
-                            ? "bg-green-500/15 text-green-400"
-                            : "bg-yellow-500/15 text-yellow-400"
+      {/* Heatmap / Shotmap — original layout with team/player selector */}
+      {(view === "heatmap" || view === "shotmap") && (
+        <StaggerItem>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+            {/* Team/Player Selector */}
+            <NeuCard delay={0.05} className="p-4 lg:col-span-1">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Select Team
+              </h4>
+              <div className="space-y-0.5 max-h-32 overflow-y-auto mb-3">
+                {filteredTeams.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setSelectedTeam(t.id);
+                      setSelectedPlayer(null);
+                    }}
+                    className={`w-full text-left text-xs py-1 px-2 rounded flex items-center gap-2 transition-colors ${
+                      selectedTeam === t.id
+                        ? "text-cyan bg-white/5"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {p.position}
-                  </span>
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: t.color }}
+                    />
+                    {t.short}
+                  </button>
+                ))}
+              </div>
+
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Select Player
+              </h4>
+              <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                <button
+                  onClick={() => setSelectedPlayer(null)}
+                  className={`w-full text-left text-xs py-1 px-2 rounded transition-colors ${
+                    !selectedPlayer
+                      ? "text-cyan bg-white/5"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  All Players (Team)
                 </button>
-              ))}
-            </div>
-          </NeuCard>
-
-          {/* Pitch Visualization */}
-          <NeuCard delay={0.12} className="p-4 lg:col-span-3">
-            <div className="flex items-center justify-between mb-3">
-              <h3
-                className="text-sm font-semibold"
-                style={{ fontFamily: "Space Grotesk" }}
-              >
-                {view === "heatmap" &&
-                  `Heatmap — ${selPlayerData?.name || teamPlayers[0]?.name || "Team"}`}
-                {view === "shotmap" &&
-                  `Shot Map — ${selPlayerData?.name || getTeam(selectedTeam)?.short || "Team"}`}
-                {view === "passing" &&
-                  `Passing Network — ${getTeam(selectedTeam)?.short || "Team"}`}
-              </h3>
-              <div className="flex items-center gap-3">
-                {view === "shotmap" && (
-                  <div className="flex items-center gap-3 text-[10px]">
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400" />{" "}
-                      Goal
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-amber-400" />{" "}
-                      Saved
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-red-400" /> Off
-                      Target
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-gray-400" />{" "}
-                      Blocked
-                    </span>
-                  </div>
-                )}
-                <MaximizeButton onClick={() => setMaximized("pitch")} />
-              </div>
-            </div>
-
-            <PitchVisualization />
-
-            {/* Stats below pitch */}
-            {view === "shotmap" && (
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-3">
-                {[
-                  {
-                    label: "Total Shots",
-                    value: shotStats.total,
-                    color: "var(--table-header-color)",
-                  },
-                  { label: "Goals", value: shotStats.goals, color: "#00c897" },
-                  { label: "Saved", value: shotStats.saved, color: "#ffb347" },
-                  { label: "Blocked", value: shotStats.blocked, color: "#666" },
-                  {
-                    label: "Off Target",
-                    value: shotStats.offTarget,
-                    color: "#ff6b6b",
-                  },
-                  {
-                    label: "Avg xG",
-                    value: shotStats.avgXG,
-                    color: "var(--cyan)",
-                  },
-                ].map(s => (
-                  <div
-                    key={s.label}
-                    className="neu-concave rounded-lg p-2 text-center"
+                {teamPlayers.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedPlayer(p.id)}
+                    className={`w-full text-left text-xs py-1 px-2 rounded flex items-center justify-between transition-colors ${
+                      selectedPlayer === p.id
+                        ? "text-cyan bg-white/5"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
                   >
-                    <div className="text-[10px] text-muted-foreground uppercase">
-                      {s.label}
-                    </div>
-                    <div
-                      className="font-mono text-sm font-bold"
-                      style={{ color: s.color }}
+                    <span className="truncate">{p.name}</span>
+                    <span
+                      className={`text-[10px] px-1 rounded ${
+                        p.position === "FW"
+                          ? "bg-red-500/15 text-red-400"
+                          : p.position === "MF"
+                            ? "bg-blue-500/15 text-blue-400"
+                            : p.position === "DF"
+                              ? "bg-green-500/15 text-green-400"
+                              : "bg-yellow-500/15 text-yellow-400"
+                      }`}
                     >
-                      {typeof s.value === "number" && s.value < 1
-                        ? s.value.toFixed(3)
-                        : s.value}
-                    </div>
-                  </div>
+                      {p.position}
+                    </span>
+                  </button>
                 ))}
               </div>
-            )}
+            </NeuCard>
 
-            {view === "heatmap" && selPlayerData && (
-              <div className="grid grid-cols-4 gap-2 mt-3">
-                {[
-                  {
-                    label: "Minutes",
-                    value: selPlayerData.minutes.toLocaleString(),
-                  },
-                  { label: "Position", value: selPlayerData.position },
-                  { label: "Games", value: selPlayerData.games },
-                  { label: "Starts", value: selPlayerData.starts },
-                ].map(s => (
-                  <div
-                    key={s.label}
-                    className="neu-concave rounded-lg p-2 text-center"
-                  >
-                    <div className="text-[10px] text-muted-foreground uppercase">
-                      {s.label}
+            {/* Pitch Visualization */}
+            <NeuCard delay={0.12} className="p-4 lg:col-span-3">
+              <div className="flex items-center justify-between mb-3">
+                <h3
+                  className="text-sm font-semibold"
+                  style={{ fontFamily: "Space Grotesk" }}
+                >
+                  {view === "heatmap" &&
+                    `Heatmap — ${selPlayerData?.name || teamPlayers[0]?.name || "Team"}`}
+                  {view === "shotmap" &&
+                    `Shot Map — ${selPlayerData?.name || getTeam(selectedTeam)?.short || "Team"}`}
+                </h3>
+                <div className="flex items-center gap-3">
+                  {view === "shotmap" && (
+                    <div className="flex items-center gap-3 text-[10px]">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" />{" "}
+                        Goal
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-amber-400" />{" "}
+                        Saved
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-red-400" /> Off
+                        Target
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-gray-400" />{" "}
+                        Blocked
+                      </span>
                     </div>
-                    <div className="font-mono text-xs font-bold text-cyan">
-                      {s.value}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {view === "passing" && passNetwork && (
-              <div className="grid grid-cols-3 gap-2 mt-3">
-                <div className="neu-concave rounded-lg p-2 text-center">
-                  <div className="text-[10px] text-muted-foreground uppercase">
-                    Players
-                  </div>
-                  <div className="font-mono text-sm font-bold text-cyan">
-                    {passNetwork.nodes.length}
-                  </div>
-                </div>
-                <div className="neu-concave rounded-lg p-2 text-center">
-                  <div className="text-[10px] text-muted-foreground uppercase">
-                    Connections
-                  </div>
-                  <div className="font-mono text-sm font-bold text-amber">
-                    {passNetwork.links.length}
-                  </div>
-                </div>
-                <div className="neu-concave rounded-lg p-2 text-center">
-                  <div className="text-[10px] text-muted-foreground uppercase">
-                    Avg Passes
-                  </div>
-                  <div className="font-mono text-sm font-bold text-emerald">
-                    {passNetwork.links.length > 0
-                      ? (
-                          passNetwork.links.reduce(
-                            (s: number, l: { weight: number }) => s + l.weight,
-                            0
-                          ) / passNetwork.links.length
-                        ).toFixed(1)
-                      : 0}
-                  </div>
+                  )}
+                  <MaximizeButton onClick={() => setMaximized("pitch")} />
                 </div>
               </div>
-            )}
-          </NeuCard>
-        </div>
-      </StaggerItem>
-      {/* Maximize Modal */}
+
+              <PitchVisualization />
+
+              {/* Stats below pitch */}
+              {view === "shotmap" && (
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-3">
+                  {[
+                    {
+                      label: "Total Shots",
+                      value: shotStats.total,
+                      color: "var(--table-header-color)",
+                    },
+                    { label: "Goals", value: shotStats.goals, color: "#00c897" },
+                    { label: "Saved", value: shotStats.saved, color: "#ffb347" },
+                    { label: "Blocked", value: shotStats.blocked, color: "#666" },
+                    {
+                      label: "Off Target",
+                      value: shotStats.offTarget,
+                      color: "#ff6b6b",
+                    },
+                    {
+                      label: "Avg xG",
+                      value: shotStats.avgXG,
+                      color: "var(--cyan)",
+                    },
+                  ].map(s => (
+                    <div
+                      key={s.label}
+                      className="neu-concave rounded-lg p-2 text-center"
+                    >
+                      <div className="text-[10px] text-muted-foreground uppercase">
+                        {s.label}
+                      </div>
+                      <div
+                        className="font-mono text-sm font-bold"
+                        style={{ color: s.color }}
+                      >
+                        {typeof s.value === "number" && s.value < 1
+                          ? s.value.toFixed(3)
+                          : s.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {view === "heatmap" && selPlayerData && (
+                <div className="grid grid-cols-4 gap-2 mt-3">
+                  {[
+                    {
+                      label: "Minutes",
+                      value: selPlayerData.minutes.toLocaleString(),
+                    },
+                    { label: "Position", value: selPlayerData.position },
+                    { label: "Games", value: selPlayerData.games },
+                    { label: "Starts", value: selPlayerData.starts },
+                  ].map(s => (
+                    <div
+                      key={s.label}
+                      className="neu-concave rounded-lg p-2 text-center"
+                    >
+                      <div className="text-[10px] text-muted-foreground uppercase">
+                        {s.label}
+                      </div>
+                      <div className="font-mono text-xs font-bold text-cyan">
+                        {s.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </NeuCard>
+          </div>
+        </StaggerItem>
+      )}
+
+      {/* Maximize Modals */}
       <ChartModal
         isOpen={maximized === "pitch"}
         onClose={() => setMaximized(null)}
         title={
           view === "heatmap"
             ? `Heatmap — ${selPlayerData?.name || teamPlayers[0]?.name || "Team"}`
-            : view === "shotmap"
-              ? `Shot Map — ${selPlayerData?.name || getTeam(selectedTeam)?.short || "Team"}`
-              : `Passing Network — ${getTeam(selectedTeam)?.short || "Team"}`
+            : `Shot Map — ${selPlayerData?.name || getTeam(selectedTeam)?.short || "Team"}`
         }
       >
         <PitchVisualization isModal />
+      </ChartModal>
+
+      <ChartModal
+        isOpen={maximized === "passing3d"}
+        onClose={() => setMaximized(null)}
+        title="Passing Network x Centrality Analysis"
+      >
+        <div style={{ height: "calc(100vh - 10rem)" }}>
+          <Suspense
+            fallback={
+              <div
+                className="flex items-center justify-center"
+                style={{
+                  height: "100%",
+                  background: "#0a0a14",
+                  color: "rgba(255,255,255,0.3)",
+                  fontFamily: "JetBrains Mono, monospace",
+                  fontSize: "11px",
+                }}
+              >
+                Loading 3D scene…
+              </div>
+            }
+          >
+            <PassingNetwork3D isModal />
+          </Suspense>
+        </div>
       </ChartModal>
     </StaggerContainer>
   );
