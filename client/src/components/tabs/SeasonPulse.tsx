@@ -4,8 +4,8 @@
  * Session 1 deliverable: Snapshot Table (Layer 1) with week selector,
  * conference filter, rank-by toggle, and tier groupings.
  *
- * Layers 2 (Bump Chart) and 3 (Narrative Timeline) will be added
- * in Sessions 2 and 3 respectively.
+ * Refactored for multi-season support: reads active season data from
+ * FilterContext and passes it to the seasonPulse engine.
  */
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -31,8 +31,10 @@ import {
   type TeamWeekStanding,
 } from "@/lib/seasonPulse";
 import { mutedTeamColor, hexToRgba } from "@/lib/chartUtils";
+import { seasonPulseInsights } from "@/lib/insightEngine";
 import NeuCard from "@/components/NeuCard";
 import { ChartHeader } from "@/components/ui/ChartHeader";
+import { InsightPanel } from "@/components/InsightPanel";
 import StaggerContainer, { StaggerItem } from "@/components/StaggerContainer";
 import BumpChart from "@/components/charts/BumpChart";
 
@@ -120,22 +122,20 @@ function PowerBar({
         background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
       }}
     >
-      <motion.div
-        className="absolute inset-y-0 left-0 rounded-full"
+      <div
+        className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
         style={{
-          background: color,
+          width: `${pct}%`,
+          background: `linear-gradient(90deg, ${hexToRgba(color, 0.6)}, ${color})`,
           boxShadow: `0 0 6px ${hexToRgba(color, 0.4)}`,
         }}
-        initial={{ width: 0 }}
-        animate={{ width: `${pct}%` }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       />
     </div>
   );
 }
 
 // ═══════════════════════════════════════════
-// RANK DELTA BADGE
+// RANK DELTA COMPONENT
 // ═══════════════════════════════════════════
 
 function RankDelta({ delta, isDark }: { delta: number; isDark: boolean }) {
@@ -269,8 +269,7 @@ function WeekSelector({
         </select>
         <ChevronDown
           size={12}
-          className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: "var(--muted-foreground)" }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"
         />
       </div>
 
@@ -285,7 +284,7 @@ function WeekSelector({
         <SkipForward size={12} />
       </button>
 
-      {/* Week slider */}
+      {/* Slider */}
       <input
         type="range"
         min={1}
@@ -295,8 +294,8 @@ function WeekSelector({
         className="flex-1 h-1 rounded-full appearance-none cursor-pointer"
         style={{
           background: isDark
-            ? `linear-gradient(to right, var(--cyan) ${((week - 1) / (maxWeek - 1)) * 100}%, rgba(255,255,255,0.1) ${((week - 1) / (maxWeek - 1)) * 100}%)`
-            : `linear-gradient(to right, var(--cyan) ${((week - 1) / (maxWeek - 1)) * 100}%, rgba(0,0,0,0.1) ${((week - 1) / (maxWeek - 1)) * 100}%)`,
+            ? `linear-gradient(to right, var(--cyan) ${((week - 1) / Math.max(maxWeek - 1, 1)) * 100}%, rgba(255,255,255,0.1) ${((week - 1) / Math.max(maxWeek - 1, 1)) * 100}%)`
+            : `linear-gradient(to right, var(--cyan) ${((week - 1) / Math.max(maxWeek - 1, 1)) * 100}%, rgba(0,0,0,0.1) ${((week - 1) / Math.max(maxWeek - 1, 1)) * 100}%)`,
           minWidth: "120px",
           accentColor: "var(--cyan)",
         }}
@@ -347,16 +346,25 @@ function TierSeparator({
 export default function SeasonPulse() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  const { filters, filteredTeams } = useFilters();
+  const { filters, filteredTeams, activeSeasonData, seasonLoading } = useFilters();
+
+  // Extract season-specific data
+  const { matches, totalWeeks, seasonYear, teams } = activeSeasonData;
 
   // Shared state for all three layers
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
-  const [selectedWeek, setSelectedWeek] = useState<number>(getLatestWeek());
+  const [selectedWeek, setSelectedWeek] = useState<number>(totalWeeks);
   const [conferenceFilter, setConferenceFilter] = useState<ConferenceFilter>("ALL");
   const [rankMode, setRankMode] = useState<RankMode>("POWER");
   const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
 
-  const maxWeek = getMaxWeek();
+  const maxWeek = getMaxWeek(totalWeeks);
+
+  // Reset selected week when season changes
+  useEffect(() => {
+    setSelectedWeek(totalWeeks);
+    setSelectedTeam(null);
+  }, [seasonYear, totalWeeks]);
 
   // Auto-select team when exactly one team is filtered globally
   useEffect(() => {
@@ -365,10 +373,10 @@ export default function SeasonPulse() {
     }
   }, [filters.selectedTeams]);
 
-  // Get standings for selected week
+  // Get standings for selected week — pass season data
   const weekStandings = useMemo(() => {
-    return getWeekStandings(selectedWeek);
-  }, [selectedWeek]);
+    return getWeekStandings(selectedWeek, teams, matches, totalWeeks);
+  }, [selectedWeek, teams, matches, totalWeeks]);
 
   // Apply conference filter
   const filteredStandings = useMemo(() => {
@@ -434,24 +442,50 @@ export default function SeasonPulse() {
     const bottomName = bottomTeam?.short || bottom.teamId;
     const gap = (top.powerScore - bottom.powerScore).toFixed(1);
 
+    if (seasonYear === 2026) {
+      return `${seasonYear} season through ${maxWeek} matchweeks: ${topName} lead the ${rankMode === "POWER" ? "power rankings" : "points table"} with ${top.points} points from ${top.played} matches (${top.ppg.toFixed(2)} PPG). Early-season data — the composite score rewards current form and momentum heavily at this stage.`;
+    }
+
     return `End-of-season rankings: ${topName} finish atop the ${rankMode === "POWER" ? "power rankings" : "points table"} with a ${gap}-point power score gap over last-place ${bottomName}. The composite score rewards teams that are hot and balanced — not just those who accumulated points early.`;
-  }, [filteredStandings, selectedWeek, maxWeek, rankMode]);
+  }, [filteredStandings, selectedWeek, maxWeek, rankMode, seasonYear]);
+
+  // Season Pulse insights
+  const { players } = activeSeasonData;
+  const pulseInsights = useMemo(() => {
+    const latestStandings = getWeekStandings(maxWeek, teams, matches, totalWeeks);
+    return seasonPulseInsights(latestStandings, players, matches, seasonYear, totalWeeks);
+  }, [maxWeek, teams, matches, totalWeeks, players, seasonYear]);
+
+  // Dynamic methods text
+  const matchCount = matches.length;
+  const dataSourceText = seasonYear === 2026
+    ? `${matchCount} matches across ${maxWeek} matchweeks from the ${seasonYear} MLS season (in progress). Data sourced from the American Soccer Analysis (ASA) API.`
+    : `510 matches across 33 matchweeks from the 2025 MLS season. Data sourced from FBref.com.`;
 
   return (
     <div className="space-y-4 pt-4">
+      {seasonLoading && (
+        <div className="text-center py-4">
+          <span className="text-sm text-muted-foreground animate-pulse">
+            Loading {seasonYear} season data...
+          </span>
+        </div>
+      )}
+      {/* ═══ INSIGHT PANEL ═══ */}
+      <InsightPanel insights={pulseInsights} isDark={isDark} />
+
       <StaggerContainer className="space-y-4">
         {/* ═══ SNAPSHOT TABLE (Layer 1) ═══ */}
         <StaggerItem>
           <NeuCard className="p-4 md:p-5">
             <ChartHeader
-              title="Season Pulse — Power Rankings"
-              subtitle={`Week ${selectedWeek} of ${maxWeek} · ${filteredStandings.length} teams`}
+              title={`Season Pulse — Power Rankings`}
+              subtitle={`${seasonYear} · Week ${selectedWeek} of ${maxWeek} · ${filteredStandings.length} teams`}
               description={headline}
               methods={
                 <div className="space-y-2">
                   <p>
-                    <strong>Data Source:</strong> 510 matches across 33 matchweeks
-                    from the 2025 MLS season. All statistics are computed
+                    <strong>Data Source:</strong> {dataSourceText} All statistics are computed
                     cumulatively from match results (homeGoals, awayGoals, week).
                   </p>
                   <p>

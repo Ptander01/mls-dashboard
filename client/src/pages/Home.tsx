@@ -76,6 +76,7 @@ function TabContent({ activeTab }: { activeTab: string }) {
 // Exploded Z-axis assembly animation component
 function ZAssemblyTitle() {
   const [phase, setPhase] = useState(0);
+  const { activeSeasonData } = useFilters();
 
   useEffect(() => {
     const timers = [
@@ -157,7 +158,7 @@ function ZAssemblyTitle() {
           transition: "all 1s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        2025 SEASON
+        {activeSeasonData.seasonYear} SEASON{activeSeasonData.seasonYear === 2026 && <span className="ml-1 text-emerald-400">LIVE</span>}
       </span>
     </div>
   );
@@ -193,7 +194,7 @@ function ThemeToggle() {
 export default function Home() {
   const [activeTab, setActiveTab] = useState("players");
   const [loaded, setLoaded] = useState(false);
-  const { isFilterActive, filteredPlayers, filteredTeams } = useFilters();
+  const { isFilterActive, filteredPlayers, filteredTeams, filteredMatches, activeSeasonData } = useFilters();
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -268,8 +269,8 @@ export default function Home() {
               {filteredTeams.length} teams{" "}
               <span style={{ color: "var(--dot-separator)" }}>·</span>{" "}
               {filteredPlayers.length} players{" "}
-              <span style={{ color: "var(--dot-separator)" }}>·</span> 510
-              matches
+              <span style={{ color: "var(--dot-separator)" }}>·</span>{" "}
+              {filteredMatches.length} matches
               {isFilterActive && (
                 <span className="text-cyan ml-2 inline-flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan animate-glow-pulse" />

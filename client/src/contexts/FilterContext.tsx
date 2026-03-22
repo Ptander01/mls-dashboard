@@ -4,15 +4,26 @@ import React, {
   useState,
   useMemo,
   useCallback,
+  useEffect,
 } from "react";
 import {
   TEAMS,
   PLAYERS,
   MATCHES,
+  TEAM_BUDGETS,
+  TOTAL_WEEKS,
+  SEASON_YEAR,
   type Player,
   type Match,
   type Team,
+  type TeamBudget,
 } from "@/lib/mlsData";
+import {
+  load2026Data,
+  getSeasonDataSync,
+  type SeasonYear,
+  type SeasonData,
+} from "@/lib/seasonDataLoader";
 
 export interface Filters {
   selectedTeams: string[];
@@ -22,6 +33,7 @@ export interface Filters {
   salaryRange: [number, number];
   positionFilter: string[];
   conferenceFilter: string[];
+  selectedSeason: SeasonYear;
 }
 
 /** Pottery-focus state: which team (if any) is emphasized on the Gravitational Pull chart */
@@ -39,6 +51,17 @@ interface FilterContextType {
   isFilterActive: boolean;
   potteryFocus: PotteryFocus;
   setPotteryFocus: React.Dispatch<React.SetStateAction<PotteryFocus>>;
+  /** Active season's full data arrays (unfiltered) */
+  activeSeasonData: {
+    matches: Match[];
+    players: Player[];
+    teamBudgets: Record<string, TeamBudget>;
+    totalWeeks: number;
+    seasonYear: SeasonYear;
+    teams: Team[];
+  };
+  /** Whether the 2026 data is still loading */
+  seasonLoading: boolean;
 }
 
 const defaultFilters: Filters = {
@@ -49,6 +72,7 @@ const defaultFilters: Filters = {
   salaryRange: [0, 15000000],
   positionFilter: [],
   conferenceFilter: [],
+  selectedSeason: 2026,
 };
 
 const FilterContext = createContext<FilterContextType | null>(null);
@@ -58,8 +82,34 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
   const [potteryFocus, setPotteryFocus] = useState<PotteryFocus>({
     emphasizedTeam: null,
   });
+  const [season2026Data, setSeason2026Data] = useState<SeasonData | null>(
+    getSeasonDataSync(2026)
+  );
+  const [seasonLoading, setSeasonLoading] = useState(false);
 
-  const resetFilters = useCallback(() => setFilters(defaultFilters), []);
+  // Load 2026 data on mount (or when season switches to 2026)
+  useEffect(() => {
+    if (filters.selectedSeason === 2026 && !season2026Data) {
+      setSeasonLoading(true);
+      load2026Data()
+        .then((data) => {
+          setSeason2026Data(data);
+          setSeasonLoading(false);
+        })
+        .catch(() => {
+          setSeasonLoading(false);
+        });
+    }
+  }, [filters.selectedSeason, season2026Data]);
+
+  const resetFilters = useCallback(
+    () =>
+      setFilters((prev) => ({
+        ...defaultFilters,
+        selectedSeason: prev.selectedSeason,
+      })),
+    []
+  );
 
   const isFilterActive = useMemo(() => {
     return (
@@ -76,62 +126,91 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
     );
   }, [filters]);
 
+  // Resolve active season data
+  const activeSeasonData = useMemo(() => {
+    if (filters.selectedSeason === 2026 && season2026Data) {
+      return {
+        matches: season2026Data.matches,
+        players: season2026Data.players,
+        teamBudgets: season2026Data.teamBudgets,
+        totalWeeks: season2026Data.totalWeeks,
+        seasonYear: 2026 as SeasonYear,
+        teams: TEAMS, // Teams are shared across seasons
+      };
+    }
+    // Default: 2025
+    return {
+      matches: MATCHES,
+      players: PLAYERS,
+      teamBudgets: TEAM_BUDGETS,
+      totalWeeks: TOTAL_WEEKS,
+      seasonYear: 2025 as SeasonYear,
+      teams: TEAMS,
+    };
+  }, [filters.selectedSeason, season2026Data]);
+
   const filteredTeams = useMemo(() => {
     let t = [...TEAMS];
     if (filters.conferenceFilter.length > 0) {
-      t = t.filter(team => filters.conferenceFilter.includes(team.conference));
+      t = t.filter((team) => filters.conferenceFilter.includes(team.conference));
     }
     if (filters.selectedTeams.length > 0) {
-      t = t.filter(team => filters.selectedTeams.includes(team.id));
+      t = t.filter((team) => filters.selectedTeams.includes(team.id));
     }
     return t;
   }, [filters.selectedTeams, filters.conferenceFilter]);
 
   const filteredPlayers = useMemo(() => {
-    let p = [...PLAYERS];
-    const teamIds = filteredTeams.map(t => t.id);
+    let p = [...activeSeasonData.players];
+    const teamIds = filteredTeams.map((t) => t.id);
     if (
       filters.selectedTeams.length > 0 ||
       filters.conferenceFilter.length > 0
     ) {
-      p = p.filter(player => teamIds.includes(player.team));
+      p = p.filter((player) => teamIds.includes(player.team));
     }
     if (filters.selectedPlayers.length > 0) {
-      p = p.filter(player =>
+      p = p.filter((player) =>
         filters.selectedPlayers.includes(String(player.id))
       );
     }
     if (filters.positionFilter.length > 0) {
-      p = p.filter(player => filters.positionFilter.includes(player.position));
+      p = p.filter((player) => filters.positionFilter.includes(player.position));
     }
     p = p.filter(
-      player =>
+      (player) =>
         player.age >= filters.ageRange[0] && player.age <= filters.ageRange[1]
     );
     p = p.filter(
-      player =>
+      (player) =>
         player.minutes >= filters.minutesRange[0] &&
         player.minutes <= filters.minutesRange[1]
     );
     p = p.filter(
-      player =>
+      (player) =>
         player.salary >= filters.salaryRange[0] &&
         player.salary <= filters.salaryRange[1]
     );
     return p;
-  }, [filters, filteredTeams]);
+  }, [filters, filteredTeams, activeSeasonData.players]);
 
   const filteredMatches = useMemo(() => {
+    const allMatches = activeSeasonData.matches;
     if (
       filters.selectedTeams.length === 0 &&
       filters.conferenceFilter.length === 0
     )
-      return MATCHES;
-    const teamIds = filteredTeams.map(t => t.id);
-    return MATCHES.filter(
-      m => teamIds.includes(m.homeTeam) || teamIds.includes(m.awayTeam)
+      return allMatches;
+    const teamIds = filteredTeams.map((t) => t.id);
+    return allMatches.filter(
+      (m) => teamIds.includes(m.homeTeam) || teamIds.includes(m.awayTeam)
     );
-  }, [filters.selectedTeams, filters.conferenceFilter, filteredTeams]);
+  }, [
+    filters.selectedTeams,
+    filters.conferenceFilter,
+    filteredTeams,
+    activeSeasonData.matches,
+  ]);
 
   return (
     <FilterContext.Provider
@@ -145,6 +224,8 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
         isFilterActive,
         potteryFocus,
         setPotteryFocus,
+        activeSeasonData,
+        seasonLoading,
       }}
     >
       {children}

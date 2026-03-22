@@ -11,6 +11,8 @@
 import type { Player, Match, Team, TeamBudget } from "./mlsData";
 import { TEAMS, MATCHES, TEAM_BUDGETS, getTeam } from "./mlsData";
 import { linearRegression } from "./chartUtils";
+import type { TeamWeekStanding } from "./seasonPulse";
+import type { SeasonYear } from "./seasonDataLoader";
 
 // ═══════════════════════════════════════════
 // TYPES
@@ -1682,4 +1684,229 @@ export function homeResponseCardInsights(
   });
 
   return items.slice(0, 3);
+}
+
+
+// ═══════════════════════════════════════════
+// SEASON PULSE INSIGHTS (2026 Storyline Detection)
+// ═══════════════════════════════════════════
+
+/**
+ * Compute insight cards for the Season Pulse tab.
+ *
+ * Dynamically detects defining storylines based on the active season's
+ * standings data. For 2026, this includes the four key narratives:
+ * - The LAFC Wall (historic defensive start)
+ * - The Philly Collapse (title defense hangover)
+ * - The Vancouver Surge (offensive explosion)
+ * - The Sam Surridge Golden Boot Race
+ *
+ * For 2025, it surfaces end-of-season narratives from the full data.
+ */
+export function seasonPulseInsights(
+  standings: TeamWeekStanding[],
+  players: Player[],
+  matches: Match[],
+  seasonYear: SeasonYear,
+  totalWeeks: number
+): Insight[] {
+  const insights: Insight[] = [];
+  if (standings.length === 0) return insights;
+
+  // Sort by power rank
+  const sorted = [...standings].sort((a, b) => a.powerRank - b.powerRank);
+  const top = sorted[0];
+  const bottom = sorted[sorted.length - 1];
+
+  // ─── 2026 Early-Season Storyline Detection ───
+  if (seasonYear === 2026) {
+    // 1. The LAFC Wall — detect historic defensive start
+    const lafcStanding = standings.find(s => s.teamId === "LAFC");
+    if (lafcStanding && lafcStanding.goalsAgainst === 0 && lafcStanding.played >= 3) {
+      const lafcTeam = getTeam("LAFC")?.name || "LAFC";
+      insights.push({
+        icon: "star",
+        headline: `The LAFC Wall: ${lafcStanding.played} games, 0 goals conceded`,
+        detail: `${lafcTeam} have kept ${lafcStanding.played} consecutive clean sheets to start the ${seasonYear} season — a historic defensive record. Their ${lafcStanding.wins}W-${lafcStanding.draws}D-${lafcStanding.losses}L record with ${lafcStanding.goalsFor} GF and 0 GA gives them an impenetrable +${lafcStanding.goalsFor} goal difference.`,
+        accentColor: "cyan",
+      });
+    }
+
+    // 2. The Philly Collapse — detect title defense hangover
+    const phillyStanding = standings.find(s => s.teamId === "PHI");
+    if (phillyStanding && phillyStanding.points === 0 && phillyStanding.played >= 3) {
+      const phillyTeam = getTeam("PHI")?.name || "Philadelphia Union";
+      insights.push({
+        icon: "alert",
+        headline: `Philly Collapse: 0 points through ${phillyStanding.played} games`,
+        detail: `${phillyTeam}, the 2025 Supporters' Shield winners, have ${phillyStanding.losses} losses in ${phillyStanding.played} matches with 0 points — a catastrophic title defense start. They've conceded ${phillyStanding.goalsAgainst} goals (${(phillyStanding.goalsAgainst / phillyStanding.played).toFixed(1)}/game) and sit at the bottom of the table.`,
+        accentColor: "coral",
+      });
+    }
+
+    // 3. The Vancouver Surge — detect offensive explosion
+    const vanStanding = standings.find(s => s.teamId === "VAN");
+    if (vanStanding && vanStanding.goalsFor >= 10 && vanStanding.played >= 3) {
+      const vanTeam = getTeam("VAN")?.name || "Vancouver Whitecaps";
+      const gpg = (vanStanding.goalsFor / vanStanding.played).toFixed(1);
+      insights.push({
+        icon: "zap",
+        headline: `Vancouver Surge: ${vanStanding.goalsFor} goals in ${vanStanding.played} games (${gpg}/game)`,
+        detail: `${vanTeam} are the league's most prolific attack with ${vanStanding.goalsFor} GF and a +${vanStanding.goalDifference} goal difference through ${vanStanding.played} matches. Their ${vanStanding.points} points from a ${vanStanding.wins}W-${vanStanding.draws}D-${vanStanding.losses}L record has them firmly in the title contender tier.`,
+        accentColor: "emerald",
+      });
+    }
+
+    // 4. The Sam Surridge Golden Boot Race — detect top scorer
+    const activePlayers = players.filter(p => p.minutes > 0 && p.goals > 0);
+    const topScorer = [...activePlayers].sort((a, b) => b.goals - a.goals)[0];
+    if (topScorer && topScorer.goals >= 5) {
+      const scorerTeam = getTeam(topScorer.team)?.short || topScorer.team;
+      const gamesPlayed = topScorer.games || topScorer.starts || 1;
+      const gpg = (topScorer.goals / gamesPlayed).toFixed(2);
+      const runnerUp = [...activePlayers].sort((a, b) => b.goals - a.goals)[1];
+      const runnerUpText = runnerUp
+        ? ` — ${topScorer.goals - runnerUp.goals} goals clear of ${runnerUp.name} (${runnerUp.goals}).`
+        : ".";
+      insights.push({
+        icon: "trending-up",
+        headline: `Golden Boot Race: ${topScorer.name} leads with ${topScorer.goals} goals in ${gamesPlayed} games`,
+        detail: `${topScorer.name} (${scorerTeam}) is scoring at ${gpg} goals/game — a pace that would yield ${Math.round(topScorer.goals / gamesPlayed * 34)} goals over a full 34-game season${runnerUpText}`,
+        accentColor: "amber",
+      });
+    }
+
+    // 5. General early-season power gap
+    if (insights.length < 4 && top && bottom) {
+      const topTeam = getTeam(top.teamId)?.short || top.teamId;
+      const bottomTeam = getTeam(bottom.teamId)?.short || bottom.teamId;
+      const gap = (top.powerScore - bottom.powerScore).toFixed(1);
+      insights.push({
+        icon: "bar-chart",
+        headline: `${gap}-point power gap between ${topTeam} and ${bottomTeam} after ${totalWeeks} weeks`,
+        detail: `${topTeam} lead with a ${top.powerScore.toFixed(1)} composite score (${top.points} pts, ${top.ppg.toFixed(2)} PPG). ${bottomTeam} sit last at ${bottom.powerScore.toFixed(1)} (${bottom.points} pts). Early-season volatility means these gaps can close quickly.`,
+        accentColor: "cyan",
+      });
+    }
+  }
+
+  // ─── 2025 Full-Season Insights ───
+  if (seasonYear === 2025) {
+    // Shield winner narrative
+    const topTeam = getTeam(top.teamId);
+    if (topTeam) {
+      insights.push({
+        icon: "star",
+        headline: `${topTeam.short} finish as the ${seasonYear} power rankings champion`,
+        detail: `${topTeam.name} end the season with a ${top.powerScore.toFixed(1)} composite score — ${top.points} points from ${top.played} matches (${top.ppg.toFixed(2)} PPG). Their ${top.wins}W-${top.draws}D-${top.losses}L record and +${top.goalDifference} GD earned them the top spot.`,
+        accentColor: "cyan",
+      });
+    }
+
+    // Biggest riser (most positive rank delta)
+    const risers = [...standings].sort((a, b) => b.rankDelta - a.rankDelta);
+    if (risers.length > 0 && risers[0].rankDelta > 0) {
+      const riser = risers[0];
+      const riserTeam = getTeam(riser.teamId)?.short || riser.teamId;
+      insights.push({
+        icon: "trending-up",
+        headline: `${riserTeam} surged +${riser.rankDelta} spots in the final week`,
+        detail: `${riserTeam} climbed ${riser.rankDelta} positions to finish ${ordinalSuffix(riser.powerRank)} in the power rankings with ${riser.points} points and a ${riser.powerScore.toFixed(1)} composite score.`,
+        accentColor: "emerald",
+      });
+    }
+
+    // Biggest faller
+    const fallers = [...standings].sort((a, b) => a.rankDelta - b.rankDelta);
+    if (fallers.length > 0 && fallers[0].rankDelta < 0) {
+      const faller = fallers[0];
+      const fallerTeam = getTeam(faller.teamId)?.short || faller.teamId;
+      insights.push({
+        icon: "trending-down",
+        headline: `${fallerTeam} dropped ${Math.abs(faller.rankDelta)} spots in the final week`,
+        detail: `${fallerTeam} fell to ${ordinalSuffix(faller.powerRank)} in the power rankings despite ${faller.points} points. Their late-season form of ${faller.form.join("")} cost them dearly.`,
+        accentColor: "coral",
+      });
+    }
+
+    // Bottom of table
+    const bottomTeam = getTeam(bottom.teamId);
+    if (bottomTeam && insights.length < 4) {
+      insights.push({
+        icon: "alert",
+        headline: `${bottomTeam.short} finish last with ${bottom.points} points`,
+        detail: `${bottomTeam.name} end the season at the bottom of the power rankings (${bottom.powerScore.toFixed(1)} composite). Their ${bottom.wins}W-${bottom.draws}D-${bottom.losses}L record and ${bottom.goalDifference} GD tell the story of a difficult campaign.`,
+        accentColor: "amber",
+      });
+    }
+  }
+
+  return insights.slice(0, 4);
+}
+
+/**
+ * Compute card-level insights for the Season Pulse standings table.
+ */
+export function seasonPulseTableCardInsights(
+  standings: TeamWeekStanding[],
+  seasonYear: SeasonYear
+): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+  if (standings.length === 0) return items;
+
+  const sorted = [...standings].sort((a, b) => a.powerRank - b.powerRank);
+
+  // Points vs Power rank divergence
+  const divergent = sorted.filter(s => Math.abs(s.powerRank - s.pointsRank) >= 5);
+  if (divergent.length > 0) {
+    const biggest = [...divergent].sort(
+      (a, b) => Math.abs(b.powerRank - b.pointsRank) - Math.abs(a.powerRank - a.pointsRank)
+    )[0];
+    const teamName = getTeam(biggest.teamId)?.short || biggest.teamId;
+    const direction = biggest.powerRank < biggest.pointsRank ? "higher" : "lower";
+    items.push({
+      text: `${teamName} ranks ${Math.abs(biggest.powerRank - biggest.pointsRank)} spots ${direction} in power rankings than points — ${direction === "higher" ? "strong form and momentum compensate for fewer points" : "accumulated points mask declining form"}.`,
+      accent: direction === "higher" ? "emerald" : "amber",
+    });
+  }
+
+  // Home vs Away split
+  const homeHeavy = sorted.filter(s => s.homeWins > 0 && s.awayWins === 0 && s.played >= 3);
+  if (homeHeavy.length > 0) {
+    const names = homeHeavy.slice(0, 3).map(s => getTeam(s.teamId)?.short || s.teamId).join(", ");
+    items.push({
+      text: `${names} ${homeHeavy.length === 1 ? "has" : "have"} won only at home — zero away victories so far. Road form will determine their playoff fate.`,
+      accent: "coral",
+    });
+  }
+
+  // Clean sheet leaders
+  const cleanSheets = sorted.filter(s => s.goalsAgainst === 0);
+  if (cleanSheets.length > 0) {
+    const names = cleanSheets.map(s => getTeam(s.teamId)?.short || s.teamId).join(", ");
+    items.push({
+      text: `${names} ${cleanSheets.length === 1 ? "has" : "have"} a perfect defensive record — 0 goals conceded through ${cleanSheets[0].played} matches.`,
+      accent: "cyan",
+    });
+  }
+
+  // Highest-scoring team
+  const topAttack = [...sorted].sort((a, b) => b.goalsFor - a.goalsFor)[0];
+  if (topAttack) {
+    const teamName = getTeam(topAttack.teamId)?.short || topAttack.teamId;
+    const gpg = (topAttack.goalsFor / topAttack.played).toFixed(1);
+    items.push({
+      text: `${teamName} lead the league in scoring with ${topAttack.goalsFor} goals (${gpg}/game) — ${seasonYear === 2026 ? "an explosive early-season pace" : "the most prolific attack of the season"}.`,
+      accent: "emerald",
+    });
+  }
+
+  return items.slice(0, 3);
+}
+
+// Helper for ordinal suffixes
+function ordinalSuffix(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }

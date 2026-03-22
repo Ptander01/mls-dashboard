@@ -2,9 +2,11 @@ import { useState, useMemo } from "react";
 import { useFilters } from "@/contexts/FilterContext";
 import { TEAMS } from "@/lib/mlsData";
 import { ChevronLeft, ChevronRight, Filter, RotateCcw } from "lucide-react";
+import type { SeasonYear } from "@/lib/seasonDataLoader";
 
 export default function FilterPanel() {
-  const { filters, setFilters, resetFilters, isFilterActive } = useFilters();
+  const { filters, setFilters, resetFilters, isFilterActive, seasonLoading } =
+    useFilters();
   const [collapsed, setCollapsed] = useState(true);
 
   const positions = ["GK", "DF", "MF", "FW"];
@@ -34,6 +36,16 @@ export default function FilterPanel() {
       conferenceFilter: prev.conferenceFilter.includes(conf)
         ? prev.conferenceFilter.filter(c => c !== conf)
         : [...prev.conferenceFilter, conf],
+    }));
+  };
+
+  const setSeason = (season: SeasonYear) => {
+    setFilters(prev => ({
+      ...prev,
+      selectedSeason: season,
+      // Reset team/player selections when switching seasons
+      selectedTeams: [],
+      selectedPlayers: [],
     }));
   };
 
@@ -96,6 +108,44 @@ export default function FilterPanel() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-5">
+            {/* Season Toggle */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
+                Season
+              </label>
+              <div className="flex gap-2">
+                {([2025, 2026] as SeasonYear[]).map(season => (
+                  <button
+                    key={season}
+                    onClick={() => setSeason(season)}
+                    className={`flex-1 text-xs py-1.5 rounded-md transition-all font-mono relative ${
+                      filters.selectedSeason === season
+                        ? "neu-pressed text-cyan"
+                        : "neu-raised text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {season}
+                    {season === 2026 && (
+                      <span
+                        className="ml-1 text-[8px] uppercase tracking-wider"
+                        style={{
+                          color:
+                            filters.selectedSeason === 2026
+                              ? "var(--emerald)"
+                              : "var(--muted-foreground)",
+                        }}
+                      >
+                        LIVE
+                      </span>
+                    )}
+                    {season === 2026 && seasonLoading && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber animate-pulse" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Conference */}
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">

@@ -1,17 +1,11 @@
 /**
  * BumpChart.tsx — Season Rank Flow Visualization (Session 2)
  *
- * Custom SVG bump chart showing 30 team ranking lines across 33 matchweeks.
- * Uses d3-shape's monotone cubic interpolation for smooth curves.
+ * Custom SVG bump chart showing team ranking lines across matchweeks.
+ * Uses monotone cubic interpolation (Fritsch-Carlson) for smooth curves.
  *
- * Features:
- * - Deemphasis hover/click interaction system (bidirectional with snapshot table)
- * - Week window range slider with presets and play/pause animation
- * - Inflection markers with tooltips on selected team's line
- * - Selected week vertical indicator synced with table's week selector
- * - ChartHeader with description and expandable methods panel
- * - Full dark/light theme support
- * - Responsive via SVG viewBox
+ * Refactored for multi-season support: reads active season data from
+ * FilterContext and dynamically adjusts WEEK_PRESETS and maxWeek.
  */
 
 import {
@@ -26,6 +20,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useFilters } from "@/contexts/FilterContext";
 import { TEAMS, getTeam } from "@/lib/mlsData";
 import {
   computeWeeklyStandings,
@@ -84,23 +79,30 @@ const EVENT_COLORS: Record<string, string> = {
   milestone: "#06b6d4",
 };
 
-const WEEK_PRESETS: { key: WeekPreset; label: string; range: [number, number] }[] = [
-  { key: "full", label: "Full", range: [1, 33] },
-  { key: "first", label: "1st Half", range: [1, 17] },
-  { key: "second", label: "2nd Half", range: [18, 33] },
-  { key: "last10", label: "Last 10", range: [24, 33] },
-];
+/**
+ * Generate dynamic WEEK_PRESETS based on the current season's maxWeek.
+ */
+function buildWeekPresets(maxWeek: number): { key: WeekPreset; label: string; range: [number, number] }[] {
+  if (maxWeek <= 10) {
+    // Short season (early 2026): just Full and Last 5
+    return [
+      { key: "full", label: "Full", range: [1, maxWeek] },
+      { key: "last10", label: `Last ${Math.min(5, maxWeek)}`, range: [Math.max(1, maxWeek - 4), maxWeek] },
+    ];
+  }
+
+  const half = Math.ceil(maxWeek / 2);
+  return [
+    { key: "full", label: "Full", range: [1, maxWeek] },
+    { key: "first", label: "1st Half", range: [1, half] },
+    { key: "second", label: "2nd Half", range: [half + 1, maxWeek] },
+    { key: "last10", label: "Last 10", range: [Math.max(1, maxWeek - 9), maxWeek] },
+  ];
+}
 
 // ═══════════════════════════════════════════
 // LINE GENERATOR (monotone cubic interpolation)
 // ═══════════════════════════════════════════
-
-/**
- * Attempt to import d3-shape's line + curveMonotoneX.
- * Since d3-shape is available via recharts' dependency tree,
- * we implement a lightweight monotone cubic spline generator
- * to avoid import resolution issues with pnpm's strict hoisting.
- */
 
 interface Point {
   x: number;
@@ -109,7 +111,7 @@ interface Point {
 
 /**
  * Generate a smooth SVG path string using monotone cubic interpolation.
- * This implements the Fritsch-Carlson method for monotone piecewise cubic Hermite interpolation.
+ * Implements the Fritsch-Carlson method for monotone piecewise cubic Hermite interpolation.
  */
 function monotoneCubicPath(points: Point[]): string {
   if (points.length === 0) return "";
@@ -248,7 +250,6 @@ function InflectionMarker({ event, cx, cy, isDark, onHover }: InflectionMarkerPr
       onMouseLeave={() => onHover(null)}
       onClick={(e) => {
         e.stopPropagation();
-        // Future: scroll timeline to this event (Session 3)
       }}
       style={{ cursor: "pointer" }}
     >
@@ -294,13 +295,11 @@ function EventTooltip({
   isDark: boolean;
 }) {
   const color = EVENT_COLORS[event.type] || "#06b6d4";
-  // Position tooltip above the marker, clamped within SVG bounds
   const tooltipX = Math.max(100, Math.min(x, SVG_WIDTH - 200));
   const tooltipY = Math.max(20, y - 55);
 
   return (
     <g>
-      {/* Background rect */}
       <rect
         x={tooltipX - 95}
         y={tooltipY - 14}
@@ -316,7 +315,6 @@ function EventTooltip({
             : "drop-shadow(0 2px 8px rgba(0,0,0,0.15))",
         }}
       />
-      {/* Title */}
       <text
         x={tooltipX}
         y={tooltipY + 2}
@@ -328,7 +326,6 @@ function EventTooltip({
       >
         {event.title}
       </text>
-      {/* Description (truncated) */}
       <text
         x={tooltipX}
         y={tooltipY + 18}
@@ -358,6 +355,7 @@ function WeekWindowControls({
   togglePlay,
   maxWeek,
   isDark,
+  weekPresets,
 }: {
   weekRange: [number, number];
   setWeekRange: (range: [number, number]) => void;
@@ -367,6 +365,7 @@ function WeekWindowControls({
   togglePlay: () => void;
   maxWeek: number;
   isDark: boolean;
+  weekPresets: { key: WeekPreset; label: string; range: [number, number] }[];
 }) {
   const handleStartChange = (val: number) => {
     const clamped = Math.max(1, Math.min(val, weekRange[1] - 1));
@@ -378,16 +377,6 @@ function WeekWindowControls({
     const clamped = Math.min(maxWeek, Math.max(val, weekRange[0] + 1));
     setWeekRange([weekRange[0], clamped]);
     setActivePreset(null);
-  };
-
-  const sliderTrackStyle = (value: number, min: number, max: number) => {
-    const pct = ((value - min) / (max - min)) * 100;
-    return {
-      background: isDark
-        ? `linear-gradient(to right, rgba(255,255,255,0.1) ${pct}%, rgba(255,255,255,0.1) ${pct}%)`
-        : `linear-gradient(to right, rgba(0,0,0,0.1) ${pct}%, rgba(0,0,0,0.1) ${pct}%)`,
-      accentColor: "var(--cyan)",
-    };
   };
 
   return (
@@ -415,8 +404,8 @@ function WeekWindowControls({
           <div
             className="absolute h-1 rounded-full"
             style={{
-              left: `${((weekRange[0] - 1) / (maxWeek - 1)) * 100}%`,
-              right: `${100 - ((weekRange[1] - 1) / (maxWeek - 1)) * 100}%`,
+              left: `${((weekRange[0] - 1) / Math.max(maxWeek - 1, 1)) * 100}%`,
+              right: `${100 - ((weekRange[1] - 1) / Math.max(maxWeek - 1, 1)) * 100}%`,
               background: "var(--cyan)",
               opacity: 0.4,
             }}
@@ -453,7 +442,7 @@ function WeekWindowControls({
       {/* Preset buttons + play/pause */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          {WEEK_PRESETS.map((preset) => (
+          {weekPresets.map((preset) => (
             <button
               key={preset.key}
               onClick={() => {
@@ -532,7 +521,14 @@ export default function BumpChart({
 }: BumpChartProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  const maxWeek = getMaxWeek();
+  const { activeSeasonData } = useFilters();
+
+  // Extract season-specific data
+  const { matches, totalWeeks, seasonYear, teams } = activeSeasonData;
+  const maxWeek = getMaxWeek(totalWeeks);
+
+  // Dynamic week presets
+  const weekPresets = useMemo(() => buildWeekPresets(maxWeek), [maxWeek]);
 
   // Week window state
   const [weekRange, setWeekRange] = useState<[number, number]>([1, maxWeek]);
@@ -544,6 +540,13 @@ export default function BumpChart({
   const [tooltipEvent, setTooltipEvent] = useState<SeasonEvent | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Reset week range when season changes
+  useEffect(() => {
+    setWeekRange([1, maxWeek]);
+    setActivePreset("full");
+    setIsPlaying(false);
+  }, [maxWeek]);
+
   // ─── Filter teams by conference ───
   const visibleTeams = useMemo(() => {
     if (conferenceFilter === "ALL") return TEAMS;
@@ -553,19 +556,21 @@ export default function BumpChart({
 
   const visibleTeamIds = useMemo(() => new Set(visibleTeams.map((t) => t.id)), [visibleTeams]);
 
-  // ─── Compute all trajectories ───
+  // ─── Compute all trajectories (season-aware) ───
   const allTrajectories = useMemo(() => {
     const map = new Map<string, { week: number; rank: number }[]>();
     for (const team of TEAMS) {
-      const trajectory = getTeamTrajectory(team.id);
-      const mapped = trajectory.map((s) => ({
-        week: s.week,
-        rank: rankMode === "POWER" ? s.powerRank : s.pointsRank,
-      }));
+      const trajectory = getTeamTrajectory(team.id, teams, matches, totalWeeks);
+      const mapped = trajectory
+        .filter((s) => s != null)
+        .map((s) => ({
+          week: s.week,
+          rank: rankMode === "POWER" ? s.powerRank : s.pointsRank,
+        }));
       map.set(team.id, mapped);
     }
     return map;
-  }, [rankMode]);
+  }, [rankMode, teams, matches, totalWeeks]);
 
   // ─── Compute visible week range data ───
   const [startWeek, endWeek] = weekRange;
@@ -611,15 +616,15 @@ export default function BumpChart({
   // ─── Inflection events for selected team ───
   const selectedTeamEvents = useMemo(() => {
     if (!selectedTeam) return [];
-    return getTeamEvents(selectedTeam).filter(
+    return getTeamEvents(selectedTeam, teams, matches, totalWeeks).filter(
       (e) => e.week >= startWeek && e.week <= endWeek
     );
-  }, [selectedTeam, startWeek, endWeek]);
+  }, [selectedTeam, startWeek, endWeek, teams, matches, totalWeeks]);
 
   // ─── Play animation ───
   useEffect(() => {
     if (isPlaying) {
-      const windowWidth = 8;
+      const windowWidth = Math.min(8, maxWeek);
       let currentStart = 1;
 
       playIntervalRef.current = setInterval(() => {
@@ -647,13 +652,13 @@ export default function BumpChart({
   const togglePlay = useCallback(() => {
     setIsPlaying((prev) => {
       if (!prev) {
-        // Reset to start if at end
-        setWeekRange([1, 8]);
+        const windowWidth = Math.min(8, maxWeek);
+        setWeekRange([1, windowWidth]);
         setActivePreset(null);
       }
       return !prev;
     });
-  }, []);
+  }, [maxWeek]);
 
   // ─── Interaction handlers ───
   const handleTeamHover = useCallback(
@@ -672,7 +677,6 @@ export default function BumpChart({
 
   const handleSvgClick = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
-      // Only deselect if clicking on the SVG background (not a line)
       if ((e.target as SVGElement).tagName === "svg" || (e.target as SVGElement).tagName === "rect") {
         onSelectTeam(null);
       }
@@ -690,7 +694,6 @@ export default function BumpChart({
       const neutralColor = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)";
 
       if (!hasAnyHighlight) {
-        // Default: all lines muted
         return { opacity: 0.15, strokeWidth: 1, color: neutralColor };
       }
 
@@ -703,14 +706,12 @@ export default function BumpChart({
       }
 
       if (isHovered) {
-        // If there's a locked selection, show hovered at slightly thinner
         if (selectedTeam !== null) {
           return { opacity: 1, strokeWidth: 2, color: teamColor };
         }
         return { opacity: 1, strokeWidth: 2.5, color: teamColor };
       }
 
-      // All others when something is highlighted
       return { opacity: 0.08, strokeWidth: 1, color: neutralColor };
     },
     [selectedTeam, hoveredTeam, isDark]
@@ -730,7 +731,6 @@ export default function BumpChart({
         labels.push(w);
       }
     }
-    // Always include start and end
     if (!labels.includes(startWeek)) labels.unshift(startWeek);
     if (!labels.includes(endWeek)) labels.push(endWeek);
     return Array.from(new Set(labels)).sort((a, b) => a - b);
@@ -828,17 +828,17 @@ export default function BumpChart({
         : `Weeks ${startWeek}-${endWeek}`;
     const teamCount = visibleTeams.length;
     const rankLabel = rankMode === "POWER" ? "Power Rankings" : "Points Rankings";
-    return `${weekLabel} · ${teamCount} teams · ${rankLabel}`;
-  }, [startWeek, endWeek, maxWeek, visibleTeams.length, rankMode]);
+    return `${seasonYear} · ${weekLabel} · ${teamCount} teams · ${rankLabel}`;
+  }, [startWeek, endWeek, maxWeek, visibleTeams.length, rankMode, seasonYear]);
 
   // ─── Highlighted teams for labels ───
   const highlightedTeams = useMemo(() => {
-    const teams: string[] = [];
-    if (selectedTeam && visibleTeamIds.has(selectedTeam)) teams.push(selectedTeam);
+    const hTeams: string[] = [];
+    if (selectedTeam && visibleTeamIds.has(selectedTeam)) hTeams.push(selectedTeam);
     if (hoveredTeam && hoveredTeam !== selectedTeam && visibleTeamIds.has(hoveredTeam)) {
-      teams.push(hoveredTeam);
+      hTeams.push(hoveredTeam);
     }
-    return teams;
+    return hTeams;
   }, [selectedTeam, hoveredTeam, visibleTeamIds]);
 
   // ─── Handle event marker tooltip ───
@@ -858,6 +858,11 @@ export default function BumpChart({
     [allTrajectories, xScale, yScale]
   );
 
+  // Dynamic data source text for methods panel
+  const dataSourceText = seasonYear === 2026
+    ? `${matches.length} matches across ${maxWeek} matchweeks from the ${seasonYear} MLS season (in progress). Data sourced from the American Soccer Analysis (ASA) API.`
+    : `510 matches across 33 matchweeks from the 2025 MLS season. Data sourced from FBref.com.`;
+
   return (
     <div>
       <ChartHeader
@@ -874,8 +879,7 @@ export default function BumpChart({
         methods={
           <div className="space-y-2">
             <p>
-              <strong>Data Source:</strong> 510 matches across 33 matchweeks from the
-              2025 MLS season. Rankings computed from cumulative match results.
+              <strong>Data Source:</strong> {dataSourceText} Rankings computed from cumulative match results.
             </p>
             <p>
               <strong>Ranking Computation:</strong> Points-based ranking uses standard
@@ -887,7 +891,7 @@ export default function BumpChart({
               <strong>Curve Interpolation:</strong> Lines are rendered using monotone
               cubic Hermite interpolation (Fritsch-Carlson method), which preserves
               monotonicity between data points and prevents visual overshooting at rank
-              changes. Each team's path connects 33 weekly rank positions.
+              changes. Each team's path connects {maxWeek} weekly rank positions.
             </p>
             <p>
               <strong>Inflection Detection:</strong> Events are auto-detected from match
@@ -1101,7 +1105,6 @@ export default function BumpChart({
             const teamColor = mutedTeamColor(teamId, isDark);
             return (
               <g key={`label-${teamId}`}>
-                {/* Background pill */}
                 <rect
                   x={label.x - 2}
                   y={label.y - 7}
@@ -1112,7 +1115,6 @@ export default function BumpChart({
                   stroke={hexToRgba(teamColor, 0.3)}
                   strokeWidth={0.5}
                 />
-                {/* Team name text */}
                 <text
                   x={label.x + 3}
                   y={label.y + 3}
@@ -1149,6 +1151,7 @@ export default function BumpChart({
         togglePlay={togglePlay}
         maxWeek={maxWeek}
         isDark={isDark}
+        weekPresets={weekPresets}
       />
     </div>
   );

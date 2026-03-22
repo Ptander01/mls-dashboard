@@ -5,8 +5,9 @@
  * maintaining cumulative standings, computing a composite Power Score, and auto-detecting
  * inflection events (streaks, surges, collapses, upsets, milestones).
  *
- * The 30×33 standings matrix is the backbone for the Snapshot Table (Layer 1),
- * the Bump Chart (Layer 2), and the Narrative Timeline (Layer 3).
+ * Refactored for multi-season support: all public functions accept injected data
+ * (matches, teams, totalWeeks) rather than importing static arrays. Caching is
+ * keyed by season year to avoid cross-contamination.
  */
 
 import type { Match, Team } from "./mlsData";
@@ -128,11 +129,6 @@ function freshAccumulator(teamId: string): TeamAccumulator {
 // COMPOSITE POWER SCORE
 // ═══════════════════════════════════════════
 
-/**
- * Weights for composite power score components.
- * Points Position 35% + Form 25% + Goal Difference 20% +
- * Home/Away Consistency 10% + Momentum 10%
- */
 const WEIGHTS = {
   pointsPosition: 0.35,
   form: 0.25,
@@ -141,18 +137,11 @@ const WEIGHTS = {
   momentum: 0.1,
 };
 
-/**
- * Normalize a value to 0–100 given a min and max across the league.
- */
 function normalize(value: number, min: number, max: number): number {
   if (max === min) return 50;
   return ((value - min) / (max - min)) * 100;
 }
 
-/**
- * Compute form score from last 5 results (W=3, D=1, L=0), normalized to 0-100.
- * Max possible = 15 (5 wins), Min = 0 (5 losses).
- */
 function formScore(results: ("W" | "D" | "L")[]): number {
   const last5 = results.slice(-5);
   if (last5.length === 0) return 50;
@@ -164,10 +153,6 @@ function formScore(results: ("W" | "D" | "L")[]): number {
   return (pts / maxPts) * 100;
 }
 
-/**
- * Compute momentum: compare PPG over last 5 games vs overall PPG.
- * Returns 0-100 where 50 = no change, >50 = improving, <50 = declining.
- */
 function momentumScore(acc: TeamAccumulator): number {
   if (acc.played < 3) return 50;
   const overallPPG = acc.points / acc.played;
@@ -177,35 +162,23 @@ function momentumScore(acc: TeamAccumulator): number {
     0
   );
   const recentPPG = recentPts / last5.length;
-  // Ratio clamped: if recent is 2x overall, score = 100; if 0, score = 0
   if (overallPPG === 0) return recentPPG > 0 ? 75 : 50;
   const ratio = recentPPG / overallPPG;
   return Math.max(0, Math.min(100, ratio * 50));
 }
 
-/**
- * Compute home/away consistency score.
- * Lower gap between home and away PPG = higher consistency.
- */
 function consistencyScore(acc: TeamAccumulator): number {
-  const homeGames =
-    acc.homeWins + acc.homeDraws + acc.homeLosses;
-  const awayGames =
-    acc.awayWins + acc.awayDraws + acc.awayLosses;
+  const homeGames = acc.homeWins + acc.homeDraws + acc.homeLosses;
+  const awayGames = acc.awayWins + acc.awayDraws + acc.awayLosses;
   if (homeGames === 0 || awayGames === 0) return 50;
   const homePts = acc.homeWins * 3 + acc.homeDraws;
   const awayPts = acc.awayWins * 3 + acc.awayDraws;
   const homePPG = homePts / homeGames;
   const awayPPG = awayPts / awayGames;
   const gap = Math.abs(homePPG - awayPPG);
-  // Max gap is ~3.0 (win all home, lose all away). Lower gap = better.
   return Math.max(0, 100 - (gap / 3) * 100);
 }
 
-/**
- * Compute composite power scores for all teams at a given week,
- * then assign ranks and tiers.
- */
 function computePowerScores(
   accumulators: Map<string, TeamAccumulator>
 ): Map<string, { score: number; rank: number; tier: TeamWeekStanding["tier"] }> {
@@ -224,7 +197,6 @@ function computePowerScores(
     return result;
   }
 
-  // Raw component values
   const raw = entries.map(([id, acc]) => ({
     id,
     ppg: acc.played > 0 ? acc.points / acc.played : 0,
@@ -234,7 +206,6 @@ function computePowerScores(
     consistency: consistencyScore(acc),
   }));
 
-  // Min/max for normalization
   const ppgs = raw.map((r) => r.ppg);
   const gds = raw.map((r) => r.gd);
   const minPPG = Math.min(...ppgs);
@@ -242,7 +213,6 @@ function computePowerScores(
   const minGD = Math.min(...gds);
   const maxGD = Math.max(...gds);
 
-  // Compute composite
   const scored = raw.map((r) => ({
     id: r.id,
     score:
@@ -253,16 +223,13 @@ function computePowerScores(
       WEIGHTS.momentum * r.momentum,
   }));
 
-  // Sort descending by score
   scored.sort((a, b) => b.score - a.score);
 
-  // Assign ranks
   const result = new Map<
     string,
     { score: number; rank: number; tier: TeamWeekStanding["tier"] }
   >();
 
-  // Tier boundaries: quartiles
   const scores = scored.map((s) => s.score);
   const q1 = quantile(scores, 0.25);
   const q2 = quantile(scores, 0.5);
@@ -277,7 +244,6 @@ function computePowerScores(
     result.set(s.id, { score: s.score, rank: i + 1, tier });
   });
 
-  // Teams with 0 games played
   Array.from(accumulators.keys()).forEach((id) => {
     if (!result.has(id)) {
       result.set(id, { score: 0, rank: scored.length + 1, tier: "Rebuilding" });
@@ -299,44 +265,63 @@ function quantile(sorted: number[], q: number): number {
 }
 
 // ═══════════════════════════════════════════
+// CACHE — keyed by season identifier
+// ═══════════════════════════════════════════
+
+const _matrixCache = new Map<string, TeamWeekStanding[][]>();
+const _eventsCache = new Map<string, SeasonEvent[]>();
+
+function cacheKey(
+  teams: Team[],
+  matches: Match[],
+  totalWeeks: number
+): string {
+  // Use match count + totalWeeks as a fast cache key
+  return `${matches.length}-${totalWeeks}-${teams.length}`;
+}
+
+// ═══════════════════════════════════════════
 // MAIN COMPUTATION: WEEKLY STANDINGS MATRIX
 // ═══════════════════════════════════════════
 
-let _cachedMatrix: TeamWeekStanding[][] | null = null;
-let _cachedEvents: SeasonEvent[] | null = null;
-
 /**
- * Build the complete 30×33 standings matrix.
- * Returns an array of 33 elements (index 0 = week 1), each containing
- * an array of 30 TeamWeekStanding objects sorted by powerRank.
+ * Build the complete standings matrix for the given season data.
+ * Returns an array of N elements (index 0 = week 1), each containing
+ * an array of TeamWeekStanding objects sorted by powerRank.
+ *
+ * Accepts injected data for multi-season support.
  */
-export function computeWeeklyStandings(): TeamWeekStanding[][] {
-  if (_cachedMatrix) return _cachedMatrix;
+export function computeWeeklyStandings(
+  teams: Team[] = TEAMS,
+  matches: Match[] = MATCHES,
+  totalWeeks: number = TOTAL_WEEKS
+): TeamWeekStanding[][] {
+  const key = cacheKey(teams, matches, totalWeeks);
+  const cached = _matrixCache.get(key);
+  if (cached) return cached;
 
-  const teamIds = TEAMS.map((t) => t.id);
+  const teamIds = teams.map((t) => t.id);
   const accumulators = new Map<string, TeamAccumulator>();
   teamIds.forEach((id) => accumulators.set(id, freshAccumulator(id)));
 
   // Group matches by week
   const matchesByWeek = new Map<number, Match[]>();
-  for (const m of MATCHES) {
+  for (const m of matches) {
     const arr = matchesByWeek.get(m.week) || [];
     arr.push(m);
     matchesByWeek.set(m.week, arr);
   }
 
-  // Previous week's power ranks for delta calculation
   let prevPowerRanks = new Map<string, number>();
-
   const matrix: TeamWeekStanding[][] = [];
 
-  for (let week = 1; week <= TOTAL_WEEKS; week++) {
+  for (let week = 1; week <= totalWeeks; week++) {
     const weekMatches = matchesByWeek.get(week) || [];
 
-    // Process each match
     for (const m of weekMatches) {
-      const homeAcc = accumulators.get(m.homeTeam)!;
-      const awayAcc = accumulators.get(m.awayTeam)!;
+      const homeAcc = accumulators.get(m.homeTeam);
+      const awayAcc = accumulators.get(m.awayTeam);
+      if (!homeAcc || !awayAcc) continue;
 
       homeAcc.played++;
       awayAcc.played++;
@@ -350,7 +335,6 @@ export function computeWeeklyStandings(): TeamWeekStanding[][] {
       awayAcc.awayGA += m.homeGoals;
 
       if (m.homeGoals > m.awayGoals) {
-        // Home win
         homeAcc.wins++;
         homeAcc.homeWins++;
         homeAcc.points += 3;
@@ -359,7 +343,6 @@ export function computeWeeklyStandings(): TeamWeekStanding[][] {
         awayAcc.awayLosses++;
         awayAcc.results.push("L");
       } else if (m.homeGoals < m.awayGoals) {
-        // Away win
         awayAcc.wins++;
         awayAcc.awayWins++;
         awayAcc.points += 3;
@@ -368,7 +351,6 @@ export function computeWeeklyStandings(): TeamWeekStanding[][] {
         homeAcc.homeLosses++;
         homeAcc.results.push("L");
       } else {
-        // Draw
         homeAcc.draws++;
         homeAcc.homeDraws++;
         homeAcc.points += 1;
@@ -380,10 +362,8 @@ export function computeWeeklyStandings(): TeamWeekStanding[][] {
       }
     }
 
-    // Compute power scores and ranks
     const powerData = computePowerScores(accumulators);
 
-    // Compute points-based ranks
     const pointsSorted = teamIds
       .map((id) => {
         const acc = accumulators.get(id)!;
@@ -399,12 +379,11 @@ export function computeWeeklyStandings(): TeamWeekStanding[][] {
     const pointsRankMap = new Map<string, number>();
     pointsSorted.forEach((t, i) => pointsRankMap.set(t.id, i + 1));
 
-    // Build standings for this week
     const weekStandings: TeamWeekStanding[] = teamIds.map((id) => {
       const acc = accumulators.get(id)!;
       const power = powerData.get(id)!;
       const prevRank = prevPowerRanks.get(id) ?? power.rank;
-      const delta = prevRank - power.rank; // positive = improved
+      const delta = prevRank - power.rank;
 
       return {
         teamId: id,
@@ -437,19 +416,16 @@ export function computeWeeklyStandings(): TeamWeekStanding[][] {
       };
     });
 
-    // Sort by power rank
     weekStandings.sort((a, b) => a.powerRank - b.powerRank);
-
     matrix.push(weekStandings);
 
-    // Store ranks for next week's delta
     prevPowerRanks = new Map<string, number>();
     for (const s of weekStandings) {
       prevPowerRanks.set(s.teamId, s.powerRank);
     }
   }
 
-  _cachedMatrix = matrix;
+  _matrixCache.set(key, matrix);
   return matrix;
 }
 
@@ -457,26 +433,27 @@ export function computeWeeklyStandings(): TeamWeekStanding[][] {
 // INFLECTION POINT DETECTION
 // ═══════════════════════════════════════════
 
-/**
- * Auto-detect significant season events from the standings matrix.
- */
-export function detectInflectionEvents(): SeasonEvent[] {
-  if (_cachedEvents) return _cachedEvents;
+export function detectInflectionEvents(
+  teams: Team[] = TEAMS,
+  matches: Match[] = MATCHES,
+  totalWeeks: number = TOTAL_WEEKS
+): SeasonEvent[] {
+  const key = cacheKey(teams, matches, totalWeeks);
+  const cached = _eventsCache.get(key);
+  if (cached) return cached;
 
-  const matrix = computeWeeklyStandings();
+  const matrix = computeWeeklyStandings(teams, matches, totalWeeks);
   const events: SeasonEvent[] = [];
-  const teamIds = TEAMS.map((t) => t.id);
+  const teamIds = teams.map((t) => t.id);
 
   for (const teamId of teamIds) {
     const team = getTeam(teamId);
     const teamName = team?.short || teamId;
 
-    // Collect this team's standings across all weeks
     const weeklyData = matrix.map(
       (weekStandings) => weekStandings.find((s) => s.teamId === teamId)!
     );
 
-    // Track consecutive results for streak detection
     let currentStreak: "W" | "D" | "L" | null = null;
     let streakLength = 0;
     let unbeatenRun = 0;
@@ -487,8 +464,6 @@ export function detectInflectionEvents(): SeasonEvent[] {
       if (!standing || standing.played === 0) continue;
 
       const prevStanding = w > 0 ? weeklyData[w - 1] : null;
-
-      // Get this week's result (latest in form array, which is most-recent-first)
       const thisWeekResult = standing.form[0];
       if (!thisWeekResult) continue;
 
@@ -500,23 +475,23 @@ export function detectInflectionEvents(): SeasonEvent[] {
         streakLength = 1;
       }
 
-      // Unbeaten run (W or D)
       if (thisWeekResult === "W" || thisWeekResult === "D") {
         unbeatenRun++;
       } else {
         unbeatenRun = 0;
       }
 
-      // Winless run (D or L)
       if (thisWeekResult === "D" || thisWeekResult === "L") {
         winlessRun++;
       } else {
         winlessRun = 0;
       }
 
-      // Winning streak (3+)
-      if (currentStreak === "W" && streakLength >= 3 && streakLength === countConsecutiveFromEnd(standing.form, "W")) {
-        // Only emit once at the current streak length
+      if (
+        currentStreak === "W" &&
+        streakLength >= 3 &&
+        streakLength === countConsecutiveFromEnd(standing.form, "W")
+      ) {
         if (streakLength === 3 || streakLength === 5 || streakLength === 7) {
           events.push({
             teamId,
@@ -529,8 +504,11 @@ export function detectInflectionEvents(): SeasonEvent[] {
         }
       }
 
-      // Losing streak (3+)
-      if (currentStreak === "L" && streakLength >= 3 && streakLength === countConsecutiveFromEnd(standing.form, "L")) {
+      if (
+        currentStreak === "L" &&
+        streakLength >= 3 &&
+        streakLength === countConsecutiveFromEnd(standing.form, "L")
+      ) {
         if (streakLength === 3 || streakLength === 5 || streakLength === 7) {
           events.push({
             teamId,
@@ -543,7 +521,6 @@ export function detectInflectionEvents(): SeasonEvent[] {
         }
       }
 
-      // Unbeaten run (5+)
       if (unbeatenRun === 5 || unbeatenRun === 8 || unbeatenRun === 10) {
         events.push({
           teamId,
@@ -555,7 +532,6 @@ export function detectInflectionEvents(): SeasonEvent[] {
         });
       }
 
-      // Winless run (5+)
       if (winlessRun === 5 || winlessRun === 8 || winlessRun === 10) {
         events.push({
           teamId,
@@ -567,11 +543,10 @@ export function detectInflectionEvents(): SeasonEvent[] {
         });
       }
 
-      // === RANK SURGE / COLLAPSE (week-over-week) ===
+      // === RANK SURGE / COLLAPSE ===
       if (prevStanding && prevStanding.played > 0) {
         const rankChange = prevStanding.powerRank - standing.powerRank;
 
-        // Surge: improved 5+ positions in one week
         if (rankChange >= 5) {
           events.push({
             teamId,
@@ -583,7 +558,6 @@ export function detectInflectionEvents(): SeasonEvent[] {
           });
         }
 
-        // Collapse: dropped 5+ positions in one week
         if (rankChange <= -5) {
           const drop = Math.abs(rankChange);
           events.push({
@@ -598,7 +572,6 @@ export function detectInflectionEvents(): SeasonEvent[] {
       }
 
       // === MILESTONES ===
-      // First win of the season
       if (standing.wins === 1 && thisWeekResult === "W" && standing.week >= 3) {
         events.push({
           teamId,
@@ -610,12 +583,7 @@ export function detectInflectionEvents(): SeasonEvent[] {
         });
       }
 
-      // Reached 30 points
-      if (
-        standing.points >= 30 &&
-        prevStanding &&
-        prevStanding.points < 30
-      ) {
+      if (standing.points >= 30 && prevStanding && prevStanding.points < 30) {
         events.push({
           teamId,
           week: standing.week,
@@ -626,12 +594,7 @@ export function detectInflectionEvents(): SeasonEvent[] {
         });
       }
 
-      // Reached 50 points
-      if (
-        standing.points >= 50 &&
-        prevStanding &&
-        prevStanding.points < 50
-      ) {
+      if (standing.points >= 50 && prevStanding && prevStanding.points < 50) {
         events.push({
           teamId,
           week: standing.week,
@@ -643,12 +606,12 @@ export function detectInflectionEvents(): SeasonEvent[] {
       }
     }
 
-    // === UPSET DETECTION (from match data) ===
-    for (const m of MATCHES) {
+    // === UPSET DETECTION ===
+    for (const m of matches) {
       if (m.homeTeam !== teamId && m.awayTeam !== teamId) continue;
 
       const weekIdx = m.week - 1;
-      if (weekIdx < 1) continue; // need previous week for rank context
+      if (weekIdx < 1) continue;
 
       const prevWeekStandings = matrix[weekIdx - 1];
       if (!prevWeekStandings) continue;
@@ -663,7 +626,7 @@ export function detectInflectionEvents(): SeasonEvent[] {
       if (!homeRank || !awayRank) continue;
 
       const rankGap = Math.abs(homeRank - awayRank);
-      if (rankGap < 10) continue; // only flag big upsets
+      if (rankGap < 10) continue;
 
       const isTeamHome = m.homeTeam === teamId;
       const teamRank = isTeamHome ? homeRank : awayRank;
@@ -675,7 +638,6 @@ export function detectInflectionEvents(): SeasonEvent[] {
         ? m.homeGoals > m.awayGoals
         : m.awayGoals > m.homeGoals;
 
-      // Upset win: lower-ranked team beats higher-ranked team
       if (teamWon && teamRank > oppRank) {
         events.push({
           teamId,
@@ -687,7 +649,6 @@ export function detectInflectionEvents(): SeasonEvent[] {
         });
       }
 
-      // Upset loss: higher-ranked team loses to lower-ranked team
       if (!teamWon && teamRank < oppRank && m.homeGoals !== m.awayGoals) {
         events.push({
           teamId,
@@ -701,10 +662,9 @@ export function detectInflectionEvents(): SeasonEvent[] {
     }
   }
 
-  // Sort events by week, then severity descending
   events.sort((a, b) => a.week - b.week || b.severity - a.severity);
 
-  _cachedEvents = events;
+  _eventsCache.set(key, events);
   return events;
 }
 
@@ -715,24 +675,38 @@ export function detectInflectionEvents(): SeasonEvent[] {
 /**
  * Get standings for a specific week (1-indexed).
  */
-export function getWeekStandings(week: number): TeamWeekStanding[] {
-  const matrix = computeWeeklyStandings();
+export function getWeekStandings(
+  week: number,
+  teams: Team[] = TEAMS,
+  matches: Match[] = MATCHES,
+  totalWeeks: number = TOTAL_WEEKS
+): TeamWeekStanding[] {
+  const matrix = computeWeeklyStandings(teams, matches, totalWeeks);
   return matrix[week - 1] || [];
 }
 
 /**
  * Get the latest week that has data.
  */
-export function getLatestWeek(): number {
-  const matrix = computeWeeklyStandings();
+export function getLatestWeek(
+  teams: Team[] = TEAMS,
+  matches: Match[] = MATCHES,
+  totalWeeks: number = TOTAL_WEEKS
+): number {
+  const matrix = computeWeeklyStandings(teams, matches, totalWeeks);
   return matrix.length;
 }
 
 /**
  * Get a specific team's standings trajectory across all weeks.
  */
-export function getTeamTrajectory(teamId: string): TeamWeekStanding[] {
-  const matrix = computeWeeklyStandings();
+export function getTeamTrajectory(
+  teamId: string,
+  teams: Team[] = TEAMS,
+  matches: Match[] = MATCHES,
+  totalWeeks: number = TOTAL_WEEKS
+): TeamWeekStanding[] {
+  const matrix = computeWeeklyStandings(teams, matches, totalWeeks);
   return matrix.map(
     (weekStandings) => weekStandings.find((s) => s.teamId === teamId)!
   );
@@ -741,15 +715,22 @@ export function getTeamTrajectory(teamId: string): TeamWeekStanding[] {
 /**
  * Get inflection events for a specific team.
  */
-export function getTeamEvents(teamId: string): SeasonEvent[] {
-  return detectInflectionEvents().filter((e) => e.teamId === teamId);
+export function getTeamEvents(
+  teamId: string,
+  teams: Team[] = TEAMS,
+  matches: Match[] = MATCHES,
+  totalWeeks: number = TOTAL_WEEKS
+): SeasonEvent[] {
+  return detectInflectionEvents(teams, matches, totalWeeks).filter(
+    (e) => e.teamId === teamId
+  );
 }
 
 /**
  * Get the max week number in the data.
  */
-export function getMaxWeek(): number {
-  return TOTAL_WEEKS;
+export function getMaxWeek(totalWeeks: number = TOTAL_WEEKS): number {
+  return totalWeeks;
 }
 
 // ═══════════════════════════════════════════
@@ -762,10 +743,6 @@ function ordinal(n: number): string {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-/**
- * Count consecutive occurrences of a result from the start of the form array
- * (form is most-recent-first).
- */
 function countConsecutiveFromEnd(
   form: ("W" | "D" | "L")[],
   result: "W" | "D" | "L"
