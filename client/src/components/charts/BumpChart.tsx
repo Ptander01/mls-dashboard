@@ -37,7 +37,7 @@ import {
   CardInsightSection,
 } from "@/components/CardInsight";
 import { bumpChartCardInsights } from "@/lib/insightEngine";
-import { getWeekStandings } from "@/lib/seasonPulse";
+import { getWeekStandings, getTeamWeeklyResults, type WeekMatchResult } from "@/lib/seasonPulse";
 
 // ═══════════════════════════════════════════
 // TYPES
@@ -611,6 +611,22 @@ export default function BumpChart({
   // Tooltip state for inflection markers
   const [tooltipEvent, setTooltipEvent] = useState<SeasonEvent | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Match result tooltip state
+  const [matchTooltip, setMatchTooltip] = useState<{
+    teamId: string;
+    week: number;
+    result: WeekMatchResult;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // Weekly match results for hovered/selected team
+  const activeTeamForResults = hoveredTeam || selectedTeam;
+  const activeTeamResults = useMemo(() => {
+    if (!activeTeamForResults) return null;
+    return getTeamWeeklyResults(activeTeamForResults, teams, matches, totalWeeks);
+  }, [activeTeamForResults, teams, matches, totalWeeks]);
 
   // View mode: "focus" (default), "colors" (all team colors), "allFocus" (all 3D highlighted)
   type ViewMode = "focus" | "colors" | "allFocus";
@@ -1308,6 +1324,61 @@ export default function BumpChart({
             );
           })}
 
+          {/* Week data point dots with match result hover (highlighted teams only) */}
+          {activeTeamForResults && activeTeamResults && highlightedTeams.includes(activeTeamForResults) && (() => {
+            const trajectory = allTrajectories.get(activeTeamForResults);
+            if (!trajectory) return null;
+            const teamColor = mutedTeamColor(activeTeamForResults, isDark);
+            return trajectory
+              .filter((d) => d.week >= startWeek && d.week <= endWeek)
+              .map((d) => {
+                const results = activeTeamResults.get(d.week);
+                const m = results?.[0];
+                const dotX = xScale(d.week);
+                const dotY = yScale(d.rank);
+                const isHovered = matchTooltip?.week === d.week && matchTooltip?.teamId === activeTeamForResults;
+                return (
+                  <circle
+                    key={`dot-${activeTeamForResults}-${d.week}`}
+                    cx={dotX}
+                    cy={dotY}
+                    r={isHovered ? 5 : 3}
+                    fill={m ? (
+                      m.result === "W"
+                        ? isDark ? "#10b981" : "#059669"
+                        : m.result === "L"
+                          ? isDark ? "#ef4444" : "#dc2626"
+                          : isDark ? "#6b7280" : "#9ca3af"
+                    ) : teamColor}
+                    stroke={isDark ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.8)"}
+                    strokeWidth={1}
+                    opacity={isHovered ? 1 : 0.7}
+                    style={{
+                      cursor: "pointer",
+                      transition: "r 0.15s ease, opacity 0.15s ease",
+                      filter: isHovered ? `drop-shadow(0 0 4px ${teamColor})` : "none",
+                    }}
+                    onMouseEnter={() => {
+                      if (m) {
+                        setMatchTooltip({
+                          teamId: activeTeamForResults!,
+                          week: d.week,
+                          result: m,
+                          x: dotX,
+                          y: dotY,
+                        });
+                      }
+                    }}
+                    onMouseLeave={() => setMatchTooltip(null)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectWeek(d.week);
+                    }}
+                  />
+                );
+              });
+          })()}
+
           {/* Inflection markers (only on selected team) */}
           {eventMarkerPositions.map((marker, i) => (
             <InflectionMarker
@@ -1425,6 +1496,70 @@ export default function BumpChart({
               isDark={isDark}
             />
           )}
+
+          {/* Match result tooltip */}
+          {matchTooltip && !tooltipEvent && (() => {
+            const m = matchTooltip.result;
+            const tooltipWidth = 200;
+            const tooltipX = Math.max(
+              tooltipWidth / 2 + 10,
+              Math.min(matchTooltip.x, SVG_WIDTH - tooltipWidth / 2 - 10)
+            );
+            const tooltipY = Math.max(20, matchTooltip.y - 80);
+            const resultColor =
+              m.result === "W"
+                ? isDark ? "#10b981" : "#059669"
+                : m.result === "L"
+                  ? isDark ? "#ef4444" : "#dc2626"
+                  : isDark ? "#6b7280" : "#9ca3af";
+            return (
+              <foreignObject
+                x={tooltipX - tooltipWidth / 2}
+                y={tooltipY}
+                width={tooltipWidth}
+                height={80}
+                style={{ overflow: "visible", pointerEvents: "none" }}
+              >
+                <div
+                  style={{
+                    background: "var(--glass-bg)",
+                    backdropFilter: "blur(var(--glass-blur)) saturate(1.4)",
+                    WebkitBackdropFilter: "blur(var(--glass-blur)) saturate(1.4)",
+                    border: `1px solid ${hexToRgba(resultColor, 0.25)}`,
+                    borderRadius: 8,
+                    boxShadow: "var(--glass-shadow), var(--glass-highlight)",
+                    color: "var(--glass-text)",
+                    padding: "8px 12px",
+                    maxWidth: tooltipWidth,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: "Space Grotesk, sans-serif",
+                      color: resultColor,
+                      marginBottom: 3,
+                    }}
+                  >
+                    Week {m.week}: {m.result === "W" ? "Win" : m.result === "L" ? "Loss" : "Draw"}{" "}
+                    {m.isHome ? "vs" : "@"} {m.opponentShort}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontFamily: "JetBrains Mono, monospace",
+                      color: "var(--glass-text-muted)",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    <div>{m.goalsFor}-{m.goalsAgainst} · {m.isHome ? "Home" : "Away"}</div>
+                    <div style={{ fontSize: 9, marginTop: 1, opacity: 0.8 }}>{m.venue} · {m.date}</div>
+                  </div>
+                </div>
+              </foreignObject>
+            );
+          })()}
         </svg>
       </div>
 

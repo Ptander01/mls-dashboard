@@ -26,8 +26,10 @@ import type { Team, Match } from "@/lib/mlsData";
 import {
   getTeamTrajectory,
   getTeamEvents,
+  getTeamWeeklyResults,
   type TeamWeekStanding,
   type SeasonEvent,
+  type WeekMatchResult,
 } from "@/lib/seasonPulse";
 import { mutedTeamColor, hexToRgba } from "@/lib/chartUtils";
 import { ChartHeader } from "@/components/ui/ChartHeader";
@@ -63,8 +65,9 @@ interface SeasonTimelineProps {
 const SVG_WIDTH = 1200;
 const MARGIN = { left: 45, right: 120 };
 const CHART_WIDTH = SVG_WIDTH - MARGIN.left - MARGIN.right;
-const TIMELINE_HEIGHT = 120;
-const SPINE_Y = 60;
+const TIMELINE_HEIGHT = 160;
+const SPINE_Y = 55;
+const RESULT_ROW_Y = SPINE_Y + 34; // Y position for match result chips
 
 const EVENT_COLORS_DARK: Record<string, string> = {
   winning_streak: "#10b981",
@@ -250,6 +253,7 @@ export default function SeasonTimeline({
   const [selectedEvent, setSelectedEvent] = useState<SeasonEvent | null>(null);
   const [hoveredEvent, setHoveredEvent] = useState<SeasonEvent | null>(null);
   const [hoveredWeek, setHoveredWeek] = useState<number | null>(null);
+  const [hoveredResult, setHoveredResult] = useState<{ week: number; result: WeekMatchResult; x: number } | null>(null);
   const [showInsights, setShowInsights] = useState(false);
 
   const team = getTeam(teamId);
@@ -263,6 +267,11 @@ export default function SeasonTimeline({
 
   const events = useMemo(
     () => getTeamEvents(teamId, teams, matches, totalWeeks),
+    [teamId, teams, matches, totalWeeks]
+  );
+
+  const weeklyResults = useMemo(
+    () => getTeamWeeklyResults(teamId, teams, matches, totalWeeks),
     [teamId, teams, matches, totalWeeks]
   );
 
@@ -629,6 +638,125 @@ export default function SeasonTimeline({
               </g>
             );
           })}
+
+          {/* ─── Match result chips below spine ─── */}
+          {Array.from({ length: totalWeeks }, (_, i) => i + 1).map((week) => {
+            const results = weeklyResults.get(week);
+            if (!results || results.length === 0) return null;
+            const x = weekToX(week);
+            const m = results[0]; // primary match for the week
+            const chipW = 36;
+            const chipH = 14;
+            const resultColor =
+              m.result === "W"
+                ? isDark ? "#10b981" : "#059669"
+                : m.result === "L"
+                  ? isDark ? "#ef4444" : "#dc2626"
+                  : isDark ? "#6b7280" : "#9ca3af";
+            const chipBg =
+              m.result === "W"
+                ? isDark ? "rgba(16,185,129,0.12)" : "rgba(5,150,105,0.08)"
+                : m.result === "L"
+                  ? isDark ? "rgba(239,68,68,0.12)" : "rgba(220,38,38,0.08)"
+                  : isDark ? "rgba(107,114,128,0.12)" : "rgba(156,163,175,0.08)";
+            const isHoveredChip = hoveredResult?.week === week;
+            return (
+              <g
+                key={`result-${week}`}
+                style={{ cursor: "pointer" }}
+                onMouseEnter={() => setHoveredResult({ week, result: m, x })}
+                onMouseLeave={() => setHoveredResult(null)}
+                onClick={() => onSelectWeek(week)}
+              >
+                <rect
+                  x={x - chipW / 2}
+                  y={RESULT_ROW_Y - chipH / 2}
+                  width={chipW}
+                  height={chipH}
+                  rx={4}
+                  fill={chipBg}
+                  stroke={resultColor}
+                  strokeWidth={isHoveredChip ? 1.2 : 0.5}
+                  opacity={isHoveredChip ? 1 : 0.85}
+                />
+                <text
+                  x={x}
+                  y={RESULT_ROW_Y + 3.5}
+                  textAnchor="middle"
+                  fill={resultColor}
+                  fontSize={8}
+                  fontFamily="JetBrains Mono, monospace"
+                  fontWeight={600}
+                >
+                  {m.goalsFor}-{m.goalsAgainst}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* ─── Match result tooltip ─── */}
+          {hoveredResult && (() => {
+            const m = hoveredResult.result;
+            const tooltipW = 180;
+            const tooltipH = 52;
+            const tx = Math.max(
+              MARGIN.left + tooltipW / 2,
+              Math.min(hoveredResult.x, SVG_WIDTH - MARGIN.right - tooltipW / 2)
+            );
+            const ty = RESULT_ROW_Y + 14;
+            const resultColor =
+              m.result === "W"
+                ? isDark ? "#10b981" : "#059669"
+                : m.result === "L"
+                  ? isDark ? "#ef4444" : "#dc2626"
+                  : isDark ? "#6b7280" : "#9ca3af";
+            return (
+              <foreignObject
+                x={tx - tooltipW / 2}
+                y={ty}
+                width={tooltipW}
+                height={tooltipH + 10}
+                style={{ overflow: "visible", pointerEvents: "none" }}
+              >
+                <div
+                  style={{
+                    background: "var(--glass-bg)",
+                    backdropFilter: "blur(var(--glass-blur)) saturate(1.4)",
+                    WebkitBackdropFilter: "blur(var(--glass-blur)) saturate(1.4)",
+                    border: `1px solid ${hexToRgba(resultColor, 0.25)}`,
+                    borderRadius: 8,
+                    boxShadow: "var(--glass-shadow), var(--glass-highlight)",
+                    color: "var(--glass-text)",
+                    padding: "6px 10px",
+                    maxWidth: tooltipW,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      fontFamily: "Space Grotesk, sans-serif",
+                      color: resultColor,
+                      marginBottom: 2,
+                    }}
+                  >
+                    {m.result === "W" ? "Win" : m.result === "L" ? "Loss" : "Draw"}{" "}
+                    {m.isHome ? "vs" : "@"} {m.opponentShort}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 9,
+                      fontFamily: "JetBrains Mono, monospace",
+                      color: "var(--glass-text-muted)",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {m.goalsFor}-{m.goalsAgainst} · {m.isHome ? "Home" : "Away"} · W{m.week} · {m.date}
+                  </div>
+                </div>
+              </foreignObject>
+            );
+          })()}
 
           {/* Tooltip for hovered event */}
           {hoveredEvent && (

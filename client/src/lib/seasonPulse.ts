@@ -734,6 +734,75 @@ export function getMaxWeek(totalWeeks: number = TOTAL_WEEKS): number {
 }
 
 // ═══════════════════════════════════════════
+// WEEKLY MATCH RESULTS
+// ═══════════════════════════════════════════
+
+export interface WeekMatchResult {
+  week: number;
+  date: string;
+  opponent: string;
+  opponentShort: string;
+  isHome: boolean;
+  goalsFor: number;
+  goalsAgainst: number;
+  result: "W" | "D" | "L";
+  attendance: number;
+  venue: string;
+}
+
+const _weekResultsCache = new Map<string, Map<number, WeekMatchResult[]>>();
+
+/**
+ * Get all match results for a specific team, grouped by week.
+ * Returns a Map<weekNumber, WeekMatchResult[]> (a team can have 0-2 matches per week).
+ */
+export function getTeamWeeklyResults(
+  teamId: string,
+  teams: Team[] = TEAMS,
+  matches: Match[] = MATCHES,
+  totalWeeks: number = TOTAL_WEEKS
+): Map<number, WeekMatchResult[]> {
+  const key = `${teamId}-${cacheKey(teams, matches, totalWeeks)}`;
+  const cached = _weekResultsCache.get(key);
+  if (cached) return cached;
+
+  const result = new Map<number, WeekMatchResult[]>();
+
+  for (const m of matches) {
+    const isHome = m.homeTeam === teamId;
+    const isAway = m.awayTeam === teamId;
+    if (!isHome && !isAway) continue;
+
+    const opponentId = isHome ? m.awayTeam : m.homeTeam;
+    const opponent = getTeam(opponentId);
+    const gf = isHome ? m.homeGoals : m.awayGoals;
+    const ga = isHome ? m.awayGoals : m.homeGoals;
+    const matchResult: "W" | "D" | "L" =
+      gf > ga ? "W" : gf < ga ? "L" : "D";
+
+    const entry: WeekMatchResult = {
+      week: m.week,
+      date: m.date,
+      opponent: opponent?.name || opponentId,
+      opponentShort: opponent?.short || opponentId,
+      isHome,
+      goalsFor: gf,
+      goalsAgainst: ga,
+      result: matchResult,
+      attendance: m.attendance,
+      venue: m.venue,
+    };
+
+    const arr = result.get(m.week) || [];
+    arr.push(entry);
+    result.set(m.week, arr);
+  }
+
+  _weekResultsCache.set(key, result);
+  return result;
+}
+
+// ═══════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════
 
