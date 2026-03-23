@@ -6,13 +6,15 @@ Clone the repo: `gh repo clone Ptander01/mls-dashboard`
 
 Read these files before writing any code:
 1. `docs/sprint-briefs/season-pulse-brief.md` — full epic architecture (Layer 3 spec starts at line 259)
-2. `client/src/lib/seasonPulse.ts` — data engine (780 lines). Key exports: `getTeamTrajectory()`, `getTeamEvents()`, `detectInflectionEvents()`, `computeWeeklyStandings()`
-3. `client/src/components/tabs/SeasonPulse.tsx` — tab container (~830 lines). Shared state lives here. Layer 3 placeholder at **line 728**.
-4. `client/src/components/charts/BumpChart.tsx` — bump chart (~1,155 lines). The timeline must visually align with this chart's x-axis.
-5. `client/src/lib/insightEngine.ts` — existing insight generation patterns (1,685 lines). Add season narrative generators here.
+2. `client/src/lib/seasonPulse.ts` — data engine (756 lines). Key exports: `getTeamTrajectory()`, `getTeamEvents()`, `detectInflectionEvents()`, `computeWeeklyStandings()`
+3. `client/src/components/tabs/SeasonPulse.tsx` — tab container (~870 lines). Shared state lives here. Layer 3 placeholder at **line 776**.
+4. `client/src/components/charts/BumpChart.tsx` — bump chart (~1,445 lines). The timeline must visually align with this chart's x-axis.
+5. `client/src/lib/insightEngine.ts` — existing insight generation patterns (2,020 lines). Add season narrative generators here.
 6. `client/src/components/CardInsight.tsx` — `CardInsightItem` interface (`{ text: string; accent: "cyan" | "amber" | "emerald" | "coral" }`)
 7. `client/src/components/ui/ChartHeader.tsx` — reusable header component
 8. `client/src/components/charts/DumbbellChart.tsx` — reference for neumorphic SVG patterns and deemphasis
+
+**Crucial 2026 Data Context:** The dashboard now supports multiple seasons via a global toggle. `seasonPulse.ts` has been refactored to accept injected `teams`, `matches`, and `totalWeeks` arguments rather than importing static arrays. The narrative timeline must support variable-length seasons (e.g., 2026 is currently only 5 weeks long).
 
 ## What Already Exists (Sessions 1 & 2)
 
@@ -20,25 +22,22 @@ Read these files before writing any code:
 
 ```typescript
 // Get a specific team's standings trajectory across all weeks
-getTeamTrajectory(teamId: string): TeamWeekStanding[]
+getTeamTrajectory(teamId: string, teams: Team[], matches: Match[], totalWeeks: number): TeamWeekStanding[]
 
 // Get inflection events for a specific team (sorted by week, then severity desc)
-getTeamEvents(teamId: string): SeasonEvent[]
+getTeamEvents(teamId: string, teams: Team[], matches: Match[], totalWeeks: number): SeasonEvent[]
 
 // Get ALL inflection events across all teams
-detectInflectionEvents(): SeasonEvent[]
+detectInflectionEvents(teams: Team[], matches: Match[], totalWeeks: number): SeasonEvent[]
 
-// Full 30×33 matrix
-computeWeeklyStandings(): TeamWeekStanding[][]
-
-// Max week
-getMaxWeek(): number  // returns 33
+// Full matrix
+computeWeeklyStandings(teams: Team[], matches: Match[], totalWeeks: number): TeamWeekStanding[][]
 ```
 
 ### SeasonEvent Interface
 
 ```typescript
-interface SeasonEvent {
+export interface SeasonEvent {
   teamId: string;
   week: number;
   type: "winning_streak" | "losing_streak" | "unbeaten_run" | "winless_run"
@@ -49,32 +48,11 @@ interface SeasonEvent {
 }
 ```
 
-### TeamWeekStanding Interface
-
-```typescript
-interface TeamWeekStanding {
-  teamId: string;
-  week: number;
-  powerRank: number;      // 1-30
-  pointsRank: number;
-  powerScore: number;     // 0-100
-  tier: "Title Contenders" | "Playoff" | "Bubble" | "Rebuilding";
-  rankDelta: number;
-  points: number;
-  ppg: number;
-  form: ("W" | "D" | "L")[];
-  wins: number; draws: number; losses: number;
-  goalsFor: number; goalsAgainst: number; goalDifference: number;
-  homeWins: number; homeDraws: number; homeLosses: number;
-  awayWins: number; awayDraws: number; awayLosses: number;
-}
-```
-
-### Shared State in SeasonPulse.tsx (lines 352-357)
+### Shared State in SeasonPulse.tsx (lines 361-365)
 
 ```typescript
 const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
-const [selectedWeek, setSelectedWeek] = useState<number>(getLatestWeek());
+const [selectedWeek, setSelectedWeek] = useState<number>(totalWeeks);
 const [conferenceFilter, setConferenceFilter] = useState<ConferenceFilter>("ALL");
 const [rankMode, setRankMode] = useState<RankMode>("POWER");
 const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
@@ -82,7 +60,7 @@ const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
 
 The narrative timeline **only renders when `selectedTeam` is not null**. It reads the same shared state and writes back to it (clicking an event node should update `selectedWeek`).
 
-### Placeholder Location (SeasonPulse.tsx line 728)
+### Placeholder Location (SeasonPulse.tsx line 776)
 
 ```tsx
 {/* Placeholder for Layer 3: Narrative Timeline (Session 3) */}
@@ -92,17 +70,17 @@ Replace with the timeline component, wrapped in `<AnimatePresence>` so it slides
 
 ### BumpChart X-Axis Alignment
 
-The bump chart uses these constants (BumpChart.tsx lines 62-66):
+The bump chart uses these constants (BumpChart.tsx lines 63-67):
 
 ```typescript
 const SVG_WIDTH = 1200;
 const SVG_HEIGHT = 700;
-const MARGIN = { top: 30, right: 80, bottom: 40, left: 45 };
-const CHART_WIDTH = SVG_WIDTH - MARGIN.left - MARGIN.right;  // 1075
+const MARGIN = { top: 30, right: 120, bottom: 40, left: 45 };
+const CHART_WIDTH = SVG_WIDTH - MARGIN.left - MARGIN.right;  // 1035
 const CHART_HEIGHT = SVG_HEIGHT - MARGIN.top - MARGIN.bottom; // 630
 ```
 
-The timeline's x-axis (weeks 1-33) should visually align with the bump chart's x-axis above it. Since both are inside `<NeuCard className="p-4 md:p-5">` containers, use the same `MARGIN.left` (45px) and `MARGIN.right` (80px) padding for the timeline's horizontal layout, or use a shared SVG viewBox width of 1200 with matching margins.
+The timeline's x-axis (weeks 1 to `totalWeeks`) should visually align with the bump chart's x-axis above it. Since both are inside `<NeuCard className="p-4 md:p-5">` containers, use the same `MARGIN.left` (45px) and `MARGIN.right` (120px) padding for the timeline's horizontal layout, or use a shared SVG viewBox width of 1200 with matching margins.
 
 ## What to Build
 
@@ -118,6 +96,9 @@ interface SeasonTimelineProps {
   selectedWeek: number;
   onSelectWeek: (week: number) => void;
   rankMode: "POWER" | "POINTS";
+  teams: Team[];
+  matches: Match[];
+  totalWeeks: number;
 }
 ```
 
@@ -134,12 +115,12 @@ A compact horizontal bar showing the selected team's identity and key stats:
 
 - Team color dot + team name (Space Grotesk, bold)
 - Key stats in JetBrains Mono
-- Mini sparkline of power score across all 33 weeks (tiny inline SVG, ~120px wide, ~20px tall)
+- Mini sparkline of power score across all `totalWeeks` (tiny inline SVG, ~120px wide, ~20px tall)
 - This panel uses the same neumorphic inset styling as the METHODS panels (recessed, not elevated)
 - Stats update dynamically if the user hovers over different weeks on the timeline
 
 **B. Timeline Spine (main visualization)**
-A horizontal SVG timeline spanning weeks 1-33:
+A horizontal SVG timeline spanning weeks 1 to `totalWeeks`:
 
 ```
 ●───────●─────────────●──────────●────────────────●───────●
@@ -198,12 +179,12 @@ Card styling:
 Add a new exported function:
 
 ```typescript
-export function seasonNarrativeInsights(teamId: string): CardInsightItem[]
+export function seasonNarrativeInsights(teamId: string, teams: Team[], matches: Match[], totalWeeks: number): CardInsightItem[]
 ```
 
 This function should:
-1. Call `getTeamTrajectory(teamId)` to get the full season arc
-2. Call `getTeamEvents(teamId)` to get inflection events
+1. Call `getTeamTrajectory()` to get the full season arc
+2. Call `getTeamEvents()` to get inflection events
 3. Generate 3-5 `CardInsightItem` entries covering:
    - **Overall arc:** "Team X finished Nth, up/down from their Week 1 position of Mth"
    - **Peak moment:** The highest-severity positive event
@@ -214,14 +195,14 @@ This function should:
 Also add a headline function:
 
 ```typescript
-export function seasonPulseHeadline(teamId: string): string
+export function seasonPulseHeadline(teamId: string, teams: Team[], matches: Match[], totalWeeks: number): string
 ```
 
 Returns a single punchy sentence summarizing the team's season, suitable for the ChartHeader description when a team is selected.
 
 ### 3. Integration into SeasonPulse.tsx
 
-Replace the Layer 3 placeholder (line 728) with:
+Replace the Layer 3 placeholder (line 776) with:
 
 ```tsx
 <AnimatePresence>
@@ -240,6 +221,9 @@ Replace the Layer 3 placeholder (line 728) with:
             selectedWeek={selectedWeek}
             onSelectWeek={setSelectedWeek}
             rankMode={rankMode}
+            teams={teams}
+            matches={matches}
+            totalWeeks={totalWeeks}
           />
         </NeuCard>
       </motion.div>
@@ -263,10 +247,10 @@ Since this is the final session, do a polish pass on the full tab:
   - Change week in table → bump chart indicator moves + timeline indicator moves
 - **ChartHeader for the timeline section:**
   - title: "Season Story" (or dynamic: "{Team Name}'s Season Story")
-  - subtitle: Dynamic, e.g., "7 inflection events across 33 weeks"
-  - description: Dynamic narrative headline from `seasonPulseHeadline(teamId)`
+  - subtitle: Dynamic, e.g., "7 inflection events across {totalWeeks} weeks"
+  - description: Dynamic narrative headline from `seasonPulseHeadline()`
   - methods: Explain inflection detection rules (streak thresholds, rank change thresholds, upset detection logic)
-- **Empty state:** If a team has zero events (unlikely but possible for a very steady team), show a message: "No major inflection events detected — {Team Name} had a remarkably steady season."
+- **Empty state:** If a team has zero events (unlikely but possible for a very steady team, or early in the 2026 season), show a message: "No major inflection events detected yet."
 
 ## Available Dependencies
 
@@ -287,7 +271,7 @@ Already installed — do NOT add new packages:
 ## Branch & PR
 
 - Create branch: `feature/season-pulse-session3`
-- Commit with conventional commits: `feat(season-pulse): Session 3 — Narrative Timeline + Polish`
+- Commit with conventional commits: `feat(season-pulse): Session 3 — Narrative Timeline`
 - Open PR referencing Issue #76
 
 ## Acceptance Criteria
@@ -304,6 +288,7 @@ Already installed — do NOT add new packages:
 - [ ] Bidirectional sync verified: table ↔ bump chart ↔ timeline (all three directions)
 - [ ] Selected week indicator on timeline syncs with table and bump chart
 - [ ] Power score trend line visible behind timeline spine
+- [ ] Variable-length seasons (2025 vs 2026) handled gracefully
 - [ ] Dark and light theme support
 - [ ] TypeScript compiles cleanly with zero errors
 - [ ] Responsive at all viewport widths
