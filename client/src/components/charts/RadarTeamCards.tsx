@@ -163,7 +163,7 @@ function RadarChart({
           y={p.labelY + 3}
           fill={labelFill}
           fontSize={8.5}
-          fontFamily="Space Grotesk"
+          fontFamily="Space Grotesk, sans-serif"
           fontWeight={500}
           textAnchor="middle"
         >
@@ -192,7 +192,7 @@ function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
             ? "neu-pressed text-cyan"
             : "neu-raised text-muted-foreground hover:text-foreground"
         }`}
-        style={{ fontFamily: "Space Grotesk" }}
+        style={{ fontFamily: "Space Grotesk, sans-serif" }}
       >
         {isExpanded ? (
           <>
@@ -281,7 +281,7 @@ function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
                           <span
                             className="text-[11px] font-semibold truncate"
                             style={{
-                              fontFamily: "Space Grotesk",
+                              fontFamily: "Space Grotesk, sans-serif",
                               maxWidth: "100px",
                             }}
                           >
@@ -291,7 +291,7 @@ function RadarTeamCardsInner({ metrics }: RadarTeamCardsProps) {
                         <span
                           className="text-[11px] font-bold"
                           style={{
-                            fontFamily: "Space Grotesk",
+                            fontFamily: "Space Grotesk, sans-serif",
                             color: "var(--cyan)",
                           }}
                         >

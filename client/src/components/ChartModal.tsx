@@ -120,7 +120,7 @@ export function ChartModal({
         >
           <h2
             className="text-base font-semibold text-foreground"
-            style={{ fontFamily: "Space Grotesk" }}
+            style={{ fontFamily: "Space Grotesk, sans-serif" }}
           >
             {title}
           </h2>

@@ -1763,7 +1763,7 @@ function TravelScatterChartInner({ metrics }: TravelScatterChartProps) {
                       : "neu-raised text-muted-foreground hover:text-foreground"
                   } ${i === 0 ? "rounded-l-lg" : i === 2 ? "rounded-r-lg" : ""}`}
                   style={{
-                    fontFamily: "Space Grotesk",
+                    fontFamily: "Space Grotesk, sans-serif",
                     minWidth: 40,
                     minHeight: 28,
                   }}
@@ -1783,7 +1783,7 @@ function TravelScatterChartInner({ metrics }: TravelScatterChartProps) {
                   : "neu-raised text-muted-foreground hover:text-foreground"
               }`}
               style={{
-                fontFamily: "Space Grotesk",
+                fontFamily: "Space Grotesk, sans-serif",
                 minWidth: 40,
                 minHeight: 28,
               }}
@@ -1843,7 +1843,7 @@ function TravelScatterChartInner({ metrics }: TravelScatterChartProps) {
           <span
             className="mr-1"
             style={{
-              fontFamily: "Space Grotesk",
+              fontFamily: "Space Grotesk, sans-serif",
               fontWeight: 600,
               fontSize: "9px",
               opacity: 0.6,

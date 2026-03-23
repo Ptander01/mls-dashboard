@@ -625,7 +625,7 @@ function ResilienceIndexChartInner({ metrics }: ResilienceIndexChartProps) {
                       ? "neu-pressed text-cyan"
                       : "neu-raised text-muted-foreground hover:text-foreground"
                   } ${c === "SCORE" ? "rounded-l-lg" : "rounded-r-lg"}`}
-                  style={{ fontFamily: "Space Grotesk" }}
+                  style={{ fontFamily: "Space Grotesk, sans-serif" }}
                 >
                   {c}
                 </button>
@@ -641,7 +641,7 @@ function ResilienceIndexChartInner({ metrics }: ResilienceIndexChartProps) {
                       ? "neu-pressed text-cyan"
                       : "neu-raised text-muted-foreground hover:text-foreground"
                   } ${m === "INDEX" ? "rounded-l-lg" : "rounded-r-lg"}`}
-                  style={{ fontFamily: "Space Grotesk" }}
+                  style={{ fontFamily: "Space Grotesk, sans-serif" }}
                 >
                   {m}
                 </button>

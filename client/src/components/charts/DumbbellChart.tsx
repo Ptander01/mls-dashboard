@@ -548,7 +548,7 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
                       : "neu-raised text-muted-foreground hover:text-foreground"
                   } ${s === "STANDARD" ? "rounded-l-lg" : "rounded-r-lg"}`}
                   style={{
-                    fontFamily: "Space Grotesk",
+                    fontFamily: "Space Grotesk, sans-serif",
                     minWidth: "40px",
                     minHeight: "28px",
                     ...(symbology === s
@@ -582,7 +582,7 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
                       : "neu-raised text-muted-foreground hover:text-foreground"
                   } ${m === "PPG" ? "rounded-l-lg" : m === "GD" ? "rounded-r-lg" : ""}`}
                   style={{
-                    fontFamily: "Space Grotesk",
+                    fontFamily: "Space Grotesk, sans-serif",
                     minWidth: "40px",
                     minHeight: "28px",
                     ...(mode === m
@@ -609,7 +609,7 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
       {/* Dynamic metric context */}
       <p
         className="text-[10.5px] text-muted-foreground/70 italic mb-2 px-1 leading-relaxed"
-        style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+        style={{ fontFamily: "Space Grotesk, sans-serif" }}
       >
         {mode === "PPG" &&
           "PPG (points per game) is the broadest measure of results — it rewards wins (3 pts) and draws (1 pt), so a high home PPG with a low away PPG means a team banks almost all its points in front of its own supporters."}

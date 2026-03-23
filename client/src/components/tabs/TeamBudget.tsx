@@ -181,7 +181,7 @@ export default function TeamBudget() {
               return (
                 <div
                   className="glass-sm p-2 text-xs"
-                  style={{ fontFamily: "JetBrains Mono" }}
+                  style={{ fontFamily: "JetBrains Mono, monospace" }}
                 >
                   <div className="text-amber font-semibold">{d.name}</div>
                   <div>
@@ -283,7 +283,7 @@ export default function TeamBudget() {
             />
             <h2
               className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-              style={{ fontFamily: "Space Grotesk" }}
+              style={{ fontFamily: "Space Grotesk, sans-serif" }}
             >
               League-Wide Totals
             </h2>
@@ -451,7 +451,7 @@ export default function TeamBudget() {
               <div>
                 <h3
                   className="text-sm font-semibold"
-                  style={{ fontFamily: "Space Grotesk" }}
+                  style={{ fontFamily: "Space Grotesk, sans-serif" }}
                 >
                   Team Salary by Position
                 </h3>
@@ -513,7 +513,7 @@ export default function TeamBudget() {
               <div>
                 <h3
                   className="text-sm font-semibold"
-                  style={{ fontFamily: "Space Grotesk" }}
+                  style={{ fontFamily: "Space Grotesk, sans-serif" }}
                 >
                   {selTeam
                     ? `${selTeam.short} — Top Earners`

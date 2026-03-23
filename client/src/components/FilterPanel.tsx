@@ -91,7 +91,7 @@ export default function FilterPanel() {
               <Filter size={16} className="text-cyan" />
               <span
                 className="text-sm font-semibold tracking-wide"
-                style={{ fontFamily: "Space Grotesk" }}
+                style={{ fontFamily: "Space Grotesk, sans-serif" }}
               >
                 GLOBAL FILTERS
               </span>

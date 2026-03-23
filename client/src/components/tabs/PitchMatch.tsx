@@ -595,7 +595,7 @@ export default function PitchMatch() {
               <div className="flex items-center justify-between mb-3">
                 <h3
                   className="text-sm font-semibold"
-                  style={{ fontFamily: "Space Grotesk" }}
+                  style={{ fontFamily: "Space Grotesk, sans-serif" }}
                 >
                   {view === "heatmap" &&
                     `Heatmap — ${selPlayerData?.name || teamPlayers[0]?.name || "Team"}`}

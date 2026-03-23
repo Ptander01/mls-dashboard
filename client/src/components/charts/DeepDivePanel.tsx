@@ -168,7 +168,7 @@ function SquadDepthBars({
                 y={svgHeight - 2}
                 fill={textColor}
                 fontSize={8}
-                fontFamily="Space Grotesk"
+                fontFamily="Space Grotesk, sans-serif"
                 textAnchor="middle"
               >
                 {v}
@@ -202,7 +202,7 @@ function SquadDepthBars({
                 y={y + barHeight / 2 + 4}
                 fill={textColor}
                 fontSize={10}
-                fontFamily="Space Grotesk"
+                fontFamily="Space Grotesk, sans-serif"
                 fontWeight={500}
                 textAnchor="end"
               >
@@ -246,7 +246,7 @@ function SquadDepthBars({
                 y={y + barHeight / 2 + 4}
                 fill={isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)"}
                 fontSize={10}
-                fontFamily="Space Grotesk"
+                fontFamily="Space Grotesk, sans-serif"
                 fontWeight={600}
               >
                 {m.squadDepthIndex.toFixed(1)}
@@ -425,7 +425,7 @@ function SalaryRoadScatter({
             y={margin.top + plotH + 16}
             fill={textColor}
             fontSize={9}
-            fontFamily="Space Grotesk"
+            fontFamily="Space Grotesk, sans-serif"
             textAnchor="middle"
           >
             {t}%
@@ -439,7 +439,7 @@ function SalaryRoadScatter({
             y={yScale(t) + 3}
             fill={textColor}
             fontSize={9}
-            fontFamily="Space Grotesk"
+            fontFamily="Space Grotesk, sans-serif"
             textAnchor="end"
           >
             {t.toFixed(2)}
@@ -453,7 +453,7 @@ function SalaryRoadScatter({
           fill={labelColor}
           fontSize={11}
           fontWeight={600}
-          fontFamily="Space Grotesk"
+          fontFamily="Space Grotesk, sans-serif"
           textAnchor="middle"
         >
           DP Salary Concentration (%)
@@ -464,7 +464,7 @@ function SalaryRoadScatter({
           fill={labelColor}
           fontSize={11}
           fontWeight={600}
-          fontFamily="Space Grotesk"
+          fontFamily="Space Grotesk, sans-serif"
           textAnchor="middle"
           transform={`rotate(-90, 12, ${margin.top + plotH / 2})`}
         >
@@ -492,7 +492,7 @@ function SalaryRoadScatter({
               fill={regressionColor}
               fontSize={9}
               fontWeight={600}
-              fontFamily="Space Grotesk"
+              fontFamily="Space Grotesk, sans-serif"
               textAnchor="end"
             >
               R² = {regression.r2.toFixed(2)}
@@ -560,7 +560,7 @@ function SalaryRoadScatter({
                 y={yScale(d.awayPPG) - 10}
                 fill={labelColor}
                 fontSize={isHovered ? 10 : 8.5}
-                fontFamily="Space Grotesk"
+                fontFamily="Space Grotesk, sans-serif"
                 fontWeight={isHovered ? 700 : 500}
                 textAnchor="middle"
               >
@@ -757,7 +757,7 @@ function AgeRidgeline({
               y={topPad - 8}
               fill={isDark ? "rgba(0,212,255,0.25)" : "rgba(0,160,200,0.2)"}
               fontSize={8}
-              fontFamily="Space Grotesk"
+              fontFamily="Space Grotesk, sans-serif"
               fontWeight={600}
               textAnchor="middle"
               letterSpacing="0.05em"
@@ -782,7 +782,7 @@ function AgeRidgeline({
               y={svgHeight - bottomPad + 16}
               fill={textColor}
               fontSize={9}
-              fontFamily="Space Grotesk"
+              fontFamily="Space Grotesk, sans-serif"
               textAnchor="middle"
             >
               {age}
@@ -796,7 +796,7 @@ function AgeRidgeline({
           y={svgHeight - 4}
           fill={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.35)"}
           fontSize={10}
-          fontFamily="Space Grotesk"
+          fontFamily="Space Grotesk, sans-serif"
           fontWeight={500}
           textAnchor="middle"
         >
@@ -869,7 +869,7 @@ function AgeRidgeline({
                 y={baseY - rowHeight * 0.15}
                 fill={isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)"}
                 fontSize={9.5}
-                fontFamily="Space Grotesk"
+                fontFamily="Space Grotesk, sans-serif"
                 fontWeight={500}
                 textAnchor="end"
               >
@@ -914,7 +914,7 @@ function AgeRidgeline({
                 }
                 fill={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.35)"}
                 fontSize={7.5}
-                fontFamily="Space Grotesk"
+                fontFamily="Space Grotesk, sans-serif"
                 fontWeight={600}
                 textAnchor="middle"
               >
@@ -970,7 +970,7 @@ function DeepDivePanelInner({ metrics, players, teams }: DeepDivePanelProps) {
             ? "neu-pressed text-amber"
             : "neu-raised text-muted-foreground hover:text-foreground"
         }`}
-        style={{ fontFamily: "Space Grotesk" }}
+        style={{ fontFamily: "Space Grotesk, sans-serif" }}
       >
         {isExpanded ? (
           <>
@@ -1014,7 +1014,7 @@ function DeepDivePanelInner({ metrics, players, teams }: DeepDivePanelProps) {
                   <Layers size={14} className="text-cyan" />
                   <h4
                     className="text-[12px] font-bold uppercase tracking-wider"
-                    style={{ fontFamily: "Space Grotesk" }}
+                    style={{ fontFamily: "Space Grotesk, sans-serif" }}
                   >
                     Squad Depth Breakdown
                   </h4>
@@ -1025,7 +1025,7 @@ function DeepDivePanelInner({ metrics, players, teams }: DeepDivePanelProps) {
                 {depthInsight && (
                   <p
                     className="text-[10px] text-muted-foreground mb-3 leading-relaxed px-1"
-                    style={{ fontFamily: "Space Grotesk" }}
+                    style={{ fontFamily: "Space Grotesk, sans-serif" }}
                   >
                     {depthInsight}
                   </p>
@@ -1053,7 +1053,7 @@ function DeepDivePanelInner({ metrics, players, teams }: DeepDivePanelProps) {
                   <DollarSign size={14} className="text-amber" />
                   <h4
                     className="text-[12px] font-bold uppercase tracking-wider"
-                    style={{ fontFamily: "Space Grotesk" }}
+                    style={{ fontFamily: "Space Grotesk, sans-serif" }}
                   >
                     Salary Concentration vs Road Performance
                   </h4>
@@ -1061,7 +1061,7 @@ function DeepDivePanelInner({ metrics, players, teams }: DeepDivePanelProps) {
                 {salaryInsight && (
                   <p
                     className="text-[10px] text-muted-foreground mb-3 leading-relaxed px-1"
-                    style={{ fontFamily: "Space Grotesk" }}
+                    style={{ fontFamily: "Space Grotesk, sans-serif" }}
                   >
                     {salaryInsight}
                   </p>
@@ -1089,7 +1089,7 @@ function DeepDivePanelInner({ metrics, players, teams }: DeepDivePanelProps) {
                   <Users size={14} className="text-emerald" />
                   <h4
                     className="text-[12px] font-bold uppercase tracking-wider"
-                    style={{ fontFamily: "Space Grotesk" }}
+                    style={{ fontFamily: "Space Grotesk, sans-serif" }}
                   >
                     Age Distribution
                   </h4>
@@ -1100,7 +1100,7 @@ function DeepDivePanelInner({ metrics, players, teams }: DeepDivePanelProps) {
                 {ageInsight && (
                   <p
                     className="text-[10px] text-muted-foreground mb-3 leading-relaxed px-1"
-                    style={{ fontFamily: "Space Grotesk" }}
+                    style={{ fontFamily: "Space Grotesk, sans-serif" }}
                   >
                     {ageInsight}
                   </p>

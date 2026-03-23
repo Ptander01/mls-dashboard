@@ -18,7 +18,7 @@ import {
   type ReactNode,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, SkipForward, SkipBack, Eye, EyeOff } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Eye, EyeOff, Sparkles } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useFilters } from "@/contexts/FilterContext";
 import { TEAMS, getTeam } from "@/lib/mlsData";
@@ -395,7 +395,7 @@ function EventTooltip({
         <div
           style={{
             fontSize: 10,
-            fontFamily: "system-ui, sans-serif",
+            fontFamily: "Space Grotesk, sans-serif",
             color: "var(--glass-text-muted)",
             lineHeight: 1.4,
             wordWrap: "break-word" as const,
@@ -606,8 +606,16 @@ export default function BumpChart({
   const [tooltipEvent, setTooltipEvent] = useState<SeasonEvent | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Show All Colors toggle state
-  const [showAllColors, setShowAllColors] = useState(false);
+  // View mode: "focus" (default), "colors" (all team colors), "allFocus" (all 3D highlighted)
+  type ViewMode = "focus" | "colors" | "allFocus";
+  const [viewMode, setViewMode] = useState<ViewMode>("focus");
+  const cycleViewMode = useCallback(() => {
+    setViewMode((prev) => {
+      if (prev === "focus") return "colors";
+      if (prev === "colors") return "allFocus";
+      return "focus";
+    });
+  }, []);
 
   // Reset week range when season changes
   useEffect(() => {
@@ -769,7 +777,9 @@ export default function BumpChart({
       const neutralColor = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)";
 
       if (!hasAnyHighlight) {
-        return { opacity: showAllColors ? 0.4 : 0.15, strokeWidth: showAllColors ? 1.2 : 1, color: showAllColors ? teamColor : neutralColor };
+        if (viewMode === "allFocus") return { opacity: 0.9, strokeWidth: 2.2, color: teamColor };
+        if (viewMode === "colors") return { opacity: 0.4, strokeWidth: 1.2, color: teamColor };
+        return { opacity: 0.15, strokeWidth: 1, color: neutralColor };
       }
 
       if (isSelected && isHovered) {
@@ -787,9 +797,11 @@ export default function BumpChart({
         return { opacity: 1, strokeWidth: 2.5, color: teamColor };
       }
 
-      return { opacity: showAllColors ? 0.3 : 0.08, strokeWidth: showAllColors ? 1 : 1, color: showAllColors ? teamColor : neutralColor };
+      if (viewMode === "allFocus") return { opacity: 0.5, strokeWidth: 1.5, color: teamColor };
+      if (viewMode === "colors") return { opacity: 0.3, strokeWidth: 1, color: teamColor };
+      return { opacity: 0.08, strokeWidth: 1, color: neutralColor };
     },
-    [selectedTeam, hoveredTeam, isDark, showAllColors]
+    [selectedTeam, hoveredTeam, isDark, viewMode]
   );
 
   // ─── X-axis labels ───
@@ -953,29 +965,33 @@ export default function BumpChart({
         }
         rightAction={
           <button
-            onClick={() => setShowAllColors((prev) => !prev)}
+            onClick={cycleViewMode}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all"
             style={{
               fontFamily: "Space Grotesk, sans-serif",
-              background: showAllColors
+              background: viewMode !== "focus"
                 ? isDark
-                  ? "rgba(0, 212, 255, 0.12)"
-                  : "rgba(8, 145, 178, 0.10)"
+                  ? viewMode === "allFocus" ? "rgba(245, 158, 11, 0.14)" : "rgba(0, 212, 255, 0.12)"
+                  : viewMode === "allFocus" ? "rgba(217, 119, 6, 0.12)" : "rgba(8, 145, 178, 0.10)"
                 : isDark
                   ? "rgba(255,255,255,0.04)"
                   : "rgba(0,0,0,0.04)",
-              color: showAllColors ? "var(--cyan)" : "var(--muted-foreground)",
-              boxShadow: showAllColors
+              color: viewMode === "allFocus" ? "var(--amber)" : viewMode === "colors" ? "var(--cyan)" : "var(--muted-foreground)",
+              boxShadow: viewMode !== "focus"
                 ? isDark
-                  ? "0 1px 3px rgba(0,0,0,0.3), 0 0 8px rgba(0,212,255,0.1)"
-                  : "0 1px 3px rgba(0,0,0,0.08), 0 0 8px rgba(8,145,178,0.08)"
+                  ? viewMode === "allFocus"
+                    ? "0 1px 3px rgba(0,0,0,0.3), 0 0 8px rgba(245,158,11,0.15)"
+                    : "0 1px 3px rgba(0,0,0,0.3), 0 0 8px rgba(0,212,255,0.1)"
+                  : viewMode === "allFocus"
+                    ? "0 1px 3px rgba(0,0,0,0.08), 0 0 8px rgba(217,119,6,0.1)"
+                    : "0 1px 3px rgba(0,0,0,0.08), 0 0 8px rgba(8,145,178,0.08)"
                 : isDark
                   ? "inset 1px 1px 3px rgba(0,0,0,0.4), inset -1px -1px 2px rgba(60,60,80,0.06)"
                   : "inset 1px 1px 3px rgba(0,0,0,0.06), inset -1px -1px 2px rgba(255,255,255,0.5)",
             }}
           >
-            {showAllColors ? <Eye size={11} /> : <EyeOff size={11} />}
-            <span>{showAllColors ? "All Colors" : "Focus Mode"}</span>
+            {viewMode === "allFocus" ? <Sparkles size={11} /> : viewMode === "colors" ? <Eye size={11} /> : <EyeOff size={11} />}
+            <span>{viewMode === "allFocus" ? "All Focus" : viewMode === "colors" ? "All Colors" : "Focus Mode"}</span>
           </button>
         }
         methods={
@@ -1012,7 +1028,18 @@ export default function BumpChart({
       />
 
       {/* SVG Chart */}
-      <div className="w-full overflow-x-auto">
+      <div
+        className="w-full overflow-x-auto"
+        style={{
+          background: isDark ? "var(--neu-bg-raised)" : "var(--neu-bg-raised)",
+          borderRadius: 10,
+          boxShadow: isDark
+            ? "6px 6px 14px var(--neu-shadow-dark-strong), -4px -4px 10px var(--neu-shadow-light-strong), inset 0 1px 0 var(--neu-inset-highlight)"
+            : "6px 6px 14px var(--neu-shadow-dark), -4px -4px 10px var(--neu-shadow-light), inset 0 1px 0 var(--neu-inset-highlight)",
+          padding: "6px 4px 4px 4px",
+          marginTop: 4,
+        }}
+      >
         <svg
           viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
           width="100%"
@@ -1022,6 +1049,18 @@ export default function BumpChart({
           onClick={handleSvgClick}
           style={{ minHeight: 350 }}
         >
+          {/* SVG defs for neumorphic label tab filters */}
+          <defs>
+            <filter id="label-neu-shadow" x="-20%" y="-30%" width="140%" height="180%">
+              <feDropShadow dx="1.5" dy="2" stdDeviation="1.5" floodColor={isDark ? "rgba(0,0,0,0.55)" : "rgba(140,144,165,0.4)"} floodOpacity="1" />
+              <feDropShadow dx="-1" dy="-1" stdDeviation="1" floodColor={isDark ? "rgba(60,60,80,0.12)" : "rgba(255,255,255,0.7)"} floodOpacity="1" />
+            </filter>
+            <filter id="label-neu-shadow-hl" x="-25%" y="-35%" width="150%" height="200%">
+              <feDropShadow dx="2" dy="2.5" stdDeviation="2" floodColor={isDark ? "rgba(0,0,0,0.6)" : "rgba(140,144,165,0.45)"} floodOpacity="1" />
+              <feDropShadow dx="-1.5" dy="-1.5" stdDeviation="1.5" floodColor={isDark ? "rgba(60,60,80,0.15)" : "rgba(255,255,255,0.8)"} floodOpacity="1" />
+            </filter>
+          </defs>
+
           {/* Tier background bands */}
           {tierBands.map((band) => (
             <rect
@@ -1152,6 +1191,8 @@ export default function BumpChart({
               const pathD = pathStrings.get(team.id);
               if (!pathD) return null;
               const appearance = getLineAppearance(team.id);
+              // In allFocus mode with no specific selection, render all lines as 3D
+              const allFocus3D = viewMode === "allFocus" && selectedTeam === null && hoveredTeam === null;
               return (
                 <TeamLine
                   key={team.id}
@@ -1160,7 +1201,7 @@ export default function BumpChart({
                   opacity={appearance.opacity}
                   strokeWidth={appearance.strokeWidth}
                   color={appearance.color}
-                  isHighlighted={false}
+                  isHighlighted={allFocus3D}
                   onMouseEnter={() => handleTeamHover(team.id)}
                   onMouseLeave={() => handleTeamHover(null)}
                   onClick={() => handleTeamClick(team.id)}
@@ -1201,14 +1242,16 @@ export default function BumpChart({
             />
           ))}
 
-          {/* Persistent team labels at endpoints — all teams always visible */}
+          {/* Persistent team labels at endpoints — neumorphic 3D tabs */}
           {visibleTeams.map((team) => {
             const label = getEndpointLabel(team.id);
             if (!label) return null;
             const teamColor = mutedTeamColor(team.id, isDark);
             const isHL = highlightedTeams.includes(team.id);
             const labelW = label.name.length * 5.5 + 14;
-            const labelH = 16;
+            const labelH = isHL ? 18 : 16;
+            const highlightEdge = lighten(teamColor, 0.35);
+            const shadowEdge = darken(teamColor, 0.3);
             return (
               <motion.g
                 key={`label-${team.id}`}
@@ -1223,6 +1266,7 @@ export default function BumpChart({
                   animate={{ y: label.y }}
                   transition={{ type: "spring", stiffness: 200, damping: 25 }}
                 >
+                  {/* Neumorphic raised tab: base rect with drop shadow filter */}
                   <rect
                     x={label.x - 2}
                     y={-labelH / 2}
@@ -1230,16 +1274,51 @@ export default function BumpChart({
                     height={labelH}
                     rx={4}
                     fill={teamColor}
-                    opacity={isHL ? 1 : 0.7}
+                    opacity={isHL ? 1 : 0.75}
+                    filter={isHL ? "url(#label-neu-shadow-hl)" : "url(#label-neu-shadow)"}
+                  />
+                  {/* Top-left highlight edge (light source) */}
+                  <rect
+                    x={label.x - 2}
+                    y={-labelH / 2}
+                    width={labelW}
+                    height={labelH / 2}
+                    rx={4}
+                    fill={highlightEdge}
+                    opacity={0.2}
+                    style={{ pointerEvents: "none" }}
+                  />
+                  {/* Bottom shadow edge */}
+                  <rect
+                    x={label.x - 2}
+                    y={0}
+                    width={labelW}
+                    height={labelH / 2}
+                    rx={4}
+                    fill={shadowEdge}
+                    opacity={0.15}
+                    style={{ pointerEvents: "none" }}
+                  />
+                  {/* Inset highlight line at top */}
+                  <line
+                    x1={label.x + 1}
+                    y1={-labelH / 2 + 1}
+                    x2={label.x + labelW - 5}
+                    y2={-labelH / 2 + 1}
+                    stroke={highlightEdge}
+                    strokeWidth={0.5}
+                    opacity={0.4}
+                    style={{ pointerEvents: "none" }}
                   />
                   <text
                     x={label.x + 3}
-                    y={4}
+                    y={isHL ? 4.5 : 4}
                     fill="#ffffff"
-                    fontSize={isHL ? 9 : 7.5}
+                    fontSize={isHL ? 9.5 : 7.5}
                     fontWeight={isHL ? 700 : 500}
                     fontFamily="Space Grotesk, sans-serif"
                     opacity={1}
+                    style={{ textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}
                   >
                     {label.name}
                   </text>

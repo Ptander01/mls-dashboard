@@ -130,7 +130,7 @@ export function ChartHeader({
       {/* Description — full-width conversational text */}
       <div
         className="text-[11px] text-muted-foreground leading-relaxed"
-        style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+        style={{ fontFamily: "Space Grotesk, sans-serif" }}
       >
         {description}
       </div>

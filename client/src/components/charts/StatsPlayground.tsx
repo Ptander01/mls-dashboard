@@ -351,7 +351,7 @@ function CorrelationMatrixWrapper({
       <div className="mb-4 px-1">
         <p
           className="text-[10px] text-muted-foreground mb-2"
-          style={{ fontFamily: "Space Grotesk" }}
+          style={{ fontFamily: "Space Grotesk, sans-serif" }}
         >
           Strongest correlations
           {positionFilter !== "ALL" ? ` (${positionFilter}s only)` : ""} — click
@@ -363,7 +363,7 @@ function CorrelationMatrixWrapper({
               key={i}
               className="text-[10px] px-2 py-0.5 rounded-md"
               style={{
-                fontFamily: "JetBrains Mono",
+                fontFamily: "JetBrains Mono, monospace",
                 background:
                   c.r >= 0
                     ? isDark
@@ -567,7 +567,7 @@ function HypothesisTests({ players, isDark }: HypothesisTestProps) {
         <div className="flex items-center gap-2">
           <label
             className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-            style={{ fontFamily: "Space Grotesk" }}
+            style={{ fontFamily: "Space Grotesk, sans-serif" }}
           >
             Test:
           </label>
@@ -576,7 +576,7 @@ function HypothesisTests({ players, isDark }: HypothesisTestProps) {
             onChange={e => setTestStat(e.target.value)}
             className="text-[10px] font-semibold rounded-md px-2 py-1 neu-flat"
             style={{
-              fontFamily: "JetBrains Mono",
+              fontFamily: "JetBrains Mono, monospace",
               background: "var(--neu-bg-flat)",
               color: "var(--foreground)",
               border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
@@ -593,7 +593,7 @@ function HypothesisTests({ players, isDark }: HypothesisTestProps) {
         <div className="flex items-center gap-2">
           <label
             className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-            style={{ fontFamily: "Space Grotesk" }}
+            style={{ fontFamily: "Space Grotesk, sans-serif" }}
           >
             Group by:
           </label>
@@ -603,7 +603,7 @@ function HypothesisTests({ players, isDark }: HypothesisTestProps) {
               onClick={() => setGroupBy(g)}
               className="text-[10px] px-2 py-1 rounded-md font-semibold uppercase tracking-wider transition-all"
               style={{
-                fontFamily: "Space Grotesk",
+                fontFamily: "Space Grotesk, sans-serif",
                 background:
                   groupBy === g
                     ? isDark
@@ -649,7 +649,7 @@ function HypothesisTests({ players, isDark }: HypothesisTestProps) {
               <span
                 className="text-xs font-semibold"
                 style={{
-                  fontFamily: "Space Grotesk",
+                  fontFamily: "Space Grotesk, sans-serif",
                   color: "var(--foreground)",
                 }}
               >
@@ -659,7 +659,7 @@ function HypothesisTests({ players, isDark }: HypothesisTestProps) {
                 <span
                   className="text-[9px] px-1.5 py-0.5 rounded"
                   style={{
-                    fontFamily: "JetBrains Mono",
+                    fontFamily: "JetBrains Mono, monospace",
                     background: test.significant
                       ? isDark
                         ? "rgba(0,212,255,0.15)"
@@ -677,7 +677,7 @@ function HypothesisTests({ players, isDark }: HypothesisTestProps) {
                 <span
                   className="text-[9px] px-1.5 py-0.5 rounded"
                   style={{
-                    fontFamily: "JetBrains Mono",
+                    fontFamily: "JetBrains Mono, monospace",
                     background: isDark
                       ? "rgba(255,255,255,0.04)"
                       : "rgba(0,0,0,0.03)",
@@ -694,7 +694,7 @@ function HypothesisTests({ players, isDark }: HypothesisTestProps) {
               <span
                 className="text-[9px] w-24 text-right"
                 style={{
-                  fontFamily: "JetBrains Mono",
+                  fontFamily: "JetBrains Mono, monospace",
                   color: "var(--muted-foreground)",
                 }}
               >
@@ -721,7 +721,7 @@ function HypothesisTests({ players, isDark }: HypothesisTestProps) {
               <span
                 className="text-[9px] w-12 text-right font-semibold"
                 style={{
-                  fontFamily: "JetBrains Mono",
+                  fontFamily: "JetBrains Mono, monospace",
                   color:
                     test.meanA >= test.meanB
                       ? "var(--cyan)"
@@ -737,7 +737,7 @@ function HypothesisTests({ players, isDark }: HypothesisTestProps) {
               <span
                 className="text-[9px] w-24 text-right"
                 style={{
-                  fontFamily: "JetBrains Mono",
+                  fontFamily: "JetBrains Mono, monospace",
                   color: "var(--muted-foreground)",
                 }}
               >
@@ -764,7 +764,7 @@ function HypothesisTests({ players, isDark }: HypothesisTestProps) {
               <span
                 className="text-[9px] w-12 text-right font-semibold"
                 style={{
-                  fontFamily: "JetBrains Mono",
+                  fontFamily: "JetBrains Mono, monospace",
                   color:
                     test.meanB >= test.meanA
                       ? "var(--coral)"
@@ -780,7 +780,7 @@ function HypothesisTests({ players, isDark }: HypothesisTestProps) {
             <p
               className="text-[10px] mt-2"
               style={{
-                fontFamily: "Space Grotesk",
+                fontFamily: "Space Grotesk, sans-serif",
                 color: test.significant
                   ? "var(--foreground)"
                   : "var(--muted-foreground)",
@@ -869,7 +869,7 @@ function DistributionViewer({ players, isDark }: DistributionViewerProps) {
           onChange={e => setSelectedStat(e.target.value)}
           className="text-[10px] font-semibold rounded-md px-2 py-1"
           style={{
-            fontFamily: "JetBrains Mono",
+            fontFamily: "JetBrains Mono, monospace",
             background: "var(--neu-bg-flat)",
             color: "var(--foreground)",
             border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
@@ -889,7 +889,7 @@ function DistributionViewer({ players, isDark }: DistributionViewerProps) {
               onClick={() => setPosFilter(pos)}
               className="text-[9px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider transition-all"
               style={{
-                fontFamily: "Space Grotesk",
+                fontFamily: "Space Grotesk, sans-serif",
                 background:
                   posFilter === pos
                     ? isDark
@@ -927,14 +927,14 @@ function DistributionViewer({ players, isDark }: DistributionViewerProps) {
           >
             <div
               className="text-[8px] uppercase tracking-wider text-muted-foreground"
-              style={{ fontFamily: "Space Grotesk" }}
+              style={{ fontFamily: "Space Grotesk, sans-serif" }}
             >
               {s.label}
             </div>
             <div
               className="text-xs font-semibold"
               style={{
-                fontFamily: "JetBrains Mono",
+                fontFamily: "JetBrains Mono, monospace",
                 color:
                   s.label === "N" ? "var(--muted-foreground)" : "var(--cyan)",
               }}
@@ -955,7 +955,7 @@ function DistributionViewer({ players, isDark }: DistributionViewerProps) {
         <div className="absolute left-0 top-0 bottom-0 flex items-center">
           <span
             className="text-[8px] text-muted-foreground -rotate-90"
-            style={{ fontFamily: "JetBrains Mono" }}
+            style={{ fontFamily: "JetBrains Mono, monospace" }}
           >
             Count
           </span>
@@ -991,7 +991,7 @@ function DistributionViewer({ players, isDark }: DistributionViewerProps) {
                 <div
                   className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-[8px] px-1 py-0.5 rounded"
                   style={{
-                    fontFamily: "JetBrains Mono",
+                    fontFamily: "JetBrains Mono, monospace",
                     background: isDark
                       ? "rgba(0,0,0,0.8)"
                       : "rgba(255,255,255,0.9)",
@@ -1009,7 +1009,7 @@ function DistributionViewer({ players, isDark }: DistributionViewerProps) {
         <div className="flex justify-between pl-4 pr-1 mt-1">
           <span
             className="text-[8px] text-muted-foreground"
-            style={{ fontFamily: "JetBrains Mono" }}
+            style={{ fontFamily: "JetBrains Mono, monospace" }}
           >
             {data.stats.min >= 10000
               ? `${(data.stats.min / 1000).toFixed(0)}K`
@@ -1017,13 +1017,13 @@ function DistributionViewer({ players, isDark }: DistributionViewerProps) {
           </span>
           <span
             className="text-[8px] text-muted-foreground"
-            style={{ fontFamily: "JetBrains Mono" }}
+            style={{ fontFamily: "JetBrains Mono, monospace" }}
           >
             {statLabel}
           </span>
           <span
             className="text-[8px] text-muted-foreground"
-            style={{ fontFamily: "JetBrains Mono" }}
+            style={{ fontFamily: "JetBrains Mono, monospace" }}
           >
             {data.stats.max >= 10000
               ? `${(data.stats.max / 1000).toFixed(0)}K`
@@ -1074,14 +1074,14 @@ function StatsPlaygroundInner({ players, onAxisChange }: StatsPlaygroundProps) {
           <FlaskConical size={16} className="text-cyan" />
           <h3
             className="text-sm font-semibold"
-            style={{ fontFamily: "Space Grotesk" }}
+            style={{ fontFamily: "Space Grotesk, sans-serif" }}
           >
             Statistical Playground
           </h3>
           <span
             className="text-[9px] px-1.5 py-0.5 rounded-md text-muted-foreground"
             style={{
-              fontFamily: "JetBrains Mono",
+              fontFamily: "JetBrains Mono, monospace",
               background: isDark
                 ? "rgba(255,255,255,0.04)"
                 : "rgba(0,0,0,0.03)",
@@ -1094,7 +1094,7 @@ function StatsPlaygroundInner({ players, onAxisChange }: StatsPlaygroundProps) {
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
           style={{
-            fontFamily: "Space Grotesk",
+            fontFamily: "Space Grotesk, sans-serif",
             background: isOpen
               ? isDark
                 ? "rgba(0,212,255,0.12)"
@@ -1113,7 +1113,7 @@ function StatsPlaygroundInner({ players, onAxisChange }: StatsPlaygroundProps) {
 
       <p
         className="text-[10px] text-muted-foreground mb-3"
-        style={{ fontFamily: "Space Grotesk" }}
+        style={{ fontFamily: "Space Grotesk, sans-serif" }}
       >
         Explore correlations, run hypothesis tests, and examine stat
         distributions across the MLS player pool.
@@ -1160,7 +1160,7 @@ function StatsPlaygroundInner({ players, onAxisChange }: StatsPlaygroundProps) {
                   onClick={() => setActiveSection(tab.id)}
                   className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider transition-all relative"
                   style={{
-                    fontFamily: "Space Grotesk",
+                    fontFamily: "Space Grotesk, sans-serif",
                     color:
                       activeSection === tab.id
                         ? "var(--cyan)"
@@ -1196,7 +1196,7 @@ function StatsPlaygroundInner({ players, onAxisChange }: StatsPlaygroundProps) {
                     <div className="flex items-center gap-1.5">
                       <span
                         className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-                        style={{ fontFamily: "Space Grotesk" }}
+                        style={{ fontFamily: "Space Grotesk, sans-serif" }}
                       >
                         Mode:
                       </span>
@@ -1211,7 +1211,7 @@ function StatsPlaygroundInner({ players, onAxisChange }: StatsPlaygroundProps) {
                           onClick={() => setStatMode(mode.id)}
                           className="text-[9px] px-2.5 py-1 rounded-md font-semibold uppercase tracking-wider transition-all"
                           style={{
-                            fontFamily: "Space Grotesk",
+                            fontFamily: "Space Grotesk, sans-serif",
                             background:
                               statMode === mode.id
                                 ? isDark
@@ -1236,7 +1236,7 @@ function StatsPlaygroundInner({ players, onAxisChange }: StatsPlaygroundProps) {
                       {statMode === "rate" && (
                         <span
                           className="text-[8px] text-muted-foreground italic ml-1"
-                          style={{ fontFamily: "JetBrains Mono" }}
+                          style={{ fontFamily: "JetBrains Mono, monospace" }}
                         >
                           min &gt; 200 only
                         </span>
@@ -1246,7 +1246,7 @@ function StatsPlaygroundInner({ players, onAxisChange }: StatsPlaygroundProps) {
                     <div className="flex items-center gap-1.5">
                       <span
                         className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-                        style={{ fontFamily: "Space Grotesk" }}
+                        style={{ fontFamily: "Space Grotesk, sans-serif" }}
                       >
                         Position:
                       </span>
@@ -1256,7 +1256,7 @@ function StatsPlaygroundInner({ players, onAxisChange }: StatsPlaygroundProps) {
                           onClick={() => setMatrixPosFilter(pos)}
                           className="text-[9px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider transition-all"
                           style={{
-                            fontFamily: "Space Grotesk",
+                            fontFamily: "Space Grotesk, sans-serif",
                             background:
                               matrixPosFilter === pos
                                 ? isDark

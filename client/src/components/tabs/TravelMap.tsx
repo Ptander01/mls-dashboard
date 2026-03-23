@@ -833,7 +833,7 @@ function TooltipOverlay({
           />
           <span
             className="text-xs font-bold text-foreground"
-            style={{ fontFamily: "Space Grotesk" }}
+            style={{ fontFamily: "Space Grotesk, sans-serif" }}
           >
             {info.name}
           </span>
@@ -1257,7 +1257,7 @@ export default function TravelMap() {
             />
             <h2
               className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-              style={{ fontFamily: "Space Grotesk" }}
+              style={{ fontFamily: "Space Grotesk, sans-serif" }}
             >
               League-Wide Totals
             </h2>
@@ -1327,7 +1327,7 @@ export default function TravelMap() {
             <div>
               <h3
                 className="text-sm font-semibold"
-                style={{ fontFamily: "Space Grotesk" }}
+                style={{ fontFamily: "Space Grotesk, sans-serif" }}
               >
                 League Travel Map — Matchweek {currentWeek}
               </h3>
@@ -1488,7 +1488,7 @@ export default function TravelMap() {
         <div className="mt-6 mb-2">
           <h2
             className="text-base font-bold tracking-wide"
-            style={{ fontFamily: "Space Grotesk" }}
+            style={{ fontFamily: "Space Grotesk, sans-serif" }}
           >
             Performance & Resilience Analysis
           </h2>
@@ -1506,7 +1506,7 @@ export default function TravelMap() {
             <div className="flex items-center justify-between mb-1">
               <span
                 className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-semibold"
-                style={{ fontFamily: "Space Grotesk" }}
+                style={{ fontFamily: "Space Grotesk, sans-serif" }}
               >
                 Chart A — Dumbbell Gap
               </span>
@@ -1530,7 +1530,7 @@ export default function TravelMap() {
             <div className="flex items-center justify-between mb-1">
               <span
                 className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-semibold"
-                style={{ fontFamily: "Space Grotesk" }}
+                style={{ fontFamily: "Space Grotesk, sans-serif" }}
               >
                 Chart B — Travel Burden Scatter
               </span>
@@ -1543,7 +1543,7 @@ export default function TravelMap() {
             <div className="flex items-center justify-between mb-1">
               <span
                 className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-semibold"
-                style={{ fontFamily: "Space Grotesk" }}
+                style={{ fontFamily: "Space Grotesk, sans-serif" }}
               >
                 Chart C — Resilience Index
               </span>
@@ -1567,7 +1567,7 @@ export default function TravelMap() {
             <div className="mb-2">
               <span
                 className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-semibold"
-                style={{ fontFamily: "Space Grotesk" }}
+                style={{ fontFamily: "Space Grotesk, sans-serif" }}
               >
                 Chart D — Team Profiles
               </span>
@@ -1580,7 +1580,7 @@ export default function TravelMap() {
             <div className="mb-2">
               <span
                 className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-semibold"
-                style={{ fontFamily: "Space Grotesk" }}
+                style={{ fontFamily: "Space Grotesk, sans-serif" }}
               >
                 Deep Dive
               </span>

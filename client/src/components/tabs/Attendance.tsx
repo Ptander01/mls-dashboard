@@ -458,7 +458,7 @@ export default function Attendance() {
                 return (
                   <div
                     className="glass-sm p-2 text-xs"
-                    style={{ fontFamily: "JetBrains Mono" }}
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
                   >
                     <div className="font-semibold" style={{ color: d.color }}>
                       {d.name}
@@ -850,7 +850,7 @@ export default function Attendance() {
           y={lastPt.y + 3}
           fill={labelColor}
           fontSize={9}
-          fontFamily="JetBrains Mono"
+          fontFamily="JetBrains Mono, monospace"
         >
           {label}
         </text>
@@ -930,7 +930,7 @@ export default function Attendance() {
           y={refY + 3}
           fill={labelColor}
           fontSize={9}
-          fontFamily="JetBrains Mono"
+          fontFamily="JetBrains Mono, monospace"
         >
           {label}
         </text>
@@ -1020,7 +1020,7 @@ export default function Attendance() {
                 return (
                   <div
                     className="glass-sm p-2 text-xs"
-                    style={{ fontFamily: "JetBrains Mono" }}
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
                   >
                     <div className="font-semibold" style={{ color: areaColor }}>
                       Week {d.week}
@@ -1361,7 +1361,7 @@ export default function Attendance() {
                 return (
                   <div
                     className="glass-sm p-3 text-xs"
-                    style={{ fontFamily: "JetBrains Mono" }}
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
                   >
                     <div
                       className="font-semibold mb-1"
@@ -1453,7 +1453,7 @@ export default function Attendance() {
         {isFullScale && topTeam && (
           <div
             className="absolute top-2 right-2 text-right"
-            style={{ fontFamily: "JetBrains Mono" }}
+            style={{ fontFamily: "JetBrains Mono, monospace" }}
           >
             <div
               className="text-[10px] font-semibold"
@@ -1561,7 +1561,7 @@ export default function Attendance() {
                   return (
                     <div
                       className="glass-sm p-3 text-xs"
-                      style={{ fontFamily: "JetBrains Mono" }}
+                      style={{ fontFamily: "JetBrains Mono, monospace" }}
                     >
                       <div className="font-semibold mb-1">
                         <span
@@ -1619,7 +1619,7 @@ export default function Attendance() {
         {positiveCount > 0 && negativeCount > 0 && (
           <p
             className="text-[10px] text-muted-foreground text-center mt-1"
-            style={{ fontFamily: "JetBrains Mono" }}
+            style={{ fontFamily: "JetBrains Mono, monospace" }}
           >
             <span className="text-emerald">{positiveCount} cities</span> drew
             more fans than their own average when {selectedTeamObj?.short}{" "}
@@ -1708,7 +1708,7 @@ export default function Attendance() {
                 return (
                   <div
                     className="glass-sm p-3 text-xs"
-                    style={{ fontFamily: "JetBrains Mono" }}
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
                   >
                     <div className="font-semibold mb-1">
                       <span style={{ color: d.color }}>{d.awayTeam}</span>
@@ -1794,7 +1794,7 @@ export default function Attendance() {
             />
             <h2
               className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-              style={{ fontFamily: "Space Grotesk" }}
+              style={{ fontFamily: "Space Grotesk, sans-serif" }}
             >
               League-Wide Totals
             </h2>
@@ -2148,7 +2148,7 @@ export default function Attendance() {
                         : "rgba(8, 145, 178, 0.06)",
                       border: `1px solid ${isDark ? "rgba(0, 212, 255, 0.2)" : "rgba(8, 145, 178, 0.2)"}`,
                       color: mutedTeamColor(emphasizedTeam, isDark),
-                      fontFamily: "Space Grotesk",
+                      fontFamily: "Space Grotesk, sans-serif",
                     }}
                   >
                     <Eye size={10} />
@@ -2175,7 +2175,7 @@ export default function Attendance() {
                 className="text-xs font-semibold"
                 style={{
                   color: mutedTeamColor(selectedTeam, isDark),
-                  fontFamily: "Space Grotesk",
+                  fontFamily: "Space Grotesk, sans-serif",
                 }}
               >
                 {selectedTeamObj?.name}
@@ -2217,7 +2217,7 @@ export default function Attendance() {
                   />
                   <h3
                     className="text-sm font-semibold"
-                    style={{ fontFamily: "Space Grotesk" }}
+                    style={{ fontFamily: "Space Grotesk, sans-serif" }}
                   >
                     {selectedTeam ? (
                       <>
@@ -2293,7 +2293,7 @@ export default function Attendance() {
                   />
                   <h3
                     className="text-sm font-semibold"
-                    style={{ fontFamily: "Space Grotesk" }}
+                    style={{ fontFamily: "Space Grotesk, sans-serif" }}
                   >
                     {selectedTeam ? (
                       <>
@@ -2403,7 +2403,7 @@ export default function Attendance() {
               />
               <span
                 className="text-[9px] text-muted-foreground"
-                style={{ fontFamily: "JetBrains Mono" }}
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
               >
                 Stadium Capacity
               </span>
@@ -2533,7 +2533,7 @@ export default function Attendance() {
                       : "rgba(8, 145, 178, 0.06)",
                     border: `1px solid ${isDark ? "rgba(0, 212, 255, 0.2)" : "rgba(8, 145, 178, 0.2)"}`,
                     color: mutedTeamColor(emphasizedTeam, isDark),
-                    fontFamily: "Space Grotesk",
+                    fontFamily: "Space Grotesk, sans-serif",
                   }}
                 >
                   <Eye size={10} />
