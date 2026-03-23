@@ -1,8 +1,16 @@
 /**
- * SeasonPulse.tsx — Season Pulse Tab Container
+ * SeasonPulse.tsx — Season Pulse Tab Container (Complete)
  *
- * Session 1 deliverable: Snapshot Table (Layer 1) with week selector,
- * conference filter, rank-by toggle, and tier groupings.
+ * Three-layer interactive season analysis tab:
+ *   Layer 1: Snapshot Table — weekly standings with power rankings, tier groupings,
+ *            conference filter, rank-by toggle, and week selector.
+ *   Layer 2: Bump Chart — SVG rank flow visualization with monotone interpolation,
+ *            week window slider, play animation, and deemphasis system.
+ *   Layer 3: Narrative Timeline — horizontal timeline with event nodes, sticky context
+ *            panel, expandable narrative cards, and season summary generation.
+ *
+ * All three layers share selectedTeam, selectedWeek, conferenceFilter, rankMode,
+ * and hoveredTeam state for full bidirectional synchronization.
  *
  * Refactored for multi-season support: reads active season data from
  * FilterContext and passes it to the seasonPulse engine.
@@ -42,6 +50,7 @@ import { ChartHeader } from "@/components/ui/ChartHeader";
 import { InsightPanel } from "@/components/InsightPanel";
 import StaggerContainer, { StaggerItem } from "@/components/StaggerContainer";
 import BumpChart from "@/components/charts/BumpChart";
+import SeasonTimeline from "@/components/charts/SeasonTimeline";
 
 // ═══════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -773,7 +782,32 @@ export default function SeasonPulse() {
           </NeuCard>
         </StaggerItem>
 
-        {/* Placeholder for Layer 3: Narrative Timeline (Session 3) */}
+        {/* ═══ NARRATIVE TIMELINE (Layer 3) ═══ */}
+        <AnimatePresence>
+          {selectedTeam && (
+            <StaggerItem key={`timeline-${selectedTeam}`}>
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
+              >
+                <NeuCard className="p-4 md:p-5">
+                  <SeasonTimeline
+                    teamId={selectedTeam}
+                    selectedWeek={selectedWeek}
+                    onSelectWeek={setSelectedWeek}
+                    rankMode={rankMode}
+                    teams={teams}
+                    matches={matches}
+                    totalWeeks={totalWeeks}
+                  />
+                </NeuCard>
+              </motion.div>
+            </StaggerItem>
+          )}
+        </AnimatePresence>
       </StaggerContainer>
     </div>
   );

@@ -11,7 +11,8 @@
 import type { Player, Match, Team, TeamBudget } from "./mlsData";
 import { TEAMS, MATCHES, TEAM_BUDGETS, getTeam } from "./mlsData";
 import { linearRegression } from "./chartUtils";
-import type { TeamWeekStanding } from "./seasonPulse";
+import type { TeamWeekStanding, SeasonEvent } from "./seasonPulse";
+import { getTeamTrajectory, getTeamEvents } from "./seasonPulse";
 import type { SeasonYear } from "./seasonDataLoader";
 
 // ═══════════════════════════════════════════
@@ -2017,4 +2018,264 @@ export function bumpChartCardInsights(
   }
 
   return items.slice(0, 3);
+}
+
+
+// ═══════════════════════════════════════════
+// SEASON NARRATIVE INSIGHTS (Per-Team Timeline)
+// ═══════════════════════════════════════════
+
+/**
+ * Generate 3-5 narrative insight cards for a specific team's season arc.
+ * Used by the SeasonTimeline component's narrative cards area.
+ */
+export function seasonNarrativeInsights(
+  teamId: string,
+  teams: Team[],
+  matches: Match[],
+  totalWeeks: number
+): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+  const trajectory = getTeamTrajectory(teamId, teams, matches, totalWeeks);
+  const events = getTeamEvents(teamId, teams, matches, totalWeeks);
+  const team = getTeam(teamId);
+  const teamName = team?.short || teamId;
+
+  if (!trajectory || trajectory.length === 0) return items;
+
+  const first = trajectory[0];
+  const last = trajectory[trajectory.length - 1];
+
+  // 1. Overall arc: where they started vs where they finished
+  if (first && last && last.played > 0) {
+    const startRank = first.powerRank;
+    const endRank = last.powerRank;
+    const delta = startRank - endRank; // positive = improved
+    if (Math.abs(delta) >= 3) {
+      const direction = delta > 0 ? "climbed" : "dropped";
+      const accent = delta > 0 ? "emerald" : "coral";
+      items.push({
+        text: `${teamName} ${direction} from ${ordinalSuffix(startRank)} to ${ordinalSuffix(endRank)} in the power rankings across ${totalWeeks} weeks — a net shift of ${Math.abs(delta)} places.`,
+        accent: accent as CardInsightItem["accent"],
+      });
+    } else {
+      items.push({
+        text: `${teamName} held steady around ${ordinalSuffix(endRank)} in the power rankings, finishing with ${last.points} points from ${last.played} matches (${last.ppg.toFixed(2)} PPG).`,
+        accent: "cyan",
+      });
+    }
+  }
+
+  // 2. Peak moment: highest-severity positive event
+  const positiveEvents = events.filter(
+    (e) =>
+      e.type === "winning_streak" ||
+      e.type === "unbeaten_run" ||
+      e.type === "rank_surge" ||
+      e.type === "upset_win" ||
+      e.type === "milestone"
+  );
+  const peakEvent = [...positiveEvents].sort((a, b) => b.severity - a.severity)[0];
+  if (peakEvent) {
+    items.push({
+      text: `Peak moment: ${peakEvent.title} in Week ${peakEvent.week}. ${peakEvent.description}`,
+      accent: "emerald",
+    });
+  }
+
+  // 3. Low point: highest-severity negative event
+  const negativeEvents = events.filter(
+    (e) =>
+      e.type === "losing_streak" ||
+      e.type === "winless_run" ||
+      e.type === "rank_collapse" ||
+      e.type === "upset_loss"
+  );
+  const lowEvent = [...negativeEvents].sort((a, b) => b.severity - a.severity)[0];
+  if (lowEvent) {
+    items.push({
+      text: `Low point: ${lowEvent.title} in Week ${lowEvent.week}. ${lowEvent.description}`,
+      accent: "coral",
+    });
+  }
+
+  // 4. Form trend: how they started vs how they finished
+  if (last && last.played >= 5) {
+    const earlyForm = trajectory.length >= 5
+      ? trajectory.slice(0, 5).reduce((sum, w) => sum + (w.played > 0 ? w.ppg : 0), 0) / 5
+      : 0;
+    const lateSlice = trajectory.slice(-5);
+    const lateForm = lateSlice.reduce((sum, w) => sum + (w.played > 0 ? w.ppg : 0), 0) / lateSlice.length;
+
+    if (earlyForm > 0 && lateForm > 0) {
+      const diff = lateForm - earlyForm;
+      if (Math.abs(diff) >= 0.3) {
+        const trend = diff > 0 ? "improved" : "declined";
+        const accent = diff > 0 ? "emerald" : "amber";
+        items.push({
+          text: `Form ${trend}: ${teamName}'s PPG moved from ${earlyForm.toFixed(2)} (early) to ${lateForm.toFixed(2)} (late) — a ${diff > 0 ? "+" : ""}${diff.toFixed(2)} shift in points per game.`,
+          accent: accent as CardInsightItem["accent"],
+        });
+      } else {
+        items.push({
+          text: `Consistent form: ${teamName} maintained a steady ${last.ppg.toFixed(2)} PPG throughout the season with no major form swings.`,
+          accent: "cyan",
+        });
+      }
+    }
+  }
+
+  // 5. Home/away split
+  if (last && last.played >= 6) {
+    const homeGames = last.homeWins + last.homeDraws + last.homeLosses;
+    const awayGames = last.awayWins + last.awayDraws + last.awayLosses;
+    if (homeGames >= 3 && awayGames >= 3) {
+      const homePts = last.homeWins * 3 + last.homeDraws;
+      const awayPts = last.awayWins * 3 + last.awayDraws;
+      const homePPG = homePts / homeGames;
+      const awayPPG = awayPts / awayGames;
+      const gap = Math.abs(homePPG - awayPPG);
+      if (gap >= 0.5) {
+        const stronger = homePPG > awayPPG ? "home" : "away";
+        const strongPPG = stronger === "home" ? homePPG : awayPPG;
+        const weakPPG = stronger === "home" ? awayPPG : homePPG;
+        items.push({
+          text: `${teamName} are a ${stronger} team: ${strongPPG.toFixed(2)} PPG ${stronger === "home" ? "at home" : "on the road"} vs ${weakPPG.toFixed(2)} PPG ${stronger === "home" ? "away" : "at home"} — a ${gap.toFixed(2)} PPG gap.`,
+          accent: "amber",
+        });
+      }
+    }
+  }
+
+  return items.slice(0, 5);
+}
+
+/**
+ * Generate a single punchy headline summarizing a team's season arc.
+ * Used by the ChartHeader description when a team is selected.
+ */
+export function seasonPulseHeadline(
+  teamId: string,
+  teams: Team[],
+  matches: Match[],
+  totalWeeks: number
+): string {
+  const trajectory = getTeamTrajectory(teamId, teams, matches, totalWeeks);
+  const events = getTeamEvents(teamId, teams, matches, totalWeeks);
+  const team = getTeam(teamId);
+  const teamName = team?.short || teamId;
+
+  if (!trajectory || trajectory.length === 0) {
+    return `No data available for ${teamName}.`;
+  }
+
+  const last = trajectory[trajectory.length - 1];
+  if (!last || last.played === 0) {
+    return `${teamName}'s season has not yet begun.`;
+  }
+
+  // Find the highest-severity event for the headline
+  const topEvent = [...events].sort((a, b) => b.severity - a.severity)[0];
+
+  const first = trajectory[0];
+  const rankDelta = first.powerRank - last.powerRank; // positive = improved
+
+  if (topEvent && topEvent.severity >= 3) {
+    // Lead with the most dramatic event
+    const weekRange = events.length >= 2
+      ? `Weeks ${events[0].week}-${events[events.length - 1].week}`
+      : `Week ${topEvent.week}`;
+    return `${teamName}'s season was defined by ${topEvent.title.toLowerCase()} in Week ${topEvent.week} — finishing ${ordinalSuffix(last.powerRank)} with ${last.points} points (${last.ppg.toFixed(2)} PPG) across ${weekRange}.`;
+  }
+
+  if (Math.abs(rankDelta) >= 5) {
+    const verb = rankDelta > 0 ? "surged" : "slid";
+    return `${teamName} ${verb} from ${ordinalSuffix(first.powerRank)} to ${ordinalSuffix(last.powerRank)} over ${totalWeeks} weeks — ${last.wins}W ${last.draws}D ${last.losses}L, ${last.ppg.toFixed(2)} PPG.`;
+  }
+
+  return `${teamName} sit ${ordinalSuffix(last.powerRank)} in the power rankings with ${last.points} points from ${last.played} matches (${last.wins}W ${last.draws}D ${last.losses}L, ${last.ppg.toFixed(2)} PPG).`;
+}
+
+/**
+ * Generate a 2-3 sentence auto-generated paragraph covering a team's overall season arc.
+ * Used as the default narrative card when no specific event is clicked.
+ */
+export function seasonSummaryNarrative(
+  teamId: string,
+  teams: Team[],
+  matches: Match[],
+  totalWeeks: number
+): string {
+  const trajectory = getTeamTrajectory(teamId, teams, matches, totalWeeks);
+  const events = getTeamEvents(teamId, teams, matches, totalWeeks);
+  const team = getTeam(teamId);
+  const teamName = team?.name || teamId;
+
+  if (!trajectory || trajectory.length === 0) return `No season data for ${teamName}.`;
+
+  const last = trajectory[trajectory.length - 1];
+  const first = trajectory[0];
+  if (!last || last.played === 0) return `${teamName}'s season has not yet begun.`;
+
+  const parts: string[] = [];
+
+  // Opening: overall trajectory
+  const rankDelta = first.powerRank - last.powerRank;
+  if (Math.abs(rankDelta) >= 5) {
+    const verb = rankDelta > 0 ? "climbed" : "dropped";
+    parts.push(
+      `${teamName} ${verb} from ${ordinalSuffix(first.powerRank)} to ${ordinalSuffix(last.powerRank)} in the power rankings over ${totalWeeks} weeks.`
+    );
+  } else {
+    parts.push(
+      `${teamName} finished ${ordinalSuffix(last.powerRank)} in the power rankings with ${last.points} points from ${last.played} matches.`
+    );
+  }
+
+  // Middle: key events
+  const positiveEvents = events.filter(
+    (e) =>
+      e.type === "winning_streak" ||
+      e.type === "unbeaten_run" ||
+      e.type === "rank_surge" ||
+      e.type === "upset_win"
+  );
+  const negativeEvents = events.filter(
+    (e) =>
+      e.type === "losing_streak" ||
+      e.type === "winless_run" ||
+      e.type === "rank_collapse" ||
+      e.type === "upset_loss"
+  );
+
+  const topPositive = [...positiveEvents].sort((a, b) => b.severity - a.severity)[0];
+  const topNegative = [...negativeEvents].sort((a, b) => b.severity - a.severity)[0];
+
+  if (topPositive && topNegative) {
+    parts.push(
+      `A ${topPositive.title.toLowerCase()} in Week ${topPositive.week} was the season highlight, while a ${topNegative.title.toLowerCase()} in Week ${topNegative.week} marked the low point.`
+    );
+  } else if (topPositive) {
+    parts.push(
+      `The defining moment was a ${topPositive.title.toLowerCase()} in Week ${topPositive.week}.`
+    );
+  } else if (topNegative) {
+    parts.push(
+      `A ${topNegative.title.toLowerCase()} in Week ${topNegative.week} defined a difficult campaign.`
+    );
+  }
+
+  // Closing: final form
+  if (last.played >= 5) {
+    const formStr = last.form.slice(0, 5).join("");
+    parts.push(
+      `They closed with a ${formStr} run, finishing on ${last.ppg.toFixed(2)} PPG and a ${last.goalDifference > 0 ? "+" : ""}${last.goalDifference} goal difference.`
+    );
+  }
+
+  if (events.length === 0) {
+    return `${teamName} had a steady season with no major inflection events — finishing ${ordinalSuffix(last.powerRank)} with ${last.points} points (${last.ppg.toFixed(2)} PPG).`;
+  }
+
+  return parts.join(" ");
 }
