@@ -31,7 +31,12 @@ import {
   type TeamWeekStanding,
 } from "@/lib/seasonPulse";
 import { mutedTeamColor, hexToRgba } from "@/lib/chartUtils";
-import { seasonPulseInsights } from "@/lib/insightEngine";
+import { seasonPulseInsights, seasonPulseTableCardInsights } from "@/lib/insightEngine";
+import {
+  CardInsightToggle,
+  CardInsightSection,
+} from "@/components/CardInsight";
+import type { CardInsightItem } from "@/components/CardInsight";
 import NeuCard from "@/components/NeuCard";
 import { ChartHeader } from "@/components/ui/ChartHeader";
 import { InsightPanel } from "@/components/InsightPanel";
@@ -457,6 +462,12 @@ export default function SeasonPulse() {
     return seasonPulseInsights(latestStandings, players, matches, seasonYear, totalWeeks);
   }, [maxWeek, teams, matches, totalWeeks, players, seasonYear]);
 
+  // Table card insights
+  const [showTableInsights, setShowTableInsights] = useState(false);
+  const tableInsights = useMemo(() => {
+    return seasonPulseTableCardInsights(filteredStandings, seasonYear);
+  }, [filteredStandings, seasonYear]);
+
   // Dynamic methods text
   const matchCount = matches.length;
   const dataSourceText = seasonYear === 2026
@@ -540,9 +551,15 @@ export default function SeasonPulse() {
                     onChange={setRankMode}
                     isDark={isDark}
                   />
+                  <CardInsightToggle
+                    isOpen={showTableInsights}
+                    onToggle={() => setShowTableInsights(v => !v)}
+                    isDark={isDark}
+                  />
                 </div>
               }
             />
+            <CardInsightSection isOpen={showTableInsights} insights={tableInsights} isDark={isDark} />
 
             {/* Week Selector */}
             <div className="mb-4">

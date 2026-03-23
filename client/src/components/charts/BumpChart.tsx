@@ -32,6 +32,12 @@ import {
 } from "@/lib/seasonPulse";
 import { mutedTeamColor, hexToRgba, lighten, darken } from "@/lib/chartUtils";
 import { ChartHeader } from "@/components/ui/ChartHeader";
+import {
+  CardInsightToggle,
+  CardInsightSection,
+} from "@/components/CardInsight";
+import { bumpChartCardInsights } from "@/lib/insightEngine";
+import { getWeekStandings } from "@/lib/seasonPulse";
 
 // ═══════════════════════════════════════════
 // TYPES
@@ -633,9 +639,10 @@ export default function BumpChart({
 
   const visibleTeamIds = useMemo(() => new Set(visibleTeams.map((t) => t.id)), [visibleTeams]);
 
-  // ─── Compute all trajectories (season-aware) ───
+  // ─── Compute all trajectories (season-aware, conference-relative ranks) ───
   const allTrajectories = useMemo(() => {
-    const map = new Map<string, { week: number; rank: number }[]>();
+    // First, get global trajectories for all teams
+    const globalTrajectories = new Map<string, { week: number; rank: number; score: number }[]>();
     for (const team of TEAMS) {
       const trajectory = getTeamTrajectory(team.id, teams, matches, totalWeeks);
       const mapped = trajectory
@@ -643,11 +650,55 @@ export default function BumpChart({
         .map((s) => ({
           week: s.week,
           rank: rankMode === "POWER" ? s.powerRank : s.pointsRank,
+          score: rankMode === "POWER" ? s.powerScore : s.points,
         }));
-      map.set(team.id, mapped);
+      globalTrajectories.set(team.id, mapped);
     }
+
+    // If showing all teams, use global ranks directly
+    if (conferenceFilter === "ALL") {
+      const map = new Map<string, { week: number; rank: number }[]>();
+      for (const [id, traj] of globalTrajectories) {
+        map.set(id, traj.map((d) => ({ week: d.week, rank: d.rank })));
+      }
+      return map;
+    }
+
+    // For conference filter: re-rank within the filtered set
+    const filteredIds = new Set(visibleTeams.map((t) => t.id));
+    const map = new Map<string, { week: number; rank: number }[]>();
+
+    // Determine the max week present in the data
+    const allWeeks = new Set<number>();
+    for (const [id, traj] of globalTrajectories) {
+      if (filteredIds.has(id)) {
+        for (const d of traj) allWeeks.add(d.week);
+      }
+    }
+
+    // For each week, sort the filtered teams by their score and assign conference-relative ranks
+    for (const week of allWeeks) {
+      const weekEntries: { id: string; score: number }[] = [];
+      for (const [id, traj] of globalTrajectories) {
+        if (!filteredIds.has(id)) continue;
+        const weekData = traj.find((d) => d.week === week);
+        if (weekData) weekEntries.push({ id, score: weekData.score });
+      }
+      // Sort descending by score (higher = better rank)
+      weekEntries.sort((a, b) => b.score - a.score);
+      weekEntries.forEach((entry, idx) => {
+        if (!map.has(entry.id)) map.set(entry.id, []);
+        map.get(entry.id)!.push({ week, rank: idx + 1 });
+      });
+    }
+
+    // Sort each team's trajectory by week
+    for (const [, traj] of map) {
+      traj.sort((a, b) => a.week - b.week);
+    }
+
     return map;
-  }, [rankMode, teams, matches, totalWeeks]);
+  }, [rankMode, teams, matches, totalWeeks, conferenceFilter, visibleTeams]);
 
   // ─── Compute visible week range data ───
   const [startWeek, endWeek] = weekRange;
@@ -699,23 +750,23 @@ export default function BumpChart({
   }, [selectedTeam, startWeek, endWeek, teams, matches, totalWeeks]);
 
   // ─── Play animation ───
+  // Progressive reveal: starts from week 1 and adds one week at a time
+  // at a pace slow enough for the user to absorb each week's changes.
+  const playStartRef = useRef(1);
+
   useEffect(() => {
     if (isPlaying) {
-      const windowWidth = Math.min(8, maxWeek);
-      let currentStart = 1;
-
       playIntervalRef.current = setInterval(() => {
-        currentStart++;
-        const newEnd = Math.min(currentStart + windowWidth - 1, maxWeek);
-        const newStart = Math.max(1, newEnd - windowWidth + 1);
+        playStartRef.current++;
+        const revealEnd = Math.min(playStartRef.current, maxWeek);
 
-        setWeekRange([newStart, newEnd]);
+        setWeekRange([1, revealEnd]);
         setActivePreset(null);
 
-        if (newEnd >= maxWeek) {
+        if (revealEnd >= maxWeek) {
           setIsPlaying(false);
         }
-      }, 250);
+      }, 1200);
     }
 
     return () => {
@@ -729,8 +780,9 @@ export default function BumpChart({
   const togglePlay = useCallback(() => {
     setIsPlaying((prev) => {
       if (!prev) {
-        const windowWidth = Math.min(8, maxWeek);
-        setWeekRange([1, windowWidth]);
+        // Reset to week 1 and begin progressive reveal
+        playStartRef.current = 1;
+        setWeekRange([1, 1]);
         setActivePreset(null);
       }
       return !prev;
@@ -918,6 +970,24 @@ export default function BumpChart({
     return `${seasonYear} · ${weekLabel} · ${teamCount} teams · ${rankLabel}`;
   }, [startWeek, endWeek, maxWeek, visibleTeams.length, rankMode, seasonYear]);
 
+  // ─── Bump chart card insights ───
+  const [showBumpInsights, setShowBumpInsights] = useState(false);
+  const bumpInsights = useMemo(() => {
+    const currStandings = getWeekStandings(endWeek, teams, matches, totalWeeks);
+    const prevStandings = startWeek < endWeek
+      ? getWeekStandings(startWeek, teams, matches, totalWeeks)
+      : null;
+    return bumpChartCardInsights(
+      currStandings,
+      prevStandings,
+      conferenceFilter,
+      rankMode,
+      startWeek,
+      endWeek,
+      seasonYear
+    );
+  }, [endWeek, startWeek, teams, matches, totalWeeks, conferenceFilter, rankMode, seasonYear]);
+
   // ─── Highlighted teams for labels ───
   const highlightedTeams = useMemo(() => {
     const hTeams: string[] = [];
@@ -964,6 +1034,12 @@ export default function BumpChart({
           </>
         }
         rightAction={
+          <div className="flex items-center gap-2">
+          <CardInsightToggle
+            isOpen={showBumpInsights}
+            onToggle={() => setShowBumpInsights(v => !v)}
+            isDark={isDark}
+          />
           <button
             onClick={cycleViewMode}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all"
@@ -993,6 +1069,7 @@ export default function BumpChart({
             {viewMode === "allFocus" ? <Sparkles size={11} /> : viewMode === "colors" ? <Eye size={11} /> : <EyeOff size={11} />}
             <span>{viewMode === "allFocus" ? "All Focus" : viewMode === "colors" ? "All Colors" : "Focus Mode"}</span>
           </button>
+          </div>
         }
         methods={
           <div className="space-y-2">
@@ -1026,6 +1103,7 @@ export default function BumpChart({
           </div>
         }
       />
+      <CardInsightSection isOpen={showBumpInsights} insights={bumpInsights} isDark={isDark} />
 
       {/* SVG Chart */}
       <div

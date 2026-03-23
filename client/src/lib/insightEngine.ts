@@ -1910,3 +1910,111 @@ function ordinalSuffix(n: number): string {
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
+
+
+/**
+ * Compute card-level insights for the Bump Chart (Season Rank Flow).
+ *
+ * Analyses the visible week range and filtered teams to surface
+ * movement narratives: biggest movers, most stable, tightest clusters,
+ * and conference-specific observations.
+ */
+export function bumpChartCardInsights(
+  standings: TeamWeekStanding[],
+  prevStandings: TeamWeekStanding[] | null,
+  conferenceFilter: "ALL" | "EASTERN" | "WESTERN",
+  rankMode: "POWER" | "POINTS",
+  startWeek: number,
+  endWeek: number,
+  seasonYear: SeasonYear
+): CardInsightItem[] {
+  const items: CardInsightItem[] = [];
+  if (standings.length === 0) return items;
+
+  const sorted = [...standings].sort((a, b) =>
+    rankMode === "POWER" ? a.powerRank - b.powerRank : a.pointsRank - b.pointsRank
+  );
+
+  const confLabel =
+    conferenceFilter === "EASTERN" ? "Eastern Conference" :
+    conferenceFilter === "WESTERN" ? "Western Conference" : "league";
+
+  // Biggest mover (if we have previous standings to compare)
+  if (prevStandings && prevStandings.length > 0) {
+    let biggestRise = { id: "", delta: 0 };
+    let biggestDrop = { id: "", delta: 0 };
+
+    for (const curr of sorted) {
+      const prev = prevStandings.find(s => s.teamId === curr.teamId);
+      if (!prev) continue;
+      const currRank = rankMode === "POWER" ? curr.powerRank : curr.pointsRank;
+      const prevRank = rankMode === "POWER" ? prev.powerRank : prev.pointsRank;
+      const delta = prevRank - currRank; // positive = improved
+      if (delta > biggestRise.delta) biggestRise = { id: curr.teamId, delta };
+      if (delta < biggestDrop.delta) biggestDrop = { id: curr.teamId, delta };
+    }
+
+    if (biggestRise.delta >= 2) {
+      const name = getTeam(biggestRise.id)?.short || biggestRise.id;
+      items.push({
+        text: `${name} surged ${biggestRise.delta} places in the ${confLabel} between weeks ${startWeek} and ${endWeek} — the biggest climb in the current window.`,
+        accent: "emerald",
+      });
+    }
+
+    if (biggestDrop.delta <= -2) {
+      const name = getTeam(biggestDrop.id)?.short || biggestDrop.id;
+      items.push({
+        text: `${name} dropped ${Math.abs(biggestDrop.delta)} spots over the same span — the steepest decline in the ${confLabel}.`,
+        accent: "coral",
+      });
+    }
+  }
+
+  // Tightest cluster: find consecutive teams with identical or near-identical scores
+  const scores = sorted.map(s => rankMode === "POWER" ? s.powerScore : s.points);
+  let maxCluster = 0;
+  let bestClusterStart = 0;
+  let clusterStart = 0;
+  for (let i = 1; i < scores.length; i++) {
+    const gap = Math.abs(scores[i] - scores[i - 1]);
+    if (gap <= (rankMode === "POWER" ? 3 : 1)) {
+      const run = i - clusterStart + 1;
+      if (run > maxCluster) {
+        maxCluster = run;
+        bestClusterStart = clusterStart;
+      }
+    } else {
+      clusterStart = i;
+    }
+  }
+  if (maxCluster >= 3) {
+    const clusterTeams = sorted.slice(bestClusterStart, bestClusterStart + maxCluster);
+    const topName = getTeam(clusterTeams[0]?.teamId)?.short || "";
+    const botName = getTeam(clusterTeams[clusterTeams.length - 1]?.teamId)?.short || "";
+    items.push({
+      text: `${maxCluster} teams from ${topName} to ${botName} are separated by less than ${rankMode === "POWER" ? "3 power score points" : "2 points"} — any single result could reshuffle this cluster.`,
+      accent: "amber",
+    });
+  }
+
+  // Leader narrative
+  const leader = sorted[0];
+  if (leader) {
+    const name = getTeam(leader.teamId)?.short || leader.teamId;
+    const score = rankMode === "POWER" ? leader.powerScore.toFixed(1) : String(leader.points);
+    const second = sorted[1];
+    if (second) {
+      const gap = rankMode === "POWER"
+        ? (leader.powerScore - second.powerScore).toFixed(1)
+        : String(leader.points - second.points);
+      const secondName = getTeam(second.teamId)?.short || second.teamId;
+      items.push({
+        text: `${name} lead the ${confLabel} with a ${rankMode === "POWER" ? "power score" : "points tally"} of ${score}, ${gap} ${rankMode === "POWER" ? "points" : "pts"} clear of ${secondName} in ${ordinalSuffix(2)}.`,
+        accent: "cyan",
+      });
+    }
+  }
+
+  return items.slice(0, 3);
+}
