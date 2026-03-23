@@ -78,11 +78,11 @@ function FormDots({ form, isDark }: { form: ("W" | "D" | "L")[]; isDark: boolean
   };
 
   return (
-    <div className="flex items-center gap-[3px]">
+    <div className="flex items-center gap-1">
       {form.map((r, i) => (
         <div
           key={i}
-          className="w-[7px] h-[7px] rounded-full"
+          className="w-2 h-2 rounded-full"
           style={{
             background: colors[r],
             boxShadow: r === "W"
@@ -118,7 +118,8 @@ function PowerBar({
     <div
       className="relative h-[6px] rounded-full overflow-hidden"
       style={{
-        width: "60px",
+        width: "100%",
+        maxWidth: "150px",
         background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
       }}
     >
@@ -142,10 +143,10 @@ function RankDelta({ delta, isDark }: { delta: number; isDark: boolean }) {
   if (delta === 0) {
     return (
       <span
-        className="inline-flex items-center gap-0.5 text-[10px] font-mono"
+        className="inline-flex items-center gap-0.5 text-xs font-mono"
         style={{ color: isDark ? "#6b7280" : "#9ca3af" }}
       >
-        <Minus size={10} />
+        <Minus size={12} />
       </span>
     );
   }
@@ -157,10 +158,10 @@ function RankDelta({ delta, isDark }: { delta: number; isDark: boolean }) {
 
   return (
     <span
-      className="inline-flex items-center gap-0.5 text-[10px] font-mono font-semibold"
+      className="inline-flex items-center gap-0.5 text-xs font-mono font-semibold"
       style={{ color }}
     >
-      {isUp ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+      {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
       {Math.abs(delta)}
     </span>
   );
@@ -555,23 +556,19 @@ export default function SeasonPulse() {
 
             {/* Table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-[11px]" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+              <table className="data-table text-xs" style={{ fontFamily: "JetBrains Mono, monospace" }}>
                 <thead>
-                  <tr
-                    style={{
-                      borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-                    }}
-                  >
-                    <th className="text-left py-2 px-2 font-semibold text-muted-foreground w-8">#</th>
-                    <th className="text-center py-2 px-1 font-semibold text-muted-foreground w-10">Δ</th>
-                    <th className="text-left py-2 px-2 font-semibold text-muted-foreground">Team</th>
-                    <th className="text-center py-2 px-2 font-semibold text-muted-foreground">P</th>
-                    <th className="text-center py-2 px-2 font-semibold text-muted-foreground">W-D-L</th>
-                    <th className="text-center py-2 px-2 font-semibold text-muted-foreground">GD</th>
-                    <th className="text-center py-2 px-2 font-semibold text-muted-foreground">PPG</th>
-                    <th className="text-center py-2 px-2 font-semibold text-muted-foreground">Form</th>
-                    <th className="text-center py-2 px-2 font-semibold text-muted-foreground">
-                      {rankMode === "POWER" ? "Power" : "Pts"}
+                  <tr>
+                    <th className="text-left">#</th>
+                    <th className="text-center">Delta</th>
+                    <th className="text-left">Team</th>
+                    <th className="text-center">Played</th>
+                    <th className="text-center">W-D-L</th>
+                    <th className="text-center">Goal Diff</th>
+                    <th className="text-center">Pts / Game</th>
+                    <th className="text-center">Form</th>
+                    <th className="text-center">
+                      {rankMode === "POWER" ? "Power Score" : "Points"}
                     </th>
                   </tr>
                 </thead>
@@ -708,7 +705,7 @@ export default function SeasonPulse() {
                                 color={teamColor}
                                 isDark={isDark}
                               />
-                              <span className="text-[10px] text-muted-foreground w-8 text-right">
+                              <span className="text-xs text-muted-foreground w-10 text-right font-semibold">
                                 {rankMode === "POWER" ? s.powerScore.toFixed(1) : s.points}
                               </span>
                             </div>

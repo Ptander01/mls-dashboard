@@ -18,7 +18,7 @@ import {
   type ReactNode,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Eye, EyeOff } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useFilters } from "@/contexts/FilterContext";
 import { TEAMS, getTeam } from "@/lib/mlsData";
@@ -30,7 +30,7 @@ import {
   type TeamWeekStanding,
   type SeasonEvent,
 } from "@/lib/seasonPulse";
-import { mutedTeamColor, hexToRgba } from "@/lib/chartUtils";
+import { mutedTeamColor, hexToRgba, lighten, darken } from "@/lib/chartUtils";
 import { ChartHeader } from "@/components/ui/ChartHeader";
 
 // ═══════════════════════════════════════════
@@ -56,7 +56,7 @@ type WeekPreset = "full" | "first" | "second" | "last10";
 
 const SVG_WIDTH = 1200;
 const SVG_HEIGHT = 700;
-const MARGIN = { top: 30, right: 80, bottom: 40, left: 45 };
+const MARGIN = { top: 30, right: 120, bottom: 40, left: 45 };
 const CHART_WIDTH = SVG_WIDTH - MARGIN.left - MARGIN.right;
 const CHART_HEIGHT = SVG_HEIGHT - MARGIN.top - MARGIN.bottom;
 
@@ -206,6 +206,67 @@ const TeamLine = memo(function TeamLine({
   onMouseLeave,
   onClick,
 }: TeamLineProps) {
+  if (isHighlighted) {
+    // 3D tube effect: shadow layer + base layer + specular highlight layer
+    const shadowColor = darken(color, 0.5);
+    const highlightColor = lighten(color, 0.5);
+    return (
+      <g
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onClick={onClick}
+        style={{ cursor: "pointer" }}
+        data-team={teamId}
+      >
+        {/* Cast shadow (offset down-right) */}
+        <path
+          d={pathD}
+          fill="none"
+          stroke={shadowColor}
+          strokeWidth={strokeWidth + 4}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            opacity: opacity * 0.35,
+            transition: "opacity 0.25s ease, stroke-width 0.25s ease",
+            pointerEvents: "none",
+          }}
+          transform="translate(1.5, 2.5)"
+        />
+        {/* Base color path */}
+        <path
+          d={pathD}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth + 1}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            opacity,
+            transition: "opacity 0.25s ease, stroke-width 0.25s ease, stroke 0.25s ease",
+            pointerEvents: "stroke",
+            filter: `drop-shadow(0 0 4px ${hexToRgba(color, 0.4)})`,
+          }}
+        />
+        {/* Specular highlight (offset up-left, thinner, lighter) */}
+        <path
+          d={pathD}
+          fill="none"
+          stroke={highlightColor}
+          strokeWidth={Math.max(1, strokeWidth - 1)}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            opacity: opacity * 0.6,
+            transition: "opacity 0.25s ease, stroke-width 0.25s ease",
+            pointerEvents: "none",
+          }}
+          transform="translate(-0.5, -0.8)"
+        />
+      </g>
+    );
+  }
+
   return (
     <path
       d={pathD}
@@ -295,50 +356,55 @@ function EventTooltip({
   isDark: boolean;
 }) {
   const color = EVENT_COLORS[event.type] || "#06b6d4";
-  const tooltipX = Math.max(100, Math.min(x, SVG_WIDTH - 200));
-  const tooltipY = Math.max(20, y - 55);
+  const tooltipWidth = 220;
+  const tooltipX = Math.max(tooltipWidth / 2 + 10, Math.min(x, SVG_WIDTH - tooltipWidth / 2 - 10));
+  const tooltipY = Math.max(20, y - 80);
 
   return (
-    <g>
-      <rect
-        x={tooltipX - 95}
-        y={tooltipY - 14}
-        width={190}
-        height={44}
-        rx={6}
-        fill={isDark ? "rgba(20, 20, 34, 0.95)" : "rgba(255, 255, 255, 0.95)"}
-        stroke={hexToRgba(color, 0.3)}
-        strokeWidth={1}
+    <foreignObject
+      x={tooltipX - tooltipWidth / 2}
+      y={tooltipY}
+      width={tooltipWidth}
+      height={120}
+      style={{ overflow: "visible", pointerEvents: "none" }}
+    >
+      <div
         style={{
-          filter: isDark
-            ? "drop-shadow(0 2px 8px rgba(0,0,0,0.5))"
-            : "drop-shadow(0 2px 8px rgba(0,0,0,0.15))",
+          background: "var(--glass-bg)",
+          backdropFilter: "blur(var(--glass-blur)) saturate(1.4)",
+          WebkitBackdropFilter: "blur(var(--glass-blur)) saturate(1.4)",
+          border: `1px solid ${hexToRgba(color, 0.25)}`,
+          borderRadius: 8,
+          boxShadow: "var(--glass-shadow), var(--glass-highlight)",
+          color: "var(--glass-text)",
+          padding: "8px 12px",
+          maxWidth: tooltipWidth,
         }}
-      />
-      <text
-        x={tooltipX}
-        y={tooltipY + 2}
-        textAnchor="middle"
-        fill={color}
-        fontSize={10}
-        fontWeight={700}
-        fontFamily="Space Grotesk, sans-serif"
       >
-        {event.title}
-      </text>
-      <text
-        x={tooltipX}
-        y={tooltipY + 18}
-        textAnchor="middle"
-        fill={isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)"}
-        fontSize={8.5}
-        fontFamily="system-ui, sans-serif"
-      >
-        {event.description.length > 50
-          ? event.description.slice(0, 47) + "..."
-          : event.description}
-      </text>
-    </g>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            fontFamily: "Space Grotesk, sans-serif",
+            color,
+            marginBottom: 4,
+          }}
+        >
+          {event.title}
+        </div>
+        <div
+          style={{
+            fontSize: 10,
+            fontFamily: "system-ui, sans-serif",
+            color: "var(--glass-text-muted)",
+            lineHeight: 1.4,
+            wordWrap: "break-word" as const,
+          }}
+        >
+          {event.description}
+        </div>
+      </div>
+    </foreignObject>
   );
 }
 
@@ -540,6 +606,9 @@ export default function BumpChart({
   const [tooltipEvent, setTooltipEvent] = useState<SeasonEvent | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Show All Colors toggle state
+  const [showAllColors, setShowAllColors] = useState(false);
+
   // Reset week range when season changes
   useEffect(() => {
     setWeekRange([1, maxWeek]);
@@ -694,7 +763,7 @@ export default function BumpChart({
       const neutralColor = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)";
 
       if (!hasAnyHighlight) {
-        return { opacity: 0.15, strokeWidth: 1, color: neutralColor };
+        return { opacity: showAllColors ? 0.4 : 0.15, strokeWidth: showAllColors ? 1.2 : 1, color: showAllColors ? teamColor : neutralColor };
       }
 
       if (isSelected && isHovered) {
@@ -712,9 +781,9 @@ export default function BumpChart({
         return { opacity: 1, strokeWidth: 2.5, color: teamColor };
       }
 
-      return { opacity: 0.08, strokeWidth: 1, color: neutralColor };
+      return { opacity: showAllColors ? 0.3 : 0.08, strokeWidth: showAllColors ? 1 : 1, color: showAllColors ? teamColor : neutralColor };
     },
-    [selectedTeam, hoveredTeam, isDark]
+    [selectedTeam, hoveredTeam, isDark, showAllColors]
   );
 
   // ─── X-axis labels ───
@@ -875,6 +944,33 @@ export default function BumpChart({
             click to lock it and see their inflection events. The tighter the lines
             cluster, the more competitive that stretch of the season was.
           </>
+        }
+        rightAction={
+          <button
+            onClick={() => setShowAllColors((prev) => !prev)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all"
+            style={{
+              fontFamily: "Space Grotesk, sans-serif",
+              background: showAllColors
+                ? isDark
+                  ? "rgba(0, 212, 255, 0.12)"
+                  : "rgba(8, 145, 178, 0.10)"
+                : isDark
+                  ? "rgba(255,255,255,0.04)"
+                  : "rgba(0,0,0,0.04)",
+              color: showAllColors ? "var(--cyan)" : "var(--muted-foreground)",
+              boxShadow: showAllColors
+                ? isDark
+                  ? "0 1px 3px rgba(0,0,0,0.3), 0 0 8px rgba(0,212,255,0.1)"
+                  : "0 1px 3px rgba(0,0,0,0.08), 0 0 8px rgba(8,145,178,0.08)"
+                : isDark
+                  ? "inset 1px 1px 3px rgba(0,0,0,0.4), inset -1px -1px 2px rgba(60,60,80,0.06)"
+                  : "inset 1px 1px 3px rgba(0,0,0,0.06), inset -1px -1px 2px rgba(255,255,255,0.5)",
+            }}
+          >
+            {showAllColors ? <Eye size={11} /> : <EyeOff size={11} />}
+            <span>{showAllColors ? "All Colors" : "Focus Mode"}</span>
+          </button>
         }
         methods={
           <div className="space-y-2">
@@ -1098,34 +1194,46 @@ export default function BumpChart({
             />
           ))}
 
-          {/* Team name labels at endpoints */}
-          {highlightedTeams.map((teamId) => {
-            const label = getEndpointLabel(teamId);
+          {/* Persistent team labels at endpoints — all teams always visible */}
+          {visibleTeams.map((team) => {
+            const label = getEndpointLabel(team.id);
             if (!label) return null;
-            const teamColor = mutedTeamColor(teamId, isDark);
+            const teamColor = mutedTeamColor(team.id, isDark);
+            const isHL = highlightedTeams.includes(team.id);
             return (
-              <g key={`label-${teamId}`}>
-                <rect
-                  x={label.x - 2}
-                  y={label.y - 7}
-                  width={label.name.length * 5.5 + 10}
-                  height={14}
-                  rx={4}
-                  fill={isDark ? "rgba(20, 20, 34, 0.85)" : "rgba(255, 255, 255, 0.9)"}
-                  stroke={hexToRgba(teamColor, 0.3)}
-                  strokeWidth={0.5}
-                />
-                <text
-                  x={label.x + 3}
-                  y={label.y + 3}
-                  fill={teamColor}
-                  fontSize={9}
-                  fontWeight={700}
-                  fontFamily="Space Grotesk, sans-serif"
+              <motion.g
+                key={`label-${team.id}`}
+                animate={{ y: 0 }}
+                style={{ y: 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 25 }}
+              >
+                <motion.g
+                  animate={{ y: label.y }}
+                  transition={{ type: "spring", stiffness: 200, damping: 25 }}
                 >
-                  {label.name}
-                </text>
-              </g>
+                  <rect
+                    x={label.x - 2}
+                    y={-7}
+                    width={label.name.length * 5.5 + 10}
+                    height={14}
+                    rx={4}
+                    fill={isDark ? "rgba(20, 20, 34, 0.85)" : "rgba(255, 255, 255, 0.9)"}
+                    stroke={isHL ? hexToRgba(teamColor, 0.5) : hexToRgba(teamColor, 0.15)}
+                    strokeWidth={isHL ? 1 : 0.5}
+                  />
+                  <text
+                    x={label.x + 3}
+                    y={3}
+                    fill={teamColor}
+                    fontSize={isHL ? 9 : 7.5}
+                    fontWeight={isHL ? 700 : 500}
+                    fontFamily="Space Grotesk, sans-serif"
+                    opacity={isHL ? 1 : 0.65}
+                  >
+                    {label.name}
+                  </text>
+                </motion.g>
+              </motion.g>
             );
           })}
 
