@@ -1326,7 +1326,7 @@ export default function BumpChart({
             if (!label) return null;
             const teamColor = mutedTeamColor(team.id, isDark);
             const isHL = highlightedTeams.includes(team.id);
-            const labelW = label.name.length * 5.5 + 14;
+            const labelW = 100; // uniform width for all tabs
             const labelH = isHL ? 18 : 16;
             const highlightEdge = lighten(teamColor, 0.35);
             const shadowEdge = darken(teamColor, 0.3);
