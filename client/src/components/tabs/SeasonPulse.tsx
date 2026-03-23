@@ -618,7 +618,7 @@ export default function SeasonPulse() {
                           }}
                         >
                           {/* Rank */}
-                          <td className="py-2 px-2 font-bold" style={{ color: teamColor }}>
+                          <td className="py-2 px-2 font-bold text-left" style={{ color: teamColor }}>
                             {displayRank}
                           </td>
 
@@ -658,7 +658,7 @@ export default function SeasonPulse() {
                             </div>
                           </td>
 
-                          {/* Points */}
+                          {/* Played */}
                           <td className="py-2 px-2 text-center font-bold">
                             {s.points}
                           </td>
@@ -697,7 +697,7 @@ export default function SeasonPulse() {
                           </td>
 
                           {/* Power Score / Points */}
-                          <td className="py-2 px-2">
+                          <td className="py-2 px-2 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <PowerBar
                                 score={rankMode === "POWER" ? s.powerScore : s.points}
