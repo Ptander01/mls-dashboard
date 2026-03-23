@@ -1299,15 +1299,41 @@ export default function BumpChart({
                     opacity={0.15}
                     style={{ pointerEvents: "none" }}
                   />
+                  {/* Neumorphic raised border — outer stroke with light top-left / dark bottom-right */}
+                  <rect
+                    x={label.x - 2.5}
+                    y={-labelH / 2 - 0.5}
+                    width={labelW + 1}
+                    height={labelH + 1}
+                    rx={5}
+                    fill="none"
+                    stroke={highlightEdge}
+                    strokeWidth={isHL ? 1.2 : 0.8}
+                    opacity={isHL ? 0.6 : 0.35}
+                    style={{ pointerEvents: "none" }}
+                  />
+                  {/* Inner bottom-right shadow border for depth */}
+                  <rect
+                    x={label.x - 1.5}
+                    y={-labelH / 2 + 0.5}
+                    width={labelW - 1}
+                    height={labelH - 1}
+                    rx={3.5}
+                    fill="none"
+                    stroke={shadowEdge}
+                    strokeWidth={isHL ? 0.8 : 0.5}
+                    opacity={isHL ? 0.4 : 0.2}
+                    style={{ pointerEvents: "none" }}
+                  />
                   {/* Inset highlight line at top */}
                   <line
                     x1={label.x + 1}
-                    y1={-labelH / 2 + 1}
+                    y1={-labelH / 2 + 1.5}
                     x2={label.x + labelW - 5}
-                    y2={-labelH / 2 + 1}
+                    y2={-labelH / 2 + 1.5}
                     stroke={highlightEdge}
-                    strokeWidth={0.5}
-                    opacity={0.4}
+                    strokeWidth={0.7}
+                    opacity={isHL ? 0.55 : 0.4}
                     style={{ pointerEvents: "none" }}
                   />
                   <text
