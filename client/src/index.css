@@ -557,6 +557,12 @@
   font-size: 0.75rem;
   border-bottom: none;
   position: relative;
+  text-align: center;
+}
+/* Left-align rank and team name columns */
+.data-table td:nth-child(1),
+.data-table td:nth-child(3) {
+  text-align: left;
 }
 
 /* Raised tile effect on each row */

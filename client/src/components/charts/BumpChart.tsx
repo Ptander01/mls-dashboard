@@ -746,7 +746,13 @@ export default function BumpChart({
 
   const handleSvgClick = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
-      if ((e.target as SVGElement).tagName === "svg" || (e.target as SVGElement).tagName === "rect") {
+      const target = e.target as SVGElement;
+      // Only deselect when clicking the SVG background or the background rect,
+      // NOT label rects or other interactive elements
+      if (
+        target.tagName === "svg" ||
+        (target.tagName === "rect" && target.dataset.bg === "true")
+      ) {
         onSelectTeam(null);
       }
     },
@@ -1026,6 +1032,7 @@ export default function BumpChart({
               height={band.height}
               fill={band.color}
               rx={4}
+              data-bg="true"
             />
           ))}
 
@@ -1200,12 +1207,17 @@ export default function BumpChart({
             if (!label) return null;
             const teamColor = mutedTeamColor(team.id, isDark);
             const isHL = highlightedTeams.includes(team.id);
+            const labelW = label.name.length * 5.5 + 14;
+            const labelH = 16;
             return (
               <motion.g
                 key={`label-${team.id}`}
                 animate={{ y: 0 }}
-                style={{ y: 0 }}
+                style={{ y: 0, cursor: "pointer" }}
                 transition={{ type: "spring", stiffness: 200, damping: 25 }}
+                onClick={(e) => { e.stopPropagation(); handleTeamClick(team.id); }}
+                onMouseEnter={() => handleTeamHover(team.id)}
+                onMouseLeave={() => handleTeamHover(null)}
               >
                 <motion.g
                   animate={{ y: label.y }}
@@ -1213,22 +1225,21 @@ export default function BumpChart({
                 >
                   <rect
                     x={label.x - 2}
-                    y={-7}
-                    width={label.name.length * 5.5 + 10}
-                    height={14}
+                    y={-labelH / 2}
+                    width={labelW}
+                    height={labelH}
                     rx={4}
-                    fill={isDark ? "rgba(20, 20, 34, 0.85)" : "rgba(255, 255, 255, 0.9)"}
-                    stroke={isHL ? hexToRgba(teamColor, 0.5) : hexToRgba(teamColor, 0.15)}
-                    strokeWidth={isHL ? 1 : 0.5}
+                    fill={teamColor}
+                    opacity={isHL ? 1 : 0.7}
                   />
                   <text
                     x={label.x + 3}
-                    y={3}
-                    fill={teamColor}
+                    y={4}
+                    fill="#ffffff"
                     fontSize={isHL ? 9 : 7.5}
                     fontWeight={isHL ? 700 : 500}
                     fontFamily="Space Grotesk, sans-serif"
-                    opacity={isHL ? 1 : 0.65}
+                    opacity={1}
                   >
                     {label.name}
                   </text>
