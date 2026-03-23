@@ -1266,7 +1266,7 @@ export default function BumpChart({
                   animate={{ y: label.y }}
                   transition={{ type: "spring", stiffness: 200, damping: 25 }}
                 >
-                  {/* Neumorphic raised tab: base rect with drop shadow filter */}
+                  {/* Flat team-color base rect with outer drop shadow */}
                   <rect
                     x={label.x - 2}
                     y={-labelH / 2}
@@ -1274,66 +1274,51 @@ export default function BumpChart({
                     height={labelH}
                     rx={4}
                     fill={teamColor}
-                    opacity={isHL ? 1 : 0.75}
+                    opacity={isHL ? 1 : 0.8}
                     filter={isHL ? "url(#label-neu-shadow-hl)" : "url(#label-neu-shadow)"}
                   />
-                  {/* Top-left highlight edge (light source) */}
-                  <rect
-                    x={label.x - 2}
-                    y={-labelH / 2}
-                    width={labelW}
-                    height={labelH / 2}
-                    rx={4}
-                    fill={highlightEdge}
-                    opacity={0.2}
-                    style={{ pointerEvents: "none" }}
-                  />
-                  {/* Bottom shadow edge */}
-                  <rect
-                    x={label.x - 2}
-                    y={0}
-                    width={labelW}
-                    height={labelH / 2}
-                    rx={4}
-                    fill={shadowEdge}
-                    opacity={0.15}
-                    style={{ pointerEvents: "none" }}
-                  />
-                  {/* Neumorphic raised border — outer stroke with light top-left / dark bottom-right */}
-                  <rect
-                    x={label.x - 2.5}
-                    y={-labelH / 2 - 0.5}
-                    width={labelW + 1}
-                    height={labelH + 1}
-                    rx={5}
-                    fill="none"
-                    stroke={highlightEdge}
-                    strokeWidth={isHL ? 1.2 : 0.8}
-                    opacity={isHL ? 0.6 : 0.35}
-                    style={{ pointerEvents: "none" }}
-                  />
-                  {/* Inner bottom-right shadow border for depth */}
-                  <rect
-                    x={label.x - 1.5}
-                    y={-labelH / 2 + 0.5}
-                    width={labelW - 1}
-                    height={labelH - 1}
-                    rx={3.5}
-                    fill="none"
-                    stroke={shadowEdge}
-                    strokeWidth={isHL ? 0.8 : 0.5}
-                    opacity={isHL ? 0.4 : 0.2}
-                    style={{ pointerEvents: "none" }}
-                  />
-                  {/* Inset highlight line at top */}
+                  {/* Inset top highlight edge — matches table row pattern */}
                   <line
-                    x1={label.x + 1}
-                    y1={-labelH / 2 + 1.5}
-                    x2={label.x + labelW - 5}
-                    y2={-labelH / 2 + 1.5}
-                    stroke={highlightEdge}
-                    strokeWidth={0.7}
-                    opacity={isHL ? 0.55 : 0.4}
+                    x1={label.x - 1}
+                    y1={-labelH / 2 + 0.5}
+                    x2={label.x + labelW - 3}
+                    y2={-labelH / 2 + 0.5}
+                    stroke={isDark ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.7)"}
+                    strokeWidth={1}
+                    strokeLinecap="round"
+                    style={{ pointerEvents: "none" }}
+                  />
+                  {/* Inset bottom shadow edge — matches table row pattern */}
+                  <line
+                    x1={label.x - 1}
+                    y1={labelH / 2 - 0.5}
+                    x2={label.x + labelW - 3}
+                    y2={labelH / 2 - 0.5}
+                    stroke={isDark ? "rgba(0,0,0,0.4)" : "rgba(166,170,190,0.35)"}
+                    strokeWidth={1}
+                    strokeLinecap="round"
+                    style={{ pointerEvents: "none" }}
+                  />
+                  {/* Left highlight edge */}
+                  <line
+                    x1={label.x - 1.5}
+                    y1={-labelH / 2 + 2}
+                    x2={label.x - 1.5}
+                    y2={labelH / 2 - 2}
+                    stroke={isDark ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)"}
+                    strokeWidth={1}
+                    strokeLinecap="round"
+                    style={{ pointerEvents: "none" }}
+                  />
+                  {/* Right shadow edge */}
+                  <line
+                    x1={label.x + labelW - 2.5}
+                    y1={-labelH / 2 + 2}
+                    x2={label.x + labelW - 2.5}
+                    y2={labelH / 2 - 2}
+                    stroke={isDark ? "rgba(0,0,0,0.3)" : "rgba(166,170,190,0.25)"}
+                    strokeWidth={1}
+                    strokeLinecap="round"
                     style={{ pointerEvents: "none" }}
                   />
                   <text

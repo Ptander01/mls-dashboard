@@ -705,7 +705,7 @@ export default function SeasonPulse() {
                                 color={teamColor}
                                 isDark={isDark}
                               />
-                              <span className="text-xs text-muted-foreground w-10 text-right font-semibold">
+                              <span className="text-xs text-muted-foreground w-10 text-center font-semibold">
                                 {rankMode === "POWER" ? s.powerScore.toFixed(1) : s.points}
                               </span>
                             </div>
