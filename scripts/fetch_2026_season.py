@@ -13,6 +13,8 @@ Data sources:
   - ASA get_teams() for team ID mapping
   - ASA get_stadia() for venue names
   - ASA get_players() for player metadata (name, nationality, DOB, position)
+  - Fox Sports (via temp_fox_stats.json) for counting stats:
+    yellowCards, redCards, offsides, fouls, fouled, tackles, interceptions
 
 Output: JSON with { matches: Match[], players: Player[], teamBudgets: {}, totalWeeks: N }
 """
@@ -20,6 +22,7 @@ Output: JSON with { matches: Match[], players: Player[], teamBudgets: {}, totalW
 import json
 import os
 import sys
+import unicodedata
 from datetime import datetime, date
 from collections import defaultdict
 
@@ -56,15 +59,116 @@ POS_MAP = {
     "FW": "FW",
 }
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+FOX_STATS_PATH = os.path.join(SCRIPT_DIR, "temp_fox_stats.json")
+
 OUTPUT_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "client", "public", "data", "mls2026.json",
 )
 
+# Fields to pull from Fox Sports data
+FOX_FIELDS = [
+    "yellowCards", "redCards", "offsides",
+    "fouls", "fouled", "tackles", "interceptions",
+]
+
+
+# ──────────────────────────────────────────────
+# FOX SPORTS DATA LOADER + FUZZY MATCHING
+# ──────────────────────────────────────────────
+
+def normalize_name(name):
+    """Strip accents, lowercase, and trim whitespace for fuzzy matching."""
+    nfkd = unicodedata.normalize("NFKD", name)
+    stripped = "".join(c for c in nfkd if not unicodedata.combining(c))
+    return stripped.lower().strip()
+
+
+def load_fox_stats():
+    """
+    Load Fox Sports stats from temp_fox_stats.json and build lookup dicts.
+
+    Returns:
+        - exact_lookup: dict[normalized_name] → stats dict
+        - last_name_lookup: dict[normalized_last_name] → list of (full_name, team, stats)
+    """
+    if not os.path.exists(FOX_STATS_PATH):
+        print("⚠️  Fox Sports data not found — run scrape_fox_stats.py first.")
+        print(f"   Expected: {FOX_STATS_PATH}")
+        return {}, {}
+
+    with open(FOX_STATS_PATH) as f:
+        raw = json.load(f)
+
+    exact_lookup = {}
+    last_name_lookup = defaultdict(list)
+
+    for name, stats in raw.items():
+        norm = normalize_name(name)
+        exact_lookup[norm] = stats
+
+        # Build last-name index for fallback matching
+        parts = norm.split()
+        if parts:
+            last = parts[-1]
+            last_name_lookup[last].append((norm, stats.get("fox_team", ""), stats))
+
+    print(f"📂 Loaded Fox Sports data: {len(raw)} players")
+    return exact_lookup, last_name_lookup
+
+
+def match_fox_stats(player_name, player_team, exact_lookup, last_name_lookup):
+    """
+    Try to match an ASA player name to Fox Sports data.
+
+    Strategy:
+      1. Exact match on normalized full name
+      2. Last-name match filtered by team abbreviation (for common last names)
+      3. Last-name match if there's only one candidate
+
+    Returns:
+        dict with Fox fields, or None if no match found.
+    """
+    norm = normalize_name(player_name)
+
+    # 1. Exact normalized match
+    if norm in exact_lookup:
+        return exact_lookup[norm]
+
+    # 2. Last-name fallback
+    parts = norm.split()
+    if not parts:
+        return None
+    last = parts[-1]
+
+    candidates = last_name_lookup.get(last, [])
+    if not candidates:
+        return None
+
+    # If only one candidate with this last name, use it
+    if len(candidates) == 1:
+        return candidates[0][2]
+
+    # Multiple candidates: try to match by team
+    # Dashboard team codes need to be compared with Fox team codes
+    for cand_norm, cand_team, cand_stats in candidates:
+        if cand_team and cand_team == player_team:
+            return cand_stats
+
+    # No team match found among multiple candidates — skip to avoid wrong match
+    return None
+
 
 def main():
     print("🔄 Initializing ASA client...")
     client = AmericanSoccerAnalysis()
+
+    # ──────────────────────────────────────────
+    # 0. LOAD FOX SPORTS DATA
+    # ──────────────────────────────────────────
+    fox_exact, fox_last = load_fox_stats()
+    has_fox_data = bool(fox_exact)
 
     # ──────────────────────────────────────────
     # 1. TEAM MAPPING
@@ -157,6 +261,8 @@ def main():
     # ──────────────────────────────────────────
     print("🔨 Building player records...")
     players = []
+    fox_matched = 0
+    fox_unmatched = 0
 
     for idx, pxg in enumerate(player_xgoals):
         pid = pxg["player_id"]
@@ -205,8 +311,29 @@ def main():
             games_played = count_games
             starts = count_games
 
-        # We don't have card/foul/tackle/interception/cross/offside data from ASA
-        # Set reasonable defaults (0) — the dashboard handles missing gracefully
+        # ── Fox Sports merge ──
+        yellow_cards = 0
+        red_cards = 0
+        fouls = 0
+        fouled = 0
+        tackles = 0
+        interceptions = 0
+        offsides = 0
+
+        if has_fox_data:
+            fox_stats = match_fox_stats(name, team, fox_exact, fox_last)
+            if fox_stats:
+                yellow_cards = fox_stats.get("yellowCards", 0)
+                red_cards = fox_stats.get("redCards", 0)
+                fouls = fox_stats.get("fouls", 0)
+                fouled = fox_stats.get("fouled", 0)
+                tackles = fox_stats.get("tackles", 0)
+                interceptions = fox_stats.get("interceptions", 0)
+                offsides = fox_stats.get("offsides", 0)
+                fox_matched += 1
+            else:
+                fox_unmatched += 1
+
         players.append({
             "id": idx + 1,
             "name": name,
@@ -219,21 +346,25 @@ def main():
             "minutes": minutes,
             "goals": goals,
             "assists": assists,
-            "yellowCards": 0,
-            "redCards": 0,
+            "yellowCards": yellow_cards,
+            "redCards": red_cards,
             "shots": shots,
             "shotsOnTarget": shots_on_target,
             "shotAccuracy": shot_accuracy,
-            "fouls": 0,
-            "fouled": 0,
-            "tackles": 0,
-            "interceptions": 0,
-            "crosses": 0,
-            "offsides": 0,
-            "salary": 0,  # 2026 salary data not yet published
+            "fouls": fouls,
+            "fouled": fouled,
+            "tackles": tackles,
+            "interceptions": interceptions,
+            "crosses": 0,       # Not available from Fox Sports
+            "offsides": offsides,
+            "salary": 0,        # 2026 salary data not yet published
         })
 
     print(f"   Built {len(players)} player records")
+    if has_fox_data:
+        print(f"   Fox Sports merge: {fox_matched} matched, {fox_unmatched} unmatched")
+        pct = round(fox_matched / (fox_matched + fox_unmatched) * 100, 1) if (fox_matched + fox_unmatched) > 0 else 0
+        print(f"   Match rate: {pct}%")
 
     # ──────────────────────────────────────────
     # 6. TEAM BUDGETS (placeholder from 2025)
@@ -308,6 +439,22 @@ def main():
     surridge = [p for p in players if "Surridge" in p["name"]]
     if surridge:
         print(f"   Sam Surridge: {surridge[0]['goals']}G in {surridge[0]['games']} games")
+
+    # Fox Sports merge validation
+    if has_fox_data:
+        print("\n🦊 Fox Sports merge validation:")
+        non_zero_yc = sum(1 for p in players if p["yellowCards"] > 0)
+        non_zero_tkl = sum(1 for p in players if p["tackles"] > 0)
+        non_zero_fouls = sum(1 for p in players if p["fouls"] > 0)
+        print(f"   Players with yellowCards > 0: {non_zero_yc}")
+        print(f"   Players with tackles > 0:     {non_zero_tkl}")
+        print(f"   Players with fouls > 0:       {non_zero_fouls}")
+
+        # Show top card earners
+        top_yc = sorted(players, key=lambda p: -p["yellowCards"])[:5]
+        print("\n   Top yellow card earners:")
+        for p in top_yc:
+            print(f"     {p['name']} ({p['team']}): {p['yellowCards']} YC")
 
 
 if __name__ == "__main__":
