@@ -14,6 +14,13 @@ The core concept is the **Three-Zone Architecture** for the `rightAction` slot:
 
 ## 2. Technical Implementation Plan
 
+### Step 0: Wireframe Exploration (CRITICAL)
+Before modifying the codebase across all 6 tabs, the developer **must** build a standalone wireframe or prototype of the new `ChartHeader` and `SegmentedControl` components. 
+- Create a temporary route or sandbox component (e.g., `client/src/components/sandbox/ChartControlWireframe.tsx`).
+- Mock up 2-3 different layout options for the Three-Zone Architecture.
+- Present these wireframes to the user (via screenshots or a live dev server link) to get explicit approval on the layout, spacing, and neumorphic styling.
+- **Do not proceed to Step 1 until the user has approved a specific wireframe.**
+
 ### Step 1: Create Shared Primitives
 Create `client/src/components/ui/SegmentedControl.tsx`. You can start by extracting the `ToggleGroup` from `client/src/components/tabs/SeasonPulse.tsx` (lines 188-240) and generalizing it.
 
@@ -57,6 +64,7 @@ Audit every chart to ensure the `rightAction` contents follow the Data → Analy
 
 ## 4. AI Developer Instructions
 
+*   **WIRE-FRAME FIRST:** The user explicitly requested to see layout examples before pulling the trigger on updating the whole dashboard. Your very first action should be creating a static mockup of the new header to show the user.
 *   **Do not modify the data pipeline or underlying D3/Three.js rendering logic.** This sprint is strictly about the UI control layer surrounding the charts.
-*   Start by building the `SegmentedControl` and verifying it looks correct in one place (e.g., `SeasonPulse`) before rolling it out to the complex SVG charts.
+*   Start by building the `SegmentedControl` and verifying it looks correct in the wireframe sandbox before rolling it out to the complex SVG charts.
 *   When refactoring `DumbbellChart` and `ResilienceIndexChart`, pay careful attention to how state is passed up or managed internally.
