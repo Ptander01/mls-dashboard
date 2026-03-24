@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MLS Dashboard — Chart Control Wireframe: Option D (Revised)</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ═══════════════════════════════════════════════════
+     LIGHT THEME (default)
+     ═══════════════════════════════════════════════════ */
+  :root {
+    --bg: #e4e4ec;
+    --fg: #1a1a2e;
+    --card-bg: #e8e8f0;
+    --muted: #5a6078;
+    --cyan: #0891b2;
+    --amber: #d97706;
+    --emerald: #059669;
+    --coral: #dc2626;
+    --border-subtle: rgba(0,0,0,0.06);
+    --neu-raised-bg: #e8e8f0;
+    --neu-shadow-dk: rgba(166,170,190,0.45);
+    --neu-shadow-lt: rgba(255,255,255,0.8);
+    --neu-shadow-dk-s: rgba(166,170,190,0.5);
+    --neu-shadow-lt-s: rgba(255,255,255,0.9);
+    --neu-inset-hl: rgba(255,255,255,0.5);
+    --neu-pressed-bg: #dcdce6;
+    --neu-pressed-shadow: inset 1px 1px 3px rgba(0,0,0,0.08), inset -1px -1px 2px rgba(255,255,255,0.4);
+    --seg-trough: rgba(0,0,0,0.04);
+    --seg-trough-shadow: inset 1px 1px 3px rgba(0,0,0,0.06), inset -1px -1px 2px rgba(255,255,255,0.5);
+    --seg-active-bg: rgba(8,145,178,0.10);
+    --seg-active-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 8px rgba(8,145,178,0.08);
+    --toolbar-bg: rgba(0,0,0,0.015);
+    --toolbar-border: rgba(0,0,0,0.04);
+    --info-bg: rgba(8,145,178,0.04);
+    --info-border: rgba(8,145,178,0.12);
+    --chart-area-bg: rgba(0,0,0,0.02);
+    --chart-area-border: rgba(0,0,0,0.08);
+  }
+  /* ═══════════════════════════════════════════════════
+     DARK THEME
+     ═══════════════════════════════════════════════════ */
+  .dark {
+    --bg: #121220;
+    --fg: #e2e8f0;
+    --card-bg: #252538;
+    --muted: #8892b0;
+    --cyan: #00d4ff;
+    --amber: #ffb347;
+    --emerald: #00c897;
+    --coral: #ff6b6b;
+    --border-subtle: rgba(255,255,255,0.06);
+    --neu-raised-bg: #252538;
+    --neu-shadow-dk: rgba(0,0,0,0.5);
+    --neu-shadow-lt: rgba(60,60,80,0.12);
+    --neu-shadow-dk-s: rgba(0,0,0,0.6);
+    --neu-shadow-lt-s: rgba(60,60,80,0.1);
+    --neu-inset-hl: rgba(255,255,255,0.04);
+    --neu-pressed-bg: #1a1a2a;
+    --neu-pressed-shadow: inset 1px 1px 3px rgba(0,0,0,0.4), inset -1px -1px 2px rgba(60,60,80,0.06);
+    --seg-trough: rgba(255,255,255,0.04);
+    --seg-trough-shadow: inset 1px 1px 3px rgba(0,0,0,0.4), inset -1px -1px 2px rgba(60,60,80,0.06);
+    --seg-active-bg: rgba(0,212,255,0.12);
+    --seg-active-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 0 8px rgba(0,212,255,0.1);
+    --toolbar-bg: rgba(255,255,255,0.02);
+    --toolbar-border: rgba(255,255,255,0.04);
+    --info-bg: rgba(0,212,255,0.04);
+    --info-border: rgba(0,212,255,0.12);
+    --chart-area-bg: rgba(255,255,255,0.02);
+    --chart-area-border: rgba(255,255,255,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+    padding: 2.5rem;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+
+  /* Page header */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+  .page-header h1 { font-size: 1.25rem; font-weight: 700; }
+  .page-header p { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+  .theme-btn {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.4rem 0.75rem; border-radius: 0.5rem; border: none;
+    font-family: 'Space Grotesk', sans-serif; font-size: 0.7rem; font-weight: 600;
+    background: var(--border-subtle); color: var(--fg); cursor: pointer;
+  }
+
+  /* Neumorphic card */
+  .neu-card {
+    background: var(--neu-raised-bg);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    box-shadow:
+      8px 8px 16px var(--neu-shadow-dk-s),
+      -8px -8px 16px var(--neu-shadow-lt-s),
+      inset 0 1px 0 var(--neu-inset-hl);
+    transition: box-shadow 0.3s, transform 0.3s;
+    margin-bottom: 1rem;
+  }
+  .neu-card:hover {
+    box-shadow:
+      10px 10px 20px var(--neu-shadow-dk-s),
+      -10px -10px 20px var(--neu-shadow-lt-s),
+      inset 0 1px 0 var(--neu-inset-hl);
+    transform: translateY(-1px);
+  }
+
+  /* Info box */
+  .info-box {
+    border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 2rem;
+    background: var(--info-bg); border: 1px solid var(--info-border);
+  }
+  .info-box h2 { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cyan); margin-bottom: 0.75rem; }
+  .info-box p { font-size: 0.6rem; color: var(--muted); line-height: 1.6; }
+
+  /* Typography */
+  .chart-title { font-size: 0.8rem; font-weight: 600; }
+  .chart-subtitle { font-size: 0.6rem; color: var(--muted); opacity: 0.7; margin-top: 1px; }
+  .chart-desc { font-size: 0.65rem; color: var(--muted); line-height: 1.5; margin-bottom: 0.75rem; }
+  .section-label {
+    display: inline-block; font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 0.15rem 0.5rem; border-radius: 0.25rem;
+  }
+  .section-title { font-size: 0.75rem; font-weight: 600; }
+  .section-desc { font-size: 0.65rem; color: var(--muted); line-height: 1.6; margin-bottom: 1rem; max-width: 50rem; }
+
+  /* Chart area placeholder */
+  .chart-area {
+    height: 140px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center;
+    background: var(--chart-area-bg); border: 1px dashed var(--chart-area-border);
+  }
+  .chart-area span { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); opacity: 0.3; }
+
+  /* Segmented control */
+  .seg-group { display: flex; align-items: center; gap: 6px; }
+  .seg-group-icon { display: flex; align-items: center; justify-content: center; color: var(--muted); opacity: 0.6; }
+  .seg-trough {
+    display: inline-flex; border-radius: 0.5rem; padding: 2px;
+    background: var(--seg-trough); box-shadow: var(--seg-trough-shadow);
+  }
+  .seg-btn {
+    padding: 4px 10px; font-size: 0.6rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    border: none; border-radius: 0.35rem; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    background: transparent; color: var(--muted); transition: all 0.2s;
+  }
+  .seg-btn.active { background: var(--seg-active-bg); color: var(--cyan); box-shadow: var(--seg-active-shadow); }
+
+  /* Icon button */
+  .icon-btn {
+    width: 28px; height: 28px; border: none; border-radius: 0.5rem;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; background: transparent; color: var(--muted); transition: all 0.2s;
+    position: relative;
+  }
+  .icon-btn:hover::after {
+    content: attr(data-tooltip); position: absolute; bottom: -24px; left: 50%;
+    transform: translateX(-50%); white-space: nowrap;
+    font-size: 0.55rem; font-weight: 500; padding: 2px 8px; border-radius: 4px;
+    background: var(--fg); color: var(--bg); z-index: 10;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .icon-btn.active { background: var(--neu-pressed-bg); color: var(--cyan); box-shadow: var(--neu-pressed-shadow); }
+  .icon-btn.active-amber { background: var(--neu-pressed-bg); color: var(--amber); box-shadow: var(--neu-pressed-shadow); }
+
+  /* Toggle action (Zone 1 standalone) */
+  .toggle-action {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border: none; border-radius: 0.5rem;
+    font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    font-family: 'Space Grotesk', sans-serif;
+    cursor: pointer; background: transparent; color: var(--muted); transition: all 0.2s;
+    position: relative;
+  }
+  .toggle-action:hover::after {
+    content: attr(data-tooltip); position: absolute; bottom: -24px; left: 50%;
+    transform: translateX(-50%); white-space: nowrap;
+    font-size: 0.55rem; font-weight: 500; padding: 2px 8px; border-radius: 4px;
+    background: var(--fg); color: var(--bg); z-index: 10;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .toggle-action.active { background: var(--neu-pressed-bg); color: var(--cyan); box-shadow: var(--neu-pressed-shadow); }
+
+  /* Zone separator */
+  .zone-sep { width: 1px; align-self: stretch; margin: 0 2px; background: var(--border-subtle); min-height: 20px; }
+
+  /* Toolbar strip */
+  .toolbar-strip {
+    display: flex; align-items: center; padding: 8px 12px;
+    border-radius: 0.5rem; margin-bottom: 1rem;
+    background: var(--toolbar-bg);
+    border-top: 1px solid var(--toolbar-border);
+    border-bottom: 1px solid var(--toolbar-border);
+  }
+
+  /* Layout helpers */
+  .flex-row { display: flex; align-items: center; gap: 0.5rem; }
+  .flex-between { display: flex; align-items: center; justify-content: space-between; }
+  .flex-start-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  .flex-1 { flex: 1; min-width: 0; }
+  .flex-shrink-0 { flex-shrink: 0; }
+  .flex-wrap { flex-wrap: wrap; }
+  .gap-05 { gap: 2px; }
+  .gap-2 { gap: 0.5rem; }
+  .gap-3 { gap: 0.75rem; }
+  .mb-1 { margin-bottom: 0.25rem; }
+  .mb-2 { margin-bottom: 0.5rem; }
+  .mb-3 { margin-bottom: 0.75rem; }
+  .mb-4 { margin-bottom: 1rem; }
+  .mb-6 { margin-bottom: 1.5rem; }
+  .mb-8 { margin-bottom: 2rem; }
+  .mb-10 { margin-bottom: 2.5rem; }
+
+  /* Grid */
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  @media (max-width: 768px) { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+
+  /* Table */
+  table.ref { width: 100%; border-collapse: collapse; font-size: 0.6rem; }
+  table.ref th { text-align: left; padding: 0.35rem 0.5rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 1px solid var(--border-subtle); }
+  table.ref td { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border-subtle); color: var(--muted); vertical-align: middle; }
+  table.ref td:first-child { width: 50px; text-align: center; }
+  table.ref td:nth-child(2) { font-weight: 600; color: var(--fg); font-family: 'JetBrains Mono', monospace, 'Space Grotesk', sans-serif; font-size: 0.55rem; }
+
+  .footer { text-align: center; padding: 2rem 0; }
+  .footer p { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); opacity: 0.5; }
+
+  /* SVG icon sizing */
+  svg.ic { width: 13px; height: 13px; }
+  svg.ic-sm { width: 12px; height: 12px; }
+  svg.ic-lg { width: 16px; height: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ═══════════ HEADER ═══════════ -->
+  <div class="page-header">
+    <div>
+      <h1>Chart Control Design System — Wireframe Sandbox</h1>
+      <p>Option D: Hybrid Layout with Icon-First Controls — Sprint 13</p>
+    </div>
+    <button class="theme-btn" id="themeToggle" onclick="toggleTheme()">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      Dark Mode
+    </button>
+  </div>
+
+  <!-- ═══════════ ARCHITECTURE OVERVIEW ═══════════ -->
+  <div class="info-box mb-8">
+    <h2>Option D — Hybrid Architecture</h2>
+    <div class="grid-3">
+      <div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--cyan);margin-bottom:4px;">Row 1 — Title + Zone 2/3 (Top Right)</div>
+        <p>Title and subtitle on the left. AI Insights (Lightbulb), Trend overlay (TrendingUp), Methods (FlaskConical), and Maximize (Maximize2) pinned top-right as icon-only buttons with hover tooltips.</p>
+      </div>
+      <div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--amber);margin-bottom:4px;">Row 2 — Description (Full Width)</div>
+        <p>Chart description/abstract spans the full card width without competing for space with any controls. Maximizes readability.</p>
+      </div>
+      <div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--emerald);margin-bottom:4px;">Row 3 — Zone 1 Toolbar (Below Description)</div>
+        <p>Data controls sit in a full-width strip directly above the chart area. Toggle groups are spread across the card width with icon anchors. Each group has its own icon identifier with hover tooltip.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ ICONOGRAPHY REFERENCE ═══════════ -->
+  <div class="info-box mb-10">
+    <h2>Iconography System — Icon Reference</h2>
+    <p class="mb-4">Every control uses an icon as its primary affordance. Text labels appear only on hover via tooltips. For Zone 1 segmented controls, the icon anchors the group and the individual segment labels (All/East/West, PPG/Win%/GD) remain as text inside the pills since they are short, scannable abbreviations.</p>
+
+    <!-- Zone 1 -->
+    <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--cyan);margin-bottom:6px;">Zone 1 — Data & View Controls</div>
+    <table class="ref mb-4">
+      <thead><tr><th>Icon</th><th>Name</th><th>Usage</th><th>Hover Tooltip</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></td>
+          <td>Filter</td><td>Conference filter (All / East / West)</td><td style="font-style:italic;opacity:0.7;">"Filter by Conference"</td>
+        </tr>
+        <tr>
+          <td><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/></svg></td>
+          <td>Palette</td><td>Color symbology (H/A vs Team, Position vs Team)</td><td style="font-style:italic;opacity:0.7;">"Color Symbology"</td>
+        </tr>
+        <tr>
+          <td><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg></td>
+          <td>Layers</td><td>Data metric / perspective (PPG, Win%, GD, Index vs Components)</td><td style="font-style:italic;opacity:0.7;">"Data Perspective"</td>
+        </tr>
+        <tr>
+          <td><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></td>
+          <td>Eye</td><td>View mode toggle (Index vs Components, Focused vs Full Scale)</td><td style="font-style:italic;opacity:0.7;">"View Mode"</td>
+        </tr>
+        <tr>
+          <td><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></td>
+          <td>Percent</td><td>Fill Rate toggle (active state)</td><td style="font-style:italic;opacity:0.7;">"Fill Rate %"</td>
+        </tr>
+        <tr>
+          <td><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M13 17V9"/><path d="M18 17V5"/><path d="M8 17v-3"/></svg></td>
+          <td>BarChart3</td><td>Absolute values toggle (inactive state of Fill Rate)</td><td style="font-style:italic;opacity:0.7;">"Absolute Values"</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Zone 2 -->
+    <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--amber);margin-bottom:6px;">Zone 2 — Analysis Actions</div>
+    <table class="ref mb-4">
+      <thead><tr><th>Icon</th><th>Name</th><th>Usage</th><th>Hover Tooltip</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></td>
+          <td>Lightbulb</td><td>AI-generated insights panel toggle</td><td style="font-style:italic;opacity:0.7;">"AI Insights"</td>
+        </tr>
+        <tr>
+          <td><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></td>
+          <td>TrendingUp</td><td>Trendline / league average overlay</td><td style="font-style:italic;opacity:0.7;">"Show Trend Overlay"</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Zone 3 -->
+    <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--emerald);margin-bottom:6px;">Zone 3 — Utility Actions</div>
+    <table class="ref">
+      <thead><tr><th>Icon</th><th>Name</th><th>Usage</th><th>Hover Tooltip</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="var(--emerald)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg></td>
+          <td>FlaskConical</td><td>Methods & methodology panel toggle</td><td style="font-style:italic;opacity:0.7;">"Methods & Methodology"</td>
+        </tr>
+        <tr>
+          <td><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="var(--emerald)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></td>
+          <td>Maximize2</td><td>Expand chart to full-screen modal</td><td style="font-style:italic;opacity:0.7;">"Expand to Full Screen"</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════ EXAMPLE 1: SIMPLE ═══════════ -->
+  <div class="mb-10">
+    <div class="flex-row mb-2">
+      <span class="section-label" style="background:var(--seg-active-bg);color:var(--cyan);">Simple</span>
+      <span class="section-title">1 Control Group — BumpChart</span>
+    </div>
+    <p class="section-desc">Charts with a single Zone 1 control group. The toolbar strip is left-aligned since there is only one group to display. Zone 2/3 icons remain compact in the top-right corner.</p>
+
+    <div class="neu-card">
+      <!-- Row 1: Title + Zone 2/3 -->
+      <div class="flex-start-top mb-1">
+        <div class="flex-1">
+          <div class="chart-title">Bump Chart — Season Rank Progression</div>
+          <div class="chart-subtitle">Week-by-week standings movement</div>
+        </div>
+        <div class="flex-row flex-shrink-0 gap-05">
+          <button class="icon-btn" data-tooltip="AI Insights" onclick="this.classList.toggle('active-amber')">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+          </button>
+          <div class="zone-sep"></div>
+          <button class="icon-btn" data-tooltip="Methods & Methodology" onclick="this.classList.toggle('active')">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+          </button>
+          <button class="icon-btn" data-tooltip="Expand to Full Screen">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+        </div>
+      </div>
+      <!-- Row 2: Description -->
+      <p class="chart-desc">How have MLS teams jockeyed for position throughout the season? This bump chart tracks each club's weekly standings rank, revealing momentum swings, late-season surges, and dramatic collapses.</p>
+      <!-- Row 3: Zone 1 toolbar -->
+      <div class="toolbar-strip mb-4" style="justify-content:flex-start;">
+        <div class="seg-group">
+          <div class="seg-group-icon"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></div>
+          <div class="seg-trough">
+            <button class="seg-btn active" onclick="activateSeg(this)">All</button>
+            <button class="seg-btn" onclick="activateSeg(this)">East</button>
+            <button class="seg-btn" onclick="activateSeg(this)">West</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-area"><span>Chart Visualization Area</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ EXAMPLE 2: MEDIUM ═══════════ -->
+  <div class="mb-10">
+    <div class="flex-row mb-2">
+      <span class="section-label" style="background:rgba(217,119,6,0.10);color:var(--amber);">Medium</span>
+      <span class="section-title">2 Control Groups — Attendance</span>
+    </div>
+    <p class="section-desc">Charts with two Zone 1 control groups. The conference filter sits on the left and the Fill Rate toggle on the right, using justify-between to spread them across the toolbar width.</p>
+
+    <div class="neu-card">
+      <div class="flex-start-top mb-1">
+        <div class="flex-1">
+          <div class="chart-title">Home Attendance with Fill Rate</div>
+          <div class="chart-subtitle">Stadium Fill Rate by Team — 2025 Season</div>
+        </div>
+        <div class="flex-row flex-shrink-0 gap-05">
+          <button class="icon-btn" data-tooltip="Show Trend Overlay" onclick="this.classList.toggle('active')">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          </button>
+          <button class="icon-btn" data-tooltip="AI Insights" onclick="this.classList.toggle('active-amber')">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+          </button>
+          <div class="zone-sep"></div>
+          <button class="icon-btn" data-tooltip="Methods & Methodology" onclick="this.classList.toggle('active')">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+          </button>
+          <button class="icon-btn" data-tooltip="Expand to Full Screen">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+        </div>
+      </div>
+      <p class="chart-desc">Are MLS stadiums filling up? This chart compares each team's average home attendance against their stadium capacity, revealing which clubs consistently sell out and which have room to grow.</p>
+      <div class="toolbar-strip flex-between mb-4">
+        <div class="seg-group">
+          <div class="seg-group-icon"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></div>
+          <div class="seg-trough">
+            <button class="seg-btn active" onclick="activateSeg(this)">All</button>
+            <button class="seg-btn" onclick="activateSeg(this)">East</button>
+            <button class="seg-btn" onclick="activateSeg(this)">West</button>
+          </div>
+        </div>
+        <button class="toggle-action" id="fillToggle" data-tooltip="Switch to Fill Rate %" onclick="toggleFillRate(this)">
+          <svg class="ic-sm" id="fillIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M13 17V9"/><path d="M18 17V5"/><path d="M8 17v-3"/></svg>
+          <span id="fillLabel">Absolute</span>
+        </button>
+      </div>
+      <div class="chart-area"><span>Chart Visualization Area</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ EXAMPLE 3: COMPLEX ═══════════ -->
+  <div class="mb-10">
+    <div class="flex-row mb-2">
+      <span class="section-label" style="background:rgba(5,150,105,0.10);color:var(--emerald);">Complex</span>
+      <span class="section-title">3 Control Groups — DumbbellChart</span>
+    </div>
+    <p class="section-desc">Charts with three Zone 1 control groups. The filter, symbology, and metric controls are evenly distributed across the full card width using justify-between. Each group is anchored by its icon (Filter, Palette, Layers) with a hover tooltip explaining the control category.</p>
+
+    <div class="neu-card">
+      <div class="flex-start-top mb-1">
+        <div class="flex-1">
+          <div class="chart-title">Dumbbell Chart — Home vs. Away Performance</div>
+          <div class="chart-subtitle">Home vs. Away Performance Comparison</div>
+        </div>
+        <div class="flex-row flex-shrink-0 gap-05">
+          <button class="icon-btn" data-tooltip="Show League Average Overlay" onclick="this.classList.toggle('active')">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          </button>
+          <button class="icon-btn" data-tooltip="AI Insights" onclick="this.classList.toggle('active-amber')">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+          </button>
+          <div class="zone-sep"></div>
+          <button class="icon-btn" data-tooltip="Methods & Methodology" onclick="this.classList.toggle('active')">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+          </button>
+          <button class="icon-btn" data-tooltip="Expand to Full Screen">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+        </div>
+      </div>
+      <p class="chart-desc">Which teams punch above their weight at home, and which crumble on the road? This dumbbell chart maps the gap between home and away points per game for every MLS club, colored by conference or team identity.</p>
+      <div class="toolbar-strip flex-between mb-4">
+        <div class="seg-group">
+          <div class="seg-group-icon"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></div>
+          <div class="seg-trough">
+            <button class="seg-btn active" onclick="activateSeg(this)">All</button>
+            <button class="seg-btn" onclick="activateSeg(this)">East</button>
+            <button class="seg-btn" onclick="activateSeg(this)">West</button>
+          </div>
+        </div>
+        <div class="seg-group">
+          <div class="seg-group-icon"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/></svg></div>
+          <div class="seg-trough">
+            <button class="seg-btn active" onclick="activateSeg(this)">H/A</button>
+            <button class="seg-btn" onclick="activateSeg(this)">Team</button>
+          </div>
+        </div>
+        <div class="seg-group">
+          <div class="seg-group-icon"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg></div>
+          <div class="seg-trough">
+            <button class="seg-btn active" onclick="activateSeg(this)">PPG</button>
+            <button class="seg-btn" onclick="activateSeg(this)">Win%</button>
+            <button class="seg-btn" onclick="activateSeg(this)">GD</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-area"><span>Chart Visualization Area</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ EXAMPLE 4: MAX COMPLEX ═══════════ -->
+  <div class="mb-10">
+    <div class="flex-row mb-2">
+      <span class="section-label" style="background:rgba(220,38,38,0.10);color:var(--coral);">Max Complex</span>
+      <span class="section-title">4 Control Groups — ResilienceIndexChart</span>
+    </div>
+    <p class="section-desc">Stress test: four Zone 1 control groups distributed across the toolbar. The flex-wrap property ensures graceful wrapping on narrower viewports. Each group maintains its icon anchor for quick identification.</p>
+
+    <div class="neu-card">
+      <div class="flex-start-top mb-1">
+        <div class="flex-1">
+          <div class="chart-title">Resilience Index Treemap</div>
+          <div class="chart-subtitle">Composite Score — Comeback Rate, Late Goals, Road Form</div>
+        </div>
+        <div class="flex-row flex-shrink-0 gap-05">
+          <button class="icon-btn" data-tooltip="AI Insights" onclick="this.classList.toggle('active-amber')">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+          </button>
+          <div class="zone-sep"></div>
+          <button class="icon-btn" data-tooltip="Methods & Methodology" onclick="this.classList.toggle('active')">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+          </button>
+          <button class="icon-btn" data-tooltip="Expand to Full Screen">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+        </div>
+      </div>
+      <p class="chart-desc">How resilient is each club when trailing? This treemap sizes each team by total away miles traveled and colors them by a composite resilience score incorporating comeback rate, late-goal frequency, and road form.</p>
+      <div class="toolbar-strip flex-between flex-wrap mb-4" style="gap:8px;">
+        <div class="seg-group">
+          <div class="seg-group-icon"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></div>
+          <div class="seg-trough">
+            <button class="seg-btn active" onclick="activateSeg(this)">All</button>
+            <button class="seg-btn" onclick="activateSeg(this)">East</button>
+            <button class="seg-btn" onclick="activateSeg(this)">West</button>
+          </div>
+        </div>
+        <div class="seg-group">
+          <div class="seg-group-icon"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/></svg></div>
+          <div class="seg-trough">
+            <button class="seg-btn active" onclick="activateSeg(this)">H/A</button>
+            <button class="seg-btn" onclick="activateSeg(this)">Team</button>
+          </div>
+        </div>
+        <div class="seg-group">
+          <div class="seg-group-icon"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg></div>
+          <div class="seg-trough">
+            <button class="seg-btn active" onclick="activateSeg(this)">PPG</button>
+            <button class="seg-btn" onclick="activateSeg(this)">Win%</button>
+            <button class="seg-btn" onclick="activateSeg(this)">GD</button>
+          </div>
+        </div>
+        <div class="seg-group">
+          <div class="seg-group-icon"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></div>
+          <div class="seg-trough">
+            <button class="seg-btn active" onclick="activateSeg(this)">Index</button>
+            <button class="seg-btn" onclick="activateSeg(this)">Parts</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-area"><span>Chart Visualization Area</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ KEY DESIGN DECISIONS ═══════════ -->
+  <div class="info-box mb-10">
+    <h2>Key Design Decisions</h2>
+    <div class="grid-2">
+      <div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--emerald);margin-bottom:4px;">Icon-First Approach</div>
+        <p>Zone 2/3 actions (Insights, Trend, Methods, Maximize) are icon-only with hover tooltips. Zone 1 segmented controls use an icon anchor for the group category, but keep short text labels (All/East/West, PPG/Win%/GD) inside the pills since they are abbreviations users need to scan quickly.</p>
+      </div>
+      <div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--emerald);margin-bottom:4px;">Distributed Spacing</div>
+        <p>Zone 1 toggle groups use justify-between to spread across the full card width. This prevents clustering and gives each control group its own visual territory. On large displays, the breathing room scales naturally.</p>
+      </div>
+      <div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--emerald);margin-bottom:4px;">Controls Near the Chart</div>
+        <p>Moving Zone 1 below the description places data controls directly adjacent to the visualization they affect. This reduces the cognitive distance between "what I'm toggling" and "what changes on screen."</p>
+      </div>
+      <div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--emerald);margin-bottom:4px;">Consistent Top-Right Cluster</div>
+        <p>Zone 2 (Analysis) and Zone 3 (Utility) are always in the same position on every card — top-right corner. Users build muscle memory: "lightbulb for insights, flask for methods, expand icon to maximize" — always in the same spot.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>Step 0 Wireframe (Revised) — Option D Hybrid Architecture — MLS Dashboard Sprint 13</p>
+  </div>
+</div>
+
+<script>
+function activateSeg(btn) {
+  const siblings = btn.parentElement.querySelectorAll('.seg-btn');
+  siblings.forEach(s => s.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function toggleFillRate(btn) {
+  const isActive = btn.classList.toggle('active');
+  const icon = document.getElementById('fillIcon');
+  const label = document.getElementById('fillLabel');
+  if (isActive) {
+    icon.innerHTML = '<line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>';
+    label.textContent = 'Fill %';
+    btn.setAttribute('data-tooltip', 'Switch to Absolute Attendance');
+  } else {
+    icon.innerHTML = '<path d="M3 3v18h18"/><path d="M13 17V9"/><path d="M18 17V5"/><path d="M8 17v-3"/>';
+    label.textContent = 'Absolute';
+    btn.setAttribute('data-tooltip', 'Switch to Fill Rate %');
+  }
+}
+
+function toggleTheme() {
+  document.body.classList.toggle('dark');
+  const btn = document.getElementById('themeToggle');
+  const isDark = document.body.classList.contains('dark');
+  btn.innerHTML = isDark
+    ? '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> Light Mode'
+    : '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg> Dark Mode';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MLS Dashboard — Chart Control Wireframe: Options A, B, C</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #f0f0f3;
+    --fg: #1a1a2e;
+    --card-bg: #e8e8eb;
+    --muted: #6b7280;
+    --cyan: #0891b2;
+    --amber: #d97706;
+    --emerald: #059669;
+    --coral: #dc2626;
+    --neu-raised: 4px 4px 10px rgba(0,0,0,0.08), -4px -4px 10px rgba(255,255,255,0.9);
+    --neu-pressed: inset 2px 2px 5px rgba(0,0,0,0.06), inset -2px -2px 5px rgba(255,255,255,0.5);
+    --border-subtle: rgba(0,0,0,0.06);
+  }
+  .dark {
+    --bg: #0f0f1a;
+    --fg: #e2e8f0;
+    --card-bg: #1a1a2e;
+    --muted: #94a3b8;
+    --cyan: #00d4ff;
+    --amber: #ffb347;
+    --emerald: #00c897;
+    --coral: #ff6b6b;
+    --neu-raised: 4px 4px 10px rgba(0,0,0,0.4), -4px -4px 10px rgba(40,40,60,0.15);
+    --neu-pressed: inset 2px 2px 5px rgba(0,0,0,0.4), inset -2px -2px 5px rgba(60,60,80,0.06);
+    --border-subtle: rgba(255,255,255,0.06);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+    padding: 2.5rem;
+    transition: all 0.3s ease;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+  .page-header h1 { font-size: 1.25rem; font-weight: 700; }
+  .page-header p { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+  .theme-btn {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.4rem 0.75rem; border-radius: 0.5rem; border: none;
+    font-family: 'Space Grotesk', sans-serif; font-size: 0.7rem; font-weight: 600;
+    background: var(--border-subtle); color: var(--fg); cursor: pointer;
+  }
+  .card {
+    background: var(--card-bg);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    box-shadow: var(--neu-raised);
+    margin-bottom: 1rem;
+  }
+  .section-label {
+    display: inline-block; font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 0.15rem 0.5rem; border-radius: 0.25rem; margin-bottom: 0.75rem;
+  }
+  .section-title { font-size: 0.75rem; font-weight: 600; margin-bottom: 0.5rem; }
+  .section-desc { font-size: 0.65rem; color: var(--muted); line-height: 1.6; margin-bottom: 1rem; max-width: 50rem; }
+  .chart-title { font-size: 0.8rem; font-weight: 600; }
+  .chart-subtitle { font-size: 0.6rem; color: var(--muted); opacity: 0.7; margin-top: 1px; }
+  .chart-desc { font-size: 0.65rem; color: var(--muted); line-height: 1.5; margin: 0.5rem 0; }
+  .chart-area {
+    height: 120px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center;
+    background: rgba(128,128,128,0.04); border: 1px dashed var(--border-subtle);
+  }
+  .chart-area span { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); opacity: 0.3; }
+
+  /* Control primitives */
+  .seg-container {
+    display: inline-flex; border-radius: 0.5rem; padding: 2px;
+    box-shadow: var(--neu-pressed);
+  }
+  .seg-btn {
+    padding: 0.25rem 0.6rem; font-size: 0.6rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    border: none; border-radius: 0.35rem; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    background: transparent; color: var(--muted); transition: all 0.2s;
+  }
+  .seg-btn.active {
+    background: rgba(8,145,178,0.10); color: var(--cyan);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 8px rgba(8,145,178,0.08);
+  }
+  .dark .seg-btn.active {
+    background: rgba(0,212,255,0.12);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 0 8px rgba(0,212,255,0.1);
+  }
+  .icon-btn {
+    width: 28px; height: 28px; border: none; border-radius: 0.5rem;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; background: transparent; color: var(--muted); transition: all 0.2s;
+    position: relative;
+  }
+  .icon-btn:hover::after {
+    content: attr(data-tooltip); position: absolute; bottom: -24px; left: 50%;
+    transform: translateX(-50%); white-space: nowrap;
+    font-size: 0.55rem; padding: 2px 6px; border-radius: 4px;
+    background: var(--fg); color: var(--bg); z-index: 10;
+  }
+  .icon-btn.active { background: var(--border-subtle); color: var(--cyan); box-shadow: var(--neu-pressed); }
+  .icon-btn.active-amber { background: var(--border-subtle); color: var(--amber); box-shadow: var(--neu-pressed); }
+  .zone-sep { width: 1px; align-self: stretch; margin: 0 2px; background: var(--border-subtle); }
+  .flex-row { display: flex; align-items: center; gap: 0.5rem; }
+  .flex-between { display: flex; align-items: center; justify-content: space-between; }
+  .flex-start { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  .flex-1 { flex: 1; min-width: 0; }
+  .flex-shrink-0 { flex-shrink: 0; }
+  .mb-1 { margin-bottom: 0.25rem; }
+  .mb-2 { margin-bottom: 0.5rem; }
+  .mb-3 { margin-bottom: 0.75rem; }
+  .mb-4 { margin-bottom: 1rem; }
+  .mb-8 { margin-bottom: 2rem; }
+  .mb-10 { margin-bottom: 2.5rem; }
+
+  /* Info box */
+  .info-box {
+    border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 2rem;
+    background: rgba(8,145,178,0.04); border: 1px solid rgba(8,145,178,0.12);
+  }
+  .dark .info-box { background: rgba(0,212,255,0.04); border-color: rgba(0,212,255,0.12); }
+  .info-box h2 { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cyan); margin-bottom: 0.75rem; }
+  .info-box p { font-size: 0.6rem; color: var(--muted); line-height: 1.6; }
+
+  /* Toolbar strip */
+  .toolbar-strip {
+    display: flex; align-items: center; padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem; margin-bottom: 1rem;
+    background: rgba(128,128,128,0.02);
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  /* Comparison table */
+  table.compare { width: 100%; border-collapse: collapse; font-size: 0.6rem; }
+  table.compare th { text-align: left; padding: 0.4rem 0.5rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 1px solid var(--border-subtle); }
+  table.compare td { padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border-subtle); color: var(--muted); }
+  table.compare td:first-child { font-weight: 600; color: var(--fg); }
+
+  /* SVG icons inline */
+  .icon { display: inline-block; vertical-align: middle; }
+
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  @media (max-width: 768px) { .grid-3 { grid-template-columns: 1fr; } }
+
+  .footer { text-align: center; padding: 2rem 0; }
+  .footer p { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); opacity: 0.5; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1>Chart Control Design System — Wireframe Sandbox</h1>
+      <p>Options A, B, C — Three-Zone Architecture Exploration — Sprint 13</p>
+    </div>
+    <button class="theme-btn" onclick="document.body.classList.toggle('dark'); this.textContent = document.body.classList.contains('dark') ? '☀ Light Mode' : '☾ Dark Mode';">☾ Dark Mode</button>
+  </div>
+
+  <!-- Architecture Overview -->
+  <div class="info-box">
+    <h2>Three-Zone Architecture — rightAction Slot</h2>
+    <div class="grid-3">
+      <div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--cyan);margin-bottom:4px;">Zone 1 — Data & View Controls (Left)</div>
+        <p>Filters (Conference), Metrics (PPG/GD), Symbology (H/A vs Team), Perspective (Index vs Components). Uses SegmentedControl primitives.</p>
+      </div>
+      <div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--amber);margin-bottom:4px;">Zone 2 — Analysis Actions (Center)</div>
+        <p>Trendline/average overlays, CardInsightToggle (AI lightbulb). Layers analytical context over the existing view.</p>
+      </div>
+      <div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--emerald);margin-bottom:4px;">Zone 3 — Utility Actions (Right)</div>
+        <p>Methods toggle (FlaskConical), MaximizeButton (Expand). Universal actions related to the chart container itself.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ OPTION A ═══════════ -->
+  <div class="mb-10">
+    <div class="flex-row mb-2">
+      <span class="section-label" style="background:rgba(8,145,178,0.10);color:var(--cyan);">Option A</span>
+      <span class="section-title">Inline Three-Zone (Single Row)</span>
+    </div>
+    <p class="section-desc">All three zones sit in a single flex row to the right of the title, separated by subtle vertical dividers. Most compact option — works best for charts with 1-2 segmented controls.</p>
+
+    <!-- Simple example -->
+    <div class="card mb-3">
+      <div class="flex-start mb-2">
+        <div class="flex-1">
+          <div class="chart-title">Bump Chart — Season Rank Progression</div>
+          <div class="chart-subtitle">Week-by-week standings movement across the 2025 MLS season</div>
+        </div>
+        <div class="flex-row flex-shrink-0">
+          <!-- Zone 1 -->
+          <div class="seg-container">
+            <button class="seg-btn active" onclick="activateSeg(this)">All</button>
+            <button class="seg-btn" onclick="activateSeg(this)">East</button>
+            <button class="seg-btn" onclick="activateSeg(this)">West</button>
+          </div>
+          <div class="zone-sep"></div>
+          <!-- Zone 2 -->
+          <button class="icon-btn" data-tooltip="AI Insights" onclick="this.classList.toggle('active-amber')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+          </button>
+          <div class="zone-sep"></div>
+          <!-- Zone 3 -->
+          <button class="icon-btn" data-tooltip="Methods" onclick="this.classList.toggle('active')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+          </button>
+          <button class="icon-btn" data-tooltip="Maximize">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+        </div>
+      </div>
+      <p class="chart-desc">How have MLS teams jockeyed for position throughout the season? This bump chart tracks each club's weekly standings rank.</p>
+      <div class="chart-area"><span>Chart Visualization Area</span></div>
+    </div>
+
+    <!-- Complex example -->
+    <div class="card">
+      <div class="flex-start mb-2">
+        <div class="flex-1">
+          <div class="chart-title">Dumbbell Chart — Home vs. Away Performance</div>
+          <div class="chart-subtitle">Points Per Game differential by team</div>
+        </div>
+        <div class="flex-row flex-shrink-0" style="flex-wrap:wrap;justify-content:flex-end;">
+          <!-- Zone 1: 3 groups -->
+          <div class="seg-container">
+            <button class="seg-btn active" onclick="activateSeg(this)">All</button>
+            <button class="seg-btn" onclick="activateSeg(this)">East</button>
+            <button class="seg-btn" onclick="activateSeg(this)">West</button>
+          </div>
+          <div class="seg-container">
+            <button class="seg-btn active" onclick="activateSeg(this)">H/A</button>
+            <button class="seg-btn" onclick="activateSeg(this)">Team</button>
+          </div>
+          <div class="seg-container">
+            <button class="seg-btn active" onclick="activateSeg(this)">PPG</button>
+            <button class="seg-btn" onclick="activateSeg(this)">Win%</button>
+            <button class="seg-btn" onclick="activateSeg(this)">GD</button>
+          </div>
+          <div class="zone-sep"></div>
+          <!-- Zone 2 -->
+          <button class="icon-btn" data-tooltip="AI Insights" onclick="this.classList.toggle('active-amber')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+          </button>
+          <div class="zone-sep"></div>
+          <!-- Zone 3 -->
+          <button class="icon-btn" data-tooltip="Methods" onclick="this.classList.toggle('active')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+          </button>
+          <button class="icon-btn" data-tooltip="Maximize">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+        </div>
+      </div>
+      <p class="chart-desc">Which teams punch above their weight at home? This dumbbell chart maps the gap between home and away PPG for every MLS club.</p>
+      <div class="chart-area"><span>Chart Visualization Area</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ OPTION B ═══════════ -->
+  <div class="mb-10">
+    <div class="flex-row mb-2">
+      <span class="section-label" style="background:rgba(217,119,6,0.10);color:var(--amber);">Option B</span>
+      <span class="section-title">Stacked Two-Row Header</span>
+    </div>
+    <p class="section-desc">Row 1 holds the title + Zone 2/3 (Analysis + Utility). Row 2 is a full-width data control strip for Zone 1 with a "View" label. Best for charts with 3+ control groups where horizontal space is at a premium.</p>
+
+    <div class="card mb-3">
+      <div class="flex-start mb-2">
+        <div class="flex-1">
+          <div class="chart-title">Dumbbell Chart — Home vs. Away Performance</div>
+          <div class="chart-subtitle">Points Per Game differential by team</div>
+        </div>
+        <div class="flex-row flex-shrink-0">
+          <button class="icon-btn" data-tooltip="AI Insights" onclick="this.classList.toggle('active-amber')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+          </button>
+          <div class="zone-sep"></div>
+          <button class="icon-btn" data-tooltip="Methods" onclick="this.classList.toggle('active')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+          </button>
+          <button class="icon-btn" data-tooltip="Maximize">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+        </div>
+      </div>
+      <!-- Row 2: Zone 1 full-width strip -->
+      <div class="toolbar-strip flex-between mb-3">
+        <span style="font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);opacity:0.5;margin-right:0.5rem;">View</span>
+        <div class="flex-row" style="gap:0.75rem;">
+          <div class="seg-container">
+            <button class="seg-btn active" onclick="activateSeg(this)">All</button>
+            <button class="seg-btn" onclick="activateSeg(this)">East</button>
+            <button class="seg-btn" onclick="activateSeg(this)">West</button>
+          </div>
+          <div class="seg-container">
+            <button class="seg-btn active" onclick="activateSeg(this)">H/A</button>
+            <button class="seg-btn" onclick="activateSeg(this)">Team</button>
+          </div>
+          <div class="seg-container">
+            <button class="seg-btn active" onclick="activateSeg(this)">PPG</button>
+            <button class="seg-btn" onclick="activateSeg(this)">Win%</button>
+            <button class="seg-btn" onclick="activateSeg(this)">GD</button>
+          </div>
+        </div>
+      </div>
+      <p class="chart-desc">Which teams punch above their weight at home? This dumbbell chart maps the gap between home and away PPG for every MLS club.</p>
+      <div class="chart-area"><span>Chart Visualization Area</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ OPTION C ═══════════ -->
+  <div class="mb-10">
+    <div class="flex-row mb-2">
+      <span class="section-label" style="background:rgba(5,150,105,0.10);color:var(--emerald);">Option C</span>
+      <span class="section-title">Unified Toolbar Strip</span>
+    </div>
+    <p class="section-desc">Title sits above a full-width neumorphic raised toolbar containing all three zones. Zone 1 left-aligned, Zone 2/3 right-aligned. Inspired by Power BI visual headers and ESRI Calcite action bars. Strongest visual hierarchy but most vertical space consumed.</p>
+
+    <div class="card">
+      <div class="mb-2">
+        <div class="chart-title">Dumbbell Chart — Home vs. Away Performance</div>
+        <div class="chart-subtitle">Points Per Game differential by team</div>
+      </div>
+      <!-- Unified toolbar -->
+      <div class="card flex-between mb-3" style="padding:0.5rem 0.75rem;">
+        <div class="flex-row" style="gap:0.75rem;">
+          <div class="seg-container">
+            <button class="seg-btn active" onclick="activateSeg(this)">All</button>
+            <button class="seg-btn" onclick="activateSeg(this)">East</button>
+            <button class="seg-btn" onclick="activateSeg(this)">West</button>
+          </div>
+          <div class="seg-container">
+            <button class="seg-btn active" onclick="activateSeg(this)">H/A</button>
+            <button class="seg-btn" onclick="activateSeg(this)">Team</button>
+          </div>
+          <div class="seg-container">
+            <button class="seg-btn active" onclick="activateSeg(this)">PPG</button>
+            <button class="seg-btn" onclick="activateSeg(this)">Win%</button>
+            <button class="seg-btn" onclick="activateSeg(this)">GD</button>
+          </div>
+        </div>
+        <div class="flex-row">
+          <button class="icon-btn" data-tooltip="AI Insights" onclick="this.classList.toggle('active-amber')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+          </button>
+          <div class="zone-sep"></div>
+          <button class="icon-btn" data-tooltip="Methods" onclick="this.classList.toggle('active')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+          </button>
+          <button class="icon-btn" data-tooltip="Maximize">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+        </div>
+      </div>
+      <p class="chart-desc">Which teams punch above their weight at home? This dumbbell chart maps the gap between home and away PPG for every MLS club.</p>
+      <div class="chart-area"><span>Chart Visualization Area</span></div>
+    </div>
+  </div>
+
+  <!-- Comparison Matrix -->
+  <div class="info-box mb-10">
+    <h2>Comparison Matrix</h2>
+    <table class="compare">
+      <thead>
+        <tr><th>Criterion</th><th>Option A (Inline)</th><th>Option B (Stacked)</th><th>Option C (Toolbar)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Vertical Space</td><td>Minimal (single row)</td><td>Moderate (+1 row for Zone 1)</td><td>Most (+toolbar height)</td></tr>
+        <tr><td>Scalability (3+ groups)</td><td>Crowded — wraps awkwardly</td><td>Excellent — full-width strip</td><td>Good — but toolbar gets wide</td></tr>
+        <tr><td>Visual Hierarchy</td><td>Flat — all zones at same level</td><td>Clear — data controls separated</td><td>Strongest — distinct toolbar band</td></tr>
+        <tr><td>Muscle Memory</td><td>Good — everything in one spot</td><td>Great — consistent top-right cluster</td><td>Great — toolbar always present</td></tr>
+        <tr><td>Migration Effort</td><td>Low — closest to current layout</td><td>Medium — restructure ChartHeader</td><td>Medium-High — new toolbar component</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <p>Step 0 Wireframe — Options A, B, C — MLS Dashboard Design System Sprint 13</p>
+  </div>
+</div>
+
+<script>
+function activateSeg(btn) {
+  const siblings = btn.parentElement.querySelectorAll('.seg-btn');
+  siblings.forEach(s => s.classList.remove('active'));
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
