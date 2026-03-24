@@ -264,6 +264,27 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - [ ] Verify Player Database tab no longer shows 0s for starting players' cards, tackles, and fouls.
   - [ ] Spot-check 5 players against Fox Sports source to confirm accuracy.
 
+## Epic 15: AI-Powered Holistic Team Commentary
+
+**Effort:** 1 Session
+**Goal:** Replace the rule-based algorithmic summary card in the Season Pulse narrative timeline with a rich, AI-generated holistic commentary. By feeding an LLM the team's complete trajectory data, match results, roster information, and salary context, generate compelling, context-aware storylines.
+**Sprint Brief:** `docs/sprint-briefs/ai-holistic-commentary-brief.md`
+**Dependencies:** Epic 11 (Season Pulse), Epic 12 (2026 data integration)
+
+- **Task 15.1: Data Aggregation Engine**
+  - [ ] Create `client/src/lib/aiNarrativeEngine.ts` with `buildTeamContextPrompt(teamId, seasonYear)` to compile standings trajectory, match results, player stats, and salary data into an optimized prompt payload.
+  - [ ] Implement `generateHolisticCommentary(teamId)` calling OpenAI API (`gpt-4.1-mini`) with expert MLS analyst system prompt.
+- **Task 15.2: Prompt Engineering**
+  - [ ] Design system prompt enforcing analytical, journalistic tone (2-3 short paragraphs).
+  - [ ] Include directives to focus on *why* things happened, mention high-salary underperformers/carriers, and note managerial changes.
+- **Task 15.3: Component Integration**
+  - [ ] Create `useAiCommentary(teamId)` hook with async fetch, loading state, and error handling.
+  - [ ] Update `SummaryCard` in `SeasonTimeline.tsx` to display AI-generated text with skeleton loader.
+  - [ ] Implement client-side cache (keyed by `teamId` + `maxWeek`) to prevent redundant API calls.
+- **Task 15.4: Fallback & Verification**
+  - [ ] Graceful fallback to existing `seasonSummaryNarrative` from `insightEngine.ts` if API fails.
+  - [ ] Verify loading states, caching behavior, and fallback across multiple teams.
+
 ---
 
 ## Future / Deferred Work
