@@ -8,12 +8,14 @@ import SplashIntro from "./components/SplashIntro";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { FilterProvider } from "./contexts/FilterContext";
 import Home from "./pages/Home";
+import ChartControlWireframe from "./components/sandbox/ChartControlWireframe";
 
 function Router() {
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
+      <Route path="/" component={Home} />
+      <Route path="/sandbox" component={ChartControlWireframe} />
+      <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
