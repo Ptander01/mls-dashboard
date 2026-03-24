@@ -178,12 +178,13 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - [x] Week window range slider with presets (Full Season / First Half / Second Half / Last 10)
   - [x] Play button: animate rankings unfolding week by week
   - [x] Inflection markers on selected team's line
-- **Session 3: Narrative Timeline + Polish (#76)**
-  - [ ] Horizontal timeline aligned with bump chart x-axis, triggered by team selection
-  - [ ] Event nodes sized by severity, colored by type, with expandable narrative cards
-  - [ ] Narrative text generation via `insightEngine.ts`
-  - [ ] Sticky context panel (team crest, sparkline, key stats)
-  - [ ] Bidirectional selection state across all three layers
+- **Session 3: Narrative Timeline + Polish (#76) — COMPLETE**
+  - [x] Horizontal timeline aligned with bump chart x-axis, triggered by team selection
+  - [x] Event nodes sized by severity, colored by type, with expandable narrative cards
+  - [x] Narrative text generation via `insightEngine.ts` (4 AI-generated season storylines)
+  - [x] Sticky context panel (team crest, sparkline, key stats)
+  - [x] Bidirectional selection state across all three layers
+  - [x] 3D tube effects on bump chart, glassmorphic tooltips, persistent team labels
 
 **Superseded Issues (closed):** #45, #46, #47, #48, #49, #50
 
@@ -218,6 +219,50 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
     - "Philly Collapse: 0 points through 5 games"
     - "Vancouver Surge: 14 goals in 5 games (2.8/game)"
     - "Golden Boot Race: Sam Surridge leads with 7 goals in 4 games"
+
+## Epic 13: Chart Control Design System Standardization
+
+**Effort:** 1-2 Sessions
+**Goal:** Standardize all chart header controls across the dashboard into a predictable three-zone architecture (Data/View Controls | Analytical Actions | Utility Actions), replacing 4+ bespoke segmented control implementations with unified `SegmentedControl` and `ToggleAction` primitives.
+**Spec:** `docs/design-system/chart-control-spec.md`
+**Sprint Brief:** `docs/sprint-briefs/design-system-sprint-brief.md`
+**Dependencies:** Epics 6.5, 11, 12
+
+- **Task 13.1: Extract Shared Primitives**
+  - [ ] Create `client/src/components/ui/SegmentedControl.tsx` — unified segmented control with neumorphic styling, icon+text support, and compact/default sizes.
+  - [ ] Create `client/src/components/ui/ToggleAction.tsx` — standalone on/off toggle button.
+  - [ ] Extract `ToggleGroup` from `SeasonPulse.tsx` into the shared component.
+- **Task 13.2: Enforce Three-Zone Ordering**
+  - [ ] Update `ChartHeader` to accept structured `rightAction` zones (data, analysis, utility) instead of freeform ReactNode.
+  - [ ] Add subtle vertical separator between zones.
+- **Task 13.3: Replace Bespoke Controls**
+  - [ ] Replace hand-rolled segmented buttons in `Attendance.tsx` (gravMode), `DumbbellChart.tsx` (symbology, metric), `ResilienceIndexChart.tsx` (colorMode, viewMode), `TravelScatterChart.tsx` (conference, color).
+  - [ ] Replace inline `ToggleGroup` in `SeasonPulse.tsx` with shared `SegmentedControl`.
+- **Task 13.4: Add Missing Affordances**
+  - [ ] Add `MaximizeButton` to DumbbellChart, TravelScatterChart, ResilienceIndexChart, and Narrative Timeline.
+  - [ ] Ensure all charts with data have `CardInsightToggle`.
+- **Task 13.5: Audit & Verify**
+  - [ ] Visual regression check across all 6 tabs in both light and dark mode.
+  - [ ] Verify control ordering follows spec: Data/View → Analysis → Utility.
+
+## Epic 14: 2026 Data Pipeline Polish
+
+**Effort:** 1 Session
+**Goal:** Fill the zeros in the 2026 player dataset by scraping Fox Sports for basic counting stats (cards, tackles, interceptions, fouls, offsides) and merging them into the existing ASA pipeline.
+**Sprint Brief:** `docs/sprint-briefs/data-pipeline-polish.md`
+**Dependencies:** Epic 12 (2026 data integration)
+
+- **Task 14.1: Fox Sports Scraper**
+  - [ ] Create `scripts/scrape_fox_stats.py` to scrape Fox Sports Standard page (YC, RC, OFF) and Discipline page (TKL, INT, FC, FS).
+  - [ ] Handle pagination (25 rows/page) and name parsing ("Gabriel PecLA" → "Gabriel Pec").
+  - [ ] Output intermediate JSON: `scripts/temp_fox_stats.json`.
+- **Task 14.2: Merge into ASA Pipeline**
+  - [ ] Update `scripts/fetch_2026_season.py` to read Fox Sports data and populate `yellowCards`, `redCards`, `fouls`, `fouled`, `tackles`, `interceptions`, `offsides` via fuzzy name matching.
+- **Task 14.3: Pipeline Wrapper**
+  - [ ] Create `scripts/update_data.sh` to run both scripts in sequence.
+- **Task 14.4: Verification**
+  - [ ] Verify Player Database tab no longer shows 0s for starting players' cards, tackles, and fouls.
+  - [ ] Spot-check 5 players against Fox Sports source to confirm accuracy.
 
 ---
 
