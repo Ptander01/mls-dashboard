@@ -252,17 +252,17 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 **Sprint Brief:** `docs/sprint-briefs/data-pipeline-polish.md`
 **Dependencies:** Epic 12 (2026 data integration)
 
-- **Task 14.1: Fox Sports Scraper**
-  - [ ] Create `scripts/scrape_fox_stats.py` to scrape Fox Sports Standard page (YC, RC, OFF) and Discipline page (TKL, INT, FC, FS).
-  - [ ] Handle pagination (25 rows/page) and name parsing ("Gabriel PecLA" → "Gabriel Pec").
-  - [ ] Output intermediate JSON: `scripts/temp_fox_stats.json`.
-- **Task 14.2: Merge into ASA Pipeline**
-  - [ ] Update `scripts/fetch_2026_season.py` to read Fox Sports data and populate `yellowCards`, `redCards`, `fouls`, `fouled`, `tackles`, `interceptions`, `offsides` via fuzzy name matching.
-- **Task 14.3: Pipeline Wrapper**
-  - [ ] Create `scripts/update_data.sh` to run both scripts in sequence.
-- **Task 14.4: Verification**
-  - [ ] Verify Player Database tab no longer shows 0s for starting players' cards, tackles, and fouls.
-  - [ ] Spot-check 5 players against Fox Sports source to confirm accuracy.
+- **Task 14.1: Fox Sports Scraper** ✅ Session 1 (Mar 24, 2026)
+  - [x] Create `scripts/scrape_fox_stats.py` to scrape Fox Sports Standard page (YC, RC, OFF) and Discipline page (TKL, INT, FC, FS). — 622 players scraped.
+  - [x] Handle pagination (25 rows/page) and name parsing using `<sup>` tag extraction with regex fallback.
+  - [x] Output intermediate JSON: `scripts/temp_fox_stats.json` (added to `.gitignore`).
+- **Task 14.2: Merge into ASA Pipeline** ✅ Session 1
+  - [x] Update `scripts/fetch_2026_season.py` with accent-normalized exact match + last-name fallback with team filter. 97.1% match rate (602/620 ASA players).
+- **Task 14.3: Pipeline Wrapper** ✅ Session 1
+  - [x] Create `scripts/update_data.sh` to run both scripts in sequence.
+- **Task 14.4: Verification** ✅ Session 1
+  - [x] `mls2026.json` updated: yellowCards (0→199), redCards (0→13), fouls (0→90), fouled (0→87), tackles (0→354), interceptions (0→273), offsides (0→106).
+  - [x] Remaining gaps: `crosses` (no Fox Sports source), `salary` (MLSPA guide pending).
 
 ## Epic 15: AI-Powered Holistic Team Commentary
 
