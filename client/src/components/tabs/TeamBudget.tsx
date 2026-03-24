@@ -384,15 +384,15 @@ export default function TeamBudget() {
                 by total payroll. Data: 2025 MLS season salary disclosures.
               </>
             }
-            rightAction={
-              <div className="flex items-center gap-1">
-                <CardInsightToggle
-                  isOpen={showBudgetBarInsights}
-                  onToggle={() => setShowBudgetBarInsights(v => !v)}
-                  isDark={isDark}
-                />
-                <MaximizeButton onClick={() => setMaximized("budget")} />
-              </div>
+            zone2Analysis={
+              <CardInsightToggle
+                isOpen={showBudgetBarInsights}
+                onToggle={() => setShowBudgetBarInsights(v => !v)}
+                isDark={isDark}
+              />
+            }
+            zone3Utility={
+              <MaximizeButton onClick={() => setMaximized("budget")} isDark={isDark} />
             }
           />
           <CardInsightSection

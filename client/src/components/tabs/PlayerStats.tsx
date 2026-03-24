@@ -11,6 +11,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import NeuCard from "@/components/NeuCard";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import { ChartModal, MaximizeButton } from "@/components/ChartModal";
+import { ToggleAction } from "@/components/ui/ChartControls";
 import {
   ScatterChart,
   Scatter,
@@ -776,8 +777,8 @@ export default function PlayerStats() {
                   2025 MLS regular season.
                 </>
               }
-              rightAction={
-                <div className="flex items-center gap-2 flex-wrap">
+              zone1Toolbar={
+                <>
                   <AxisDropdown
                     value={scatterX}
                     onChange={setScatterX}
@@ -788,16 +789,34 @@ export default function PlayerStats() {
                     onChange={setScatterY}
                     label="Y"
                   />
-                  <ColorModeToggle />
-                  <TrendLineToggle />
-                  <CardInsightToggle
-                    isOpen={showScatterInsights}
-                    onToggle={() => setShowScatterInsights(v => !v)}
+                  <ToggleAction
+                    icon={<Palette size={13} />}
+                    label={colorMode === "team" ? "TEAM" : "POS"}
+                    tooltip={colorMode === "team" ? "Switch to position colors" : "Switch to team colors"}
+                    isActive={colorMode === "position"}
+                    onToggle={() => setColorMode(m => (m === "team" ? "position" : "team"))}
                     isDark={isDark}
-                    compact
                   />
-                  <MaximizeButton onClick={() => setMaximized("scatter")} />
-                </div>
+                  <ToggleAction
+                    icon={<TrendingUp size={13} />}
+                    label="TREND"
+                    tooltip={showTrendLine ? "Hide trend line" : "Show trend line"}
+                    isActive={showTrendLine}
+                    onToggle={() => setShowTrendLine(v => !v)}
+                    isDark={isDark}
+                  />
+                </>
+              }
+              zone2Analysis={
+                <CardInsightToggle
+                  isOpen={showScatterInsights}
+                  onToggle={() => setShowScatterInsights(v => !v)}
+                  isDark={isDark}
+                  compact
+                />
+              }
+              zone3Utility={
+                <MaximizeButton onClick={() => setMaximized("scatter")} isDark={isDark} />
               }
             />
             <CardInsightSection
@@ -915,18 +934,20 @@ export default function PlayerStats() {
                   2025 MLS regular season.
                 </>
               }
-              rightAction={
-                <div className="flex items-center gap-2">
-                  <CardInsightToggle
-                    isOpen={showRadarInsights}
-                    onToggle={() => setShowRadarInsights(v => !v)}
-                    isDark={isDark}
-                    compact
-                  />
-                  <MaximizeButton onClick={() => setMaximized("radar")} />
+              zone2Analysis={
+                <CardInsightToggle
+                  isOpen={showRadarInsights}
+                  onToggle={() => setShowRadarInsights(v => !v)}
+                  isDark={isDark}
+                  compact
+                />
+              }
+              zone3Utility={
+                <div className="flex items-center gap-1">
+                  <MaximizeButton onClick={() => setMaximized("radar")} isDark={isDark} />
                   <button
                     onClick={() => setSelectedPlayer(null)}
-                    className="text-xs text-muted-foreground hover:text-foreground"
+                    className="text-xs text-muted-foreground hover:text-foreground px-1.5 py-1 rounded-md transition-colors"
                   >
                     Close
                   </button>

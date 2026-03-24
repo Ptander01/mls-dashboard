@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Maximize2 } from "lucide-react";
+import { IconAction } from "./ui/ChartControls";
 
 interface ChartModalProps {
   isOpen: boolean;
@@ -89,7 +90,7 @@ export function ChartModal({
       {/* Modal card — fixed inset with padding, guaranteed to fit viewport */}
       <div
         ref={modalCardRef}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         className="rounded-2xl"
         style={{
           position: "fixed",
@@ -99,7 +100,8 @@ export function ChartModal({
           bottom: "2rem",
           display: "flex",
           flexDirection: "column",
-          animation: "modal-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+          animation:
+            "modal-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards",
           background: "var(--neu-bg-raised)",
           boxShadow: "0 25px 60px rgba(0,0,0,0.5)",
           overflow: "hidden",
@@ -125,7 +127,7 @@ export function ChartModal({
             {title}
           </h2>
           <button
-            onClick={e => {
+            onClick={(e) => {
               e.stopPropagation();
               onClose();
             }}
@@ -160,25 +162,29 @@ export function ChartModal({
   );
 }
 
+/**
+ * MaximizeButton — Now renders as an IconAction (Maximize2 icon)
+ * for consistent Three-Zone architecture integration.
+ * Place in zone3Utility of ChartHeader.
+ */
 interface MaximizeButtonProps {
   onClick: () => void;
+  isDark: boolean;
   className?: string;
 }
 
 export function MaximizeButton({
   onClick,
+  isDark,
   className = "",
 }: MaximizeButtonProps) {
   return (
-    <button
-      onClick={e => {
-        e.stopPropagation();
-        onClick();
-      }}
-      className={`p-1.5 rounded-lg text-muted-foreground hover:text-cyan hover:bg-white/5 transition-all ${className}`}
-      title="Expand chart"
-    >
-      <Maximize2 size={13} />
-    </button>
+    <IconAction
+      icon={<Maximize2 size={13} />}
+      tooltip="Expand to Full Screen"
+      isActive={false}
+      onClick={onClick}
+      isDark={isDark}
+    />
   );
 }

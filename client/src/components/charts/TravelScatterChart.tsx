@@ -23,6 +23,8 @@ import { CardInsightToggle } from "@/components/CardInsight";
 import type { CardInsightItem } from "@/components/CardInsight";
 import { NeuInsightContainer } from "@/components/NeuInsightContainer";
 import { ChartHeader } from "@/components/ui/ChartHeader";
+import { SegmentedControl, ToggleAction } from "@/components/ui/ChartControls";
+import { Filter, Palette } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* Extended insight item with optional team color for bullet matching */
@@ -1742,56 +1744,36 @@ function TravelScatterChartInner({ metrics }: TravelScatterChartProps) {
             Conference teams typically log more miles due to geography.
           </>
         }
-        rightAction={
-          <div className="flex items-center gap-3 relative z-10">
-            <CardInsightToggle
-              isOpen={showInsights}
-              onToggle={() => setShowInsights(v => !v)}
+        zone1Toolbar={
+          <>
+            <SegmentedControl<ConferenceFilter>
+              options={[
+                { value: "ALL", label: "ALL" },
+                { value: "EAST", label: "EAST" },
+                { value: "WEST", label: "WEST" },
+              ]}
+              value={conference}
+              onChange={handleConferenceChange}
+              isDark={isDark}
+              groupIcon={<Filter size={13} />}
+              groupTooltip="Conference Filter"
+            />
+            <ToggleAction
+              icon={<Palette size={13} />}
+              label="COLOR"
+              tooltip={showColor ? "Hide team colors" : "Show team colors"}
+              isActive={showColor}
+              onToggle={() => setShowColor(prev => !prev)}
               isDark={isDark}
             />
-            <div className="flex items-center gap-0">
-              {(["ALL", "EAST", "WEST"] as ConferenceFilter[]).map((c, i) => (
-                <button
-                  key={c}
-                  onClick={e => {
-                    e.stopPropagation();
-                    handleConferenceChange(c);
-                  }}
-                  className={`text-[10px] px-3 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
-                    conference === c
-                      ? "neu-pressed text-cyan"
-                      : "neu-raised text-muted-foreground hover:text-foreground"
-                  } ${i === 0 ? "rounded-l-lg" : i === 2 ? "rounded-r-lg" : ""}`}
-                  style={{
-                    fontFamily: "Space Grotesk, sans-serif",
-                    minWidth: 40,
-                    minHeight: 28,
-                  }}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                setShowColor(prev => !prev);
-              }}
-              className={`text-[10px] px-3 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none rounded-lg ${
-                showColor
-                  ? "neu-pressed text-cyan"
-                  : "neu-raised text-muted-foreground hover:text-foreground"
-              }`}
-              style={{
-                fontFamily: "Space Grotesk, sans-serif",
-                minWidth: 40,
-                minHeight: 28,
-              }}
-              title={showColor ? "Hide team colors" : "Show team colors"}
-            >
-              COLOR
-            </button>
-          </div>
+          </>
+        }
+        zone2Analysis={
+          <CardInsightToggle
+            isOpen={showInsights}
+            onToggle={() => setShowInsights(v => !v)}
+            isDark={isDark}
+          />
         }
       />
 

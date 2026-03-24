@@ -28,7 +28,10 @@ import {
   Pause,
   SkipForward,
   SkipBack,
+  Filter,
+  Layers,
 } from "lucide-react";
+import { SegmentedControl } from "@/components/ui/ChartControls";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useFilters } from "@/contexts/FilterContext";
 import { TEAMS, getTeam } from "@/lib/mlsData";
@@ -539,33 +542,39 @@ export default function SeasonPulse() {
                   </p>
                 </div>
               }
-              rightAction={
-                <div className="flex items-center gap-3 flex-wrap">
-                  <ToggleGroup
+              zone1Toolbar={
+                <>
+                  <SegmentedControl<ConferenceFilter>
                     options={[
-                      { value: "ALL" as ConferenceFilter, label: "All" },
-                      { value: "EASTERN" as ConferenceFilter, label: "East" },
-                      { value: "WESTERN" as ConferenceFilter, label: "West" },
+                      { value: "ALL", label: "All" },
+                      { value: "EASTERN", label: "East" },
+                      { value: "WESTERN", label: "West" },
                     ]}
                     value={conferenceFilter}
                     onChange={setConferenceFilter}
                     isDark={isDark}
+                    groupIcon={<Filter size={13} />}
+                    groupTooltip="Conference Filter"
                   />
-                  <ToggleGroup
+                  <SegmentedControl<RankMode>
                     options={[
-                      { value: "POWER" as RankMode, label: "Power" },
-                      { value: "POINTS" as RankMode, label: "Points" },
+                      { value: "POWER", label: "Power" },
+                      { value: "POINTS", label: "Points" },
                     ]}
                     value={rankMode}
                     onChange={setRankMode}
                     isDark={isDark}
+                    groupIcon={<Layers size={13} />}
+                    groupTooltip="Rank Mode"
                   />
-                  <CardInsightToggle
-                    isOpen={showTableInsights}
-                    onToggle={() => setShowTableInsights(v => !v)}
-                    isDark={isDark}
-                  />
-                </div>
+                </>
+              }
+              zone2Analysis={
+                <CardInsightToggle
+                  isOpen={showTableInsights}
+                  onToggle={() => setShowTableInsights(v => !v)}
+                  isDark={isDark}
+                />
               }
             />
             <CardInsightSection isOpen={showTableInsights} insights={tableInsights} isDark={isDark} />

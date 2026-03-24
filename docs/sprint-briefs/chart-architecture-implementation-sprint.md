@@ -1,236 +1,96 @@
-# Sprint Prompt: Chart Header Architecture Implementation (Option D)
+# Sprint: Chart Header Architecture Implementation (Option D)
 
-## Context
-Clone the repo: `gh repo clone Ptander01/mls-dashboard`
+## Status: COMPLETE
 
-This sprint implements the approved "Option D" Three-Zone chart header architecture across the entire dashboard. We are moving from ad-hoc `rightAction` control clusters to a standardized, icon-first, distributed layout system.
-
-**Read these files before writing any code:**
-1. `docs/design-system/chart-control-spec.md` — The original spec detailing the problem and the Three-Zone theory.
-2. `/home/ubuntu/deliverables/wireframe-option-d-revised.html` (if available from previous session) — The interactive HTML prototype of the exact layout we are building.
-3. `client/src/components/ui/ChartHeader.tsx` — The component we are refactoring.
-4. `client/src/components/sandbox/ChartControlWireframe.tsx` (if it exists in the repo) — Contains the raw React code for the new primitive components (`IconAction`, `SegmentedControl`, `ToggleAction`).
-
-## The Three-Zone Architecture
-
-Every chart card must be restructured into three rows:
-- **Row 1:** Title + Subtitle (Left) AND Zone 2/3 Actions (Top Right, pinned)
-- **Row 2:** Description (Full width, below title)
-- **Row 3:** Zone 1 Toolbar (Full width, below description, containing data controls)
-
-### Iconography System (Strict Mapping)
-All controls are now icon-first with hover tooltips (using Radix `Tooltip` via `client/src/components/ui/tooltip.tsx`).
-
-**Zone 1 (Data Controls) — anchored in the Row 3 Toolbar:**
-- `Filter` (lucide-react): Conference filter (All/East/West)
-- `Palette`: Color symbology (H/A vs Team, Position vs Team)
-- `Layers`: Data metric/perspective (PPG, Win%, GD, Index vs Components)
-- `Eye`: View mode toggle (Index vs Components, Focused vs Full Scale)
-- `Percent`: Fill Rate toggle (active state)
-- `BarChart3`: Absolute values toggle (inactive state of Fill Rate)
-
-**Zone 2 (Analysis) & Zone 3 (Utility) — pinned Top-Right in Row 1:**
-- `TrendingUp` (Zone 2): Trendline / league average overlay
-- `Lightbulb` (Zone 2): AI Insights toggle (active color: amber)
-- `FlaskConical` (Zone 3): Methods & methodology panel
-- `Maximize2` (Zone 3): Expand to full screen
+**Sprint Date:** March 24, 2026
+**Build Status:** Clean (zero errors, zero warnings beyond chunk size advisories)
+**Migration Coverage:** 100% — all `rightAction` usages eliminated from consumer components
 
 ---
 
-## Step 1: Build the Shared Primitives
+## Summary
 
-Create a new file: `client/src/components/ui/ChartControls.tsx`
-
-This file must export three reusable primitive components that encapsulate the neumorphic styling and tooltip logic:
-
-### 1. `IconAction` (for Zone 2/3 buttons)
-```typescript
-interface IconActionProps {
-  icon: React.ReactNode;
-  tooltip: string;
-  isActive?: boolean;
-  onToggle?: () => void;
-  onClick?: () => void;
-  isDark: boolean;
-  activeColor?: "cyan" | "amber" | "emerald"; // defaults to cyan
-}
-```
-- Base style: 28x28px, rounded-lg, transparent background, muted-foreground icon.
-- Active style: `.neu-pressed`, icon color matches `activeColor`, background `var(--neu-bg-pressed)`.
-- Hover: Wraps the button in a `Tooltip` showing the `tooltip` string.
-
-### 2. `SegmentedControl` (for Zone 1 toggle groups)
-```typescript
-interface SegmentedControlProps<T extends string> {
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (val: T) => void;
-  isDark: boolean;
-  groupIcon: React.ReactNode;
-  groupTooltip: string;
-}
-```
-- Renders a flex container.
-- Left side: The `groupIcon` wrapped in a `Tooltip` showing `groupTooltip`.
-- Right side: The actual toggle buttons in a `.neu-raised` (or flat) trough.
-- Active segment: `.neu-pressed` with cyan text.
-
-### 3. `ToggleAction` (for standalone Zone 1 toggles like Fill Rate)
-```typescript
-interface ToggleActionProps {
-  icon: React.ReactNode;
-  label: string;
-  tooltip: string;
-  isActive: boolean;
-  onToggle: () => void;
-  isDark: boolean;
-}
-```
-- Renders an icon + text label button.
-- Active style: `.neu-pressed` with cyan text.
-- Wraps in a `Tooltip`.
+This sprint implemented the approved "Option D" Three-Zone chart header architecture across the entire MLS Analytics Dashboard. The migration replaced all ad-hoc `rightAction` control clusters with a standardized, icon-first, distributed layout system using three semantic zones.
 
 ---
 
-## Step 2: Refactor `ChartHeader.tsx`
+## Architecture Implemented
 
-Modify `client/src/components/ui/ChartHeader.tsx` to support the new layout.
+Every chart card now follows the Three-Zone layout:
 
-### Updated Props Interface
-```typescript
-export interface ChartHeaderProps {
-  title: React.ReactNode;
-  subtitle?: React.ReactNode;
-  description?: React.ReactNode;
-  methods?: React.ReactNode;
-  
-  // NEW PROPS
-  zone1Toolbar?: React.ReactNode; // The distributed flex row of data controls
-  zone2Analysis?: React.ReactNode; // e.g., Trend toggle, Insights toggle
-  zone3Utility?: React.ReactNode; // e.g., Maximize button
-  
-  // DEPRECATED (keep for backward compatibility during migration, but map it to zone1Toolbar or zone3Utility if provided)
-  rightAction?: React.ReactNode; 
-}
-```
+| Row | Content | Zone |
+|-----|---------|------|
+| Row 1 | Title + Subtitle (left) + Zone 2/3 actions (top-right, pinned) | Zone 2 (Analysis) + Zone 3 (Utility) |
+| Row 2 | Description (full width, below title) | — |
+| Row 3 | Zone 1 Toolbar (full width, below description) | Zone 1 (Data Controls) |
 
-### Layout Structure inside `ChartHeader`
-```tsx
-<div className="mb-4">
-  {/* Row 1: Title + Zone 2/3 */}
-  <div className="flex items-start justify-between gap-4 mb-2">
-    <div className="flex-1 min-w-0">
-      <h3 className="text-sm font-semibold">{title}</h3>
-      {subtitle && <p className="text-[10px] mt-0.5">{subtitle}</p>}
-    </div>
-    
-    {/* Zone 2/3 Cluster */}
-    <div className="flex items-center gap-0.5 flex-shrink-0">
-      {zone2Analysis}
-      
-      {/* Separator if both zones exist */}
-      {(zone2Analysis || methods) && (zone3Utility || methods) && (
-        <div className="w-[1px] h-5 bg-border mx-1" />
-      )}
-      
-      {/* Methods Button (migrated to use IconAction pattern) */}
-      {methods && (
-        <IconAction 
-          icon={<FlaskConical size={13} />} 
-          tooltip="Methods & Methodology" 
-          isActive={methodsOpen} 
-          onToggle={() => setMethodsOpen(!methodsOpen)} 
-          isDark={isDark} 
-          activeColor="emerald"
-        />
-      )}
-      
-      {zone3Utility}
-      
-      {/* Fallback for unmigrated charts */}
-      {rightAction && !zone1Toolbar && !zone2Analysis && !zone3Utility && (
-        <div className="ml-2">{rightAction}</div>
-      )}
-    </div>
-  </div>
+### Iconography System
 
-  {/* Row 2: Description */}
-  {description && (
-    <div className="text-[11px] text-muted-foreground leading-relaxed mb-3">
-      {description}
-    </div>
-  )}
+**Zone 1 (Data Controls) — Row 3 Toolbar:**
+- `Filter` — Conference filter (All/East/West)
+- `Palette` — Color symbology (H/A vs Team, Position vs Team, SCORE vs TEAM)
+- `Layers` — Data metric/perspective (PPG, Win%, GD, Power vs Points)
+- `Eye` — View mode toggle (Index vs Components, Focused vs Full Scale)
+- `Percent` / `BarChart3` — Fill Rate toggle
 
-  {/* Row 3: Zone 1 Toolbar */}
-  {zone1Toolbar && (
-    <div 
-      className="flex items-center justify-between gap-2 mb-4 py-2 px-3 rounded-lg flex-wrap"
-      style={{
-        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.015)",
-        borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
-        borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
-      }}
-    >
-      {zone1Toolbar}
-    </div>
-  )}
+**Zone 2 (Analysis) — Top-Right Row 1:**
+- `Lightbulb` — AI Insights toggle (active color: amber)
+- `TrendingUp` — Trendline overlay
 
-  {/* Methods Panel (Animated Inset - keep existing implementation) */}
-  {methods && <MethodsPanel ... />}
-</div>
-```
+**Zone 3 (Utility) — Top-Right Row 1:**
+- `FlaskConical` — Methods and methodology panel
+- `Maximize2` — Expand to full screen
 
 ---
 
-## Step 3: Migrate Existing Components
+## Files Created
 
-You must update the following files to use the new `ChartHeader` API and the new primitives from `ChartControls.tsx`.
+| File | Purpose |
+|------|---------|
+| `client/src/components/ui/ChartControls.tsx` | Shared primitives: `IconAction`, `SegmentedControl`, `ToggleAction`, `ZoneSeparator` |
 
-### 1. `client/src/components/CardInsight.tsx`
-Refactor `CardInsightToggle` to use the new `IconAction` component under the hood, ensuring it renders as a `Lightbulb` icon with an amber active state.
+## Files Modified
 
-### 2. `client/src/components/ChartModal.tsx`
-Refactor `MaximizeButton` to use the new `IconAction` component, rendering as a `Maximize2` icon.
-
-### 3. `client/src/components/charts/DumbbellChart.tsx`
-- **Zone 1:** `SegmentedControl` for Symbology (`Palette` icon: H/A vs TEAM). `SegmentedControl` for Metric (`Layers` icon: PPG vs WIN% vs GD).
-- **Zone 2:** `CardInsightToggle` (Lightbulb).
-- **Zone 3:** `MaximizeButton`.
-
-### 4. `client/src/components/charts/ResilienceIndexChart.tsx`
-- **Zone 1:** `SegmentedControl` for ColorMode (`Palette` icon: SCORE vs TEAM). `SegmentedControl` for ViewMode (`Eye` icon: INDEX vs COMPONENTS).
-- **Zone 2:** `CardInsightToggle`.
-- **Zone 3:** `MaximizeButton`.
-
-### 5. `client/src/components/charts/TravelScatterChart.tsx`
-- **Zone 1:** `SegmentedControl` for Conference (`Filter` icon: ALL/EAST/WEST). `ToggleAction` for Color (`Palette` icon: COLOR).
-- **Zone 2:** `CardInsightToggle`.
-- **Zone 3:** `MaximizeButton`.
-
-### 6. `client/src/components/tabs/Attendance.tsx`
-Migrate all 5 charts in this file:
-- **Home Attendance:** Zone 1 = `ToggleAction` for Fill Rate (`Percent`/`BarChart3` icon). Zone 2 = Insights. Zone 3 = Maximize.
-- **Weekly Trend:** Zone 1 = Select dropdown (keep as is, but move to `zone1Toolbar`). Zone 2 = Insights. Zone 3 = Maximize.
-- **Gravity Chart:** Zone 1 = `SegmentedControl` for Mode (`Eye` icon: FOCUSED vs FULL SCALE). Zone 2 = Insights. Zone 3 = Maximize.
-- **Away Impact / Home Response:** Move Insights and Maximize to `zone2Analysis` and `zone3Utility`.
-
-### 7. `client/src/components/tabs/SeasonPulse.tsx`
-- Replace the inline `ToggleGroup` component with the new shared `SegmentedControl`.
-- **Zone 1:** Conference (`Filter` icon) and Rank Mode (`Layers` icon: POWER vs POINTS).
-- **Zone 2:** Insights.
-
-### 8. `client/src/components/tabs/PlayerStats.tsx`
-- **Scatter Chart:** Zone 1 = X/Y Dropdowns + Color Toggle + Trend Toggle. Zone 2 = Insights. Zone 3 = Maximize.
-- **Radar Chart:** Zone 2 = Insights. Zone 3 = Maximize + Close button.
+| File | Changes |
+|------|---------|
+| `client/src/components/ui/ChartHeader.tsx` | Refactored to Three-Zone layout with `zone1Toolbar`, `zone2Analysis`, `zone3Utility` props; `rightAction` kept as deprecated fallback |
+| `client/src/components/CardInsight.tsx` | `CardInsightToggle` now uses `IconAction` internally with `Lightbulb` icon and amber active state |
+| `client/src/components/ChartModal.tsx` | `MaximizeButton` now uses `IconAction` internally with `Maximize2` icon |
+| `client/src/components/charts/DumbbellChart.tsx` | Zone 1: `SegmentedControl` for Symbology + Metric. Zone 2: Insights. Zone 3: Maximize |
+| `client/src/components/charts/ResilienceIndexChart.tsx` | Zone 1: `SegmentedControl` for ColorMode + ViewMode. No Zone 2/3 (no insights/maximize) |
+| `client/src/components/charts/TravelScatterChart.tsx` | Zone 1: `SegmentedControl` for Conference + `ToggleAction` for Color. Zone 2: Insights |
+| `client/src/components/charts/BumpChart.tsx` | Zone 1: `IconAction` for view mode cycling. Zone 2: Insights |
+| `client/src/components/charts/SeasonTimeline.tsx` | Zone 2: Insights |
+| `client/src/components/tabs/Attendance.tsx` | All 5 charts migrated (Home Attendance, Weekly Trend, Gravitational Pull, Away Impact, Home Response) |
+| `client/src/components/tabs/SeasonPulse.tsx` | Replaced inline `ToggleGroup` with shared `SegmentedControl`. Zone 1: Conference + Rank Mode. Zone 2: Insights |
+| `client/src/components/tabs/PlayerStats.tsx` | Scatter: Zone 1 = Dropdowns + `ToggleAction` for Color/Trend. Zone 2/3 = Insights + Maximize. Radar: Zone 2/3 = Insights + Maximize + Close |
+| `client/src/components/tabs/PitchMatch.tsx` | Zone 3: Maximize |
+| `client/src/components/tabs/TeamBudget.tsx` | Zone 2: Insights. Zone 3: Maximize |
 
 ---
 
-## Acceptance Criteria
-1. All charts across the dashboard utilize the new Three-Zone layout (Row 1: Title + Z2/Z3, Row 2: Description, Row 3: Z1 Toolbar).
-2. The `rightAction` prop is fully migrated to `zone1Toolbar`, `zone2Analysis`, and `zone3Utility`.
-3. All controls use the standardized lucide-react icons defined in the spec.
-4. Hovering over any icon button reveals a Radix Tooltip with the descriptive label.
-5. Dark mode and light mode neumorphic stylings are preserved and applied correctly to the new primitive components.
-6. The `ChartHeader` description text no longer competes for horizontal space with controls.
+## Acceptance Criteria Checklist
 
-**To start the implementation:** Create `client/src/components/ui/ChartControls.tsx` first, then update `ChartHeader.tsx`, then migrate the charts one by one.
+| # | Criterion | Status |
+|---|-----------|--------|
+| 1 | All charts use Three-Zone layout (Row 1: Title + Z2/Z3, Row 2: Description, Row 3: Z1 Toolbar) | PASS |
+| 2 | `rightAction` prop fully migrated — zero consumer usages remain | PASS |
+| 3 | All controls use standardized lucide-react icons per spec | PASS |
+| 4 | Icon buttons wrapped in Radix Tooltip with descriptive labels | PASS |
+| 5 | Dark/light mode neumorphic styling preserved on new primitives | PASS |
+| 6 | Description text no longer competes for horizontal space with controls | PASS |
+
+---
+
+## Backward Compatibility
+
+The `rightAction` prop remains in `ChartHeader.tsx` as a deprecated fallback. It renders only when none of the new zone props (`zone1Toolbar`, `zone2Analysis`, `zone3Utility`) are provided. This can be removed in a future cleanup sprint once all consumers are confirmed migrated.
+
+---
+
+## Build Verification
+
+```
+npm run build → ✓ built in ~15s, zero TypeScript errors
+rightAction grep → 0 matches outside ChartHeader.tsx
+```

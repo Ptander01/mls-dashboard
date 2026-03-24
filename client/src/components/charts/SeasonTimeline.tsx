@@ -378,7 +378,7 @@ export default function SeasonTimeline({
             </p>
           </div>
         }
-        rightAction={
+        zone2Analysis={
           <CardInsightToggle
             isOpen={showInsights}
             onToggle={() => setShowInsights((v) => !v)}

@@ -23,6 +23,8 @@ import { lighten, darken, mutedTeamColor } from "@/lib/chartUtils";
 import type { TeamResilienceMetrics } from "@/lib/resilienceUtils";
 import { TIER_COLORS, TIER_LABELS, tierColor } from "@/lib/resilienceUtils";
 import { ChartHeader } from "@/components/ui/ChartHeader";
+import { SegmentedControl } from "@/components/ui/ChartControls";
+import { Palette, Eye } from "lucide-react";
 
 type ViewMode = "INDEX" | "COMPONENTS";
 type ColorMode = "SCORE" | "TEAM";
@@ -613,41 +615,31 @@ function ResilienceIndexChartInner({ metrics }: ResilienceIndexChartProps) {
             primary. Data: 2025 MLS regular season.
           </>
         }
-        rightAction={
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-0">
-              {(["SCORE", "TEAM"] as ColorMode[]).map(c => (
-                <button
-                  key={c}
-                  onClick={() => setColorMode(c)}
-                  className={`text-[10px] px-2.5 py-1 font-semibold tracking-wider transition-all ${
-                    colorMode === c
-                      ? "neu-pressed text-cyan"
-                      : "neu-raised text-muted-foreground hover:text-foreground"
-                  } ${c === "SCORE" ? "rounded-l-lg" : "rounded-r-lg"}`}
-                  style={{ fontFamily: "Space Grotesk, sans-serif" }}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-0">
-              {(["INDEX", "COMPONENTS"] as ViewMode[]).map(m => (
-                <button
-                  key={m}
-                  onClick={() => setViewMode(m)}
-                  className={`text-[10px] px-3 py-1 font-semibold tracking-wider transition-all ${
-                    viewMode === m
-                      ? "neu-pressed text-cyan"
-                      : "neu-raised text-muted-foreground hover:text-foreground"
-                  } ${m === "INDEX" ? "rounded-l-lg" : "rounded-r-lg"}`}
-                  style={{ fontFamily: "Space Grotesk, sans-serif" }}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
+        zone1Toolbar={
+          <>
+            <SegmentedControl<ColorMode>
+              options={[
+                { value: "SCORE", label: "SCORE" },
+                { value: "TEAM", label: "TEAM" },
+              ]}
+              value={colorMode}
+              onChange={setColorMode}
+              isDark={isDark}
+              groupIcon={<Palette size={13} />}
+              groupTooltip="Color Symbology"
+            />
+            <SegmentedControl<ViewMode>
+              options={[
+                { value: "INDEX", label: "INDEX" },
+                { value: "COMPONENTS", label: "COMPONENTS" },
+              ]}
+              value={viewMode}
+              onChange={setViewMode}
+              isDark={isDark}
+              groupIcon={<Eye size={13} />}
+              groupTooltip="View Mode"
+            />
+          </>
         }
       />
 

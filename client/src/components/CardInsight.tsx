@@ -7,14 +7,15 @@
  * uses the same depression-to-elevation animation as the tab-wide
  * ANALYZE panel, creating a consistent "insight rises above data" metaphor.
  *
- * The floating glass popup is gone — everything is inline and pushes
- * content down naturally.
+ * The CardInsightToggle now renders as an IconAction (Lightbulb, amber active)
+ * for consistent Three-Zone architecture integration.
  */
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lightbulb, X } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 import { NeuInsightContainer } from "./NeuInsightContainer";
+import { IconAction } from "./ui/ChartControls";
 
 export interface CardInsightItem {
   text: string;
@@ -35,15 +36,14 @@ const ACCENT_COLORS: Record<string, string> = {
 };
 
 /**
- * CardInsightButton — The toggle button that goes in the card header.
- * This ONLY renders the button. The actual insight content is rendered
- * separately via CardInsightSection, which must be placed in the card
- * body where you want the insights to appear.
+ * CardInsightToggle — The toggle button that goes in the card header.
+ * Now renders as an IconAction (Lightbulb icon, amber active state)
+ * for consistent Three-Zone architecture.
  *
  * Usage:
  *   const [showInsights, setShowInsights] = useState(false);
- *   // In header: <CardInsightButton isOpen={showInsights} onToggle={() => setShowInsights(v => !v)} />
- *   // In body:   <CardInsightSection isOpen={showInsights} insights={...} isDark={isDark} />
+ *   // In header zone2Analysis: <CardInsightToggle isOpen={showInsights} onToggle={() => setShowInsights(v => !v)} isDark={isDark} />
+ *   // In body:                 <CardInsightSection isOpen={showInsights} insights={...} isDark={isDark} />
  */
 interface CardInsightToggleProps {
   isOpen: boolean;
@@ -59,32 +59,14 @@ export function CardInsightToggle({
   compact = false,
 }: CardInsightToggleProps) {
   return (
-    <button
-      onClick={e => {
-        e.stopPropagation();
-        onToggle();
-      }}
-      className="flex items-center gap-1 transition-all rounded-md"
-      style={{
-        padding: compact ? "2px 6px" : "3px 8px",
-        fontFamily: "Space Grotesk, sans-serif",
-        fontSize: compact ? "9px" : "10px",
-        fontWeight: 600,
-        letterSpacing: "0.05em",
-        textTransform: "uppercase" as const,
-        background: isOpen ? "var(--neu-bg-pressed)" : "transparent",
-        color: isOpen ? "var(--cyan)" : "var(--muted-foreground)",
-        boxShadow: isOpen
-          ? isDark
-            ? "inset 1px 1px 3px rgba(0,0,0,0.4), inset -1px -1px 2px rgba(60,60,80,0.06)"
-            : "inset 1px 1px 3px rgba(0,0,0,0.08), inset -1px -1px 2px rgba(255,255,255,0.4)"
-          : "none",
-      }}
-      title={isOpen ? "Hide insights" : "Show insights for this section"}
-    >
-      <Lightbulb size={compact ? 10 : 11} />
-      {isOpen ? <X size={compact ? 8 : 9} /> : null}
-    </button>
+    <IconAction
+      icon={<Lightbulb size={compact ? 11 : 13} />}
+      tooltip={isOpen ? "Hide Insights" : "AI Insights"}
+      isActive={isOpen}
+      onToggle={onToggle}
+      isDark={isDark}
+      activeColor="amber"
+    />
   );
 }
 
@@ -173,7 +155,7 @@ export function CardInsightButton({
     <div>
       <CardInsightToggle
         isOpen={isOpen}
-        onToggle={() => setIsOpen(v => !v)}
+        onToggle={() => setIsOpen((v) => !v)}
         isDark={isDark}
         compact={compact}
       />
@@ -198,7 +180,7 @@ export function CardInsightInline({
     <div>
       <CardInsightToggle
         isOpen={isOpen}
-        onToggle={() => setIsOpen(v => !v)}
+        onToggle={() => setIsOpen((v) => !v)}
         isDark={isDark}
         compact={compact}
       />

@@ -14,6 +14,7 @@ import {
 import NeuCard from "@/components/NeuCard";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import { ChartModal, MaximizeButton } from "@/components/ChartModal";
+import { SegmentedControl, ToggleAction } from "@/components/ui/ChartControls";
 import {
   BarChart,
   Bar,
@@ -43,6 +44,7 @@ import {
   Eye,
   X,
   Layers,
+  Filter,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { InsightPanel } from "@/components/InsightPanel";
@@ -1904,39 +1906,25 @@ export default function Attendance() {
                 metric. Data: 2025 MLS regular season.
               </>
             }
-            rightAction={
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowFillRate(!showFillRate)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
-                  style={{
-                    background: showFillRate
-                      ? isDark
-                        ? "rgba(0, 212, 255, 0.12)"
-                        : "rgba(8, 145, 178, 0.1)"
-                      : isDark
-                        ? "rgba(255, 255, 255, 0.04)"
-                        : "rgba(0, 0, 0, 0.04)",
-                    color: showFillRate
-                      ? "var(--cyan)"
-                      : "var(--table-header-color)",
-                    border: `1px solid ${showFillRate ? (isDark ? "rgba(0, 212, 255, 0.3)" : "rgba(8, 145, 178, 0.3)") : isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)"}`,
-                  }}
-                >
-                  {showFillRate ? (
-                    <BarChart3 size={11} />
-                  ) : (
-                    <Percent size={11} />
-                  )}
-                  {showFillRate ? "Absolute" : "Fill Rate"}
-                </button>
-                <CardInsightToggle
-                  isOpen={showCapacityInsights}
-                  onToggle={() => setShowCapacityInsights(v => !v)}
-                  isDark={isDark}
-                />
-                <MaximizeButton onClick={() => setMaximized("home")} />
-              </div>
+            zone1Toolbar={
+              <ToggleAction
+                icon={showFillRate ? <BarChart3 size={13} /> : <Percent size={13} />}
+                label={showFillRate ? "Absolute" : "Fill Rate"}
+                tooltip={showFillRate ? "Switch to absolute attendance" : "Switch to fill rate percentage"}
+                isActive={showFillRate}
+                onToggle={() => setShowFillRate(!showFillRate)}
+                isDark={isDark}
+              />
+            }
+            zone2Analysis={
+              <CardInsightToggle
+                isOpen={showCapacityInsights}
+                onToggle={() => setShowCapacityInsights(v => !v)}
+                isDark={isDark}
+              />
+            }
+            zone3Utility={
+              <MaximizeButton onClick={() => setMaximized("home")} isDark={isDark} />
             }
           />
           <CardInsightSection
@@ -1993,46 +1981,49 @@ export default function Attendance() {
                 regular season.
               </>
             }
-            rightAction={
-              <div className="flex items-center gap-2">
-                <select
-                  value={
-                    trendTeamOverride ||
-                    (filters.selectedTeams.length === 1
-                      ? filters.selectedTeams[0]
-                      : "")
-                  }
-                  onChange={e => setTrendTeamOverride(e.target.value)}
-                  className="text-[10px] font-semibold uppercase tracking-wider rounded-md px-2 py-1 transition-all duration-200"
-                  style={{
-                    background: effectiveTrendTeam
-                      ? isDark
-                        ? "rgba(0, 212, 255, 0.08)"
-                        : "rgba(8, 145, 178, 0.08)"
-                      : "var(--neu-bg-flat)",
-                    color: effectiveTrendTeam
-                      ? trendColor
-                      : "var(--table-header-color)",
-                    border: `1px solid ${effectiveTrendTeam ? (isDark ? "rgba(0, 212, 255, 0.25)" : "rgba(8, 145, 178, 0.25)") : isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)"}`,
-                    outline: "none",
-                  }}
-                >
-                  <option value="">All Teams</option>
-                  {TEAMS.slice()
-                    .sort((a, b) => a.short.localeCompare(b.short))
-                    .map(t => (
-                      <option key={t.id} value={t.id}>
-                        {t.short}
-                      </option>
-                    ))}
-                </select>
-                <CardInsightToggle
-                  isOpen={showTrendInsights}
-                  onToggle={() => setShowTrendInsights(v => !v)}
-                  isDark={isDark}
-                />
-                <MaximizeButton onClick={() => setMaximized("weekly")} />
-              </div>
+            zone1Toolbar={
+              <select
+                value={
+                  trendTeamOverride ||
+                  (filters.selectedTeams.length === 1
+                    ? filters.selectedTeams[0]
+                    : "")
+                }
+                onChange={e => setTrendTeamOverride(e.target.value)}
+                className="text-[10px] font-semibold uppercase tracking-wider rounded-md px-2 py-1 transition-all duration-200"
+                style={{
+                  background: effectiveTrendTeam
+                    ? isDark
+                      ? "rgba(0, 212, 255, 0.08)"
+                      : "rgba(8, 145, 178, 0.08)"
+                    : "var(--neu-bg-flat)",
+                  color: effectiveTrendTeam
+                    ? trendColor
+                    : "var(--table-header-color)",
+                  border: `1px solid ${effectiveTrendTeam ? (isDark ? "rgba(0, 212, 255, 0.25)" : "rgba(8, 145, 178, 0.25)") : isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)"}`,
+                  outline: "none",
+                  fontFamily: "Space Grotesk, sans-serif",
+                }}
+              >
+                <option value="">All Teams</option>
+                {TEAMS.slice()
+                  .sort((a, b) => a.short.localeCompare(b.short))
+                  .map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.short}
+                    </option>
+                  ))}
+              </select>
+            }
+            zone2Analysis={
+              <CardInsightToggle
+                isOpen={showTrendInsights}
+                onToggle={() => setShowTrendInsights(v => !v)}
+                isDark={isDark}
+              />
+            }
+            zone3Utility={
+              <MaximizeButton onClick={() => setMaximized("weekly")} isDark={isDark} />
             }
           />
           <CardInsightSection
@@ -2078,53 +2069,31 @@ export default function Attendance() {
                 linear axis. Data: 2025 MLS regular season match attendance.
               </>
             }
-            rightAction={
-              <div className="flex items-center gap-2">
-                <div
-                  className="flex rounded-md overflow-hidden"
-                  style={{
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-                  }}
-                >
-                  {(["FOCUSED", "FULL SCALE"] as const).map(mode => (
-                    <button
-                      key={mode}
-                      onClick={() => {
-                        setGravMode(mode);
-                        if (mode === "FULL SCALE") setEmphasizedTeam(null);
-                      }}
-                      className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
-                      style={{
-                        background:
-                          gravMode === mode
-                            ? isDark
-                              ? "rgba(0, 212, 255, 0.12)"
-                              : "rgba(8, 145, 178, 0.1)"
-                            : isDark
-                              ? "rgba(255, 255, 255, 0.02)"
-                              : "rgba(0, 0, 0, 0.02)",
-                        color:
-                          gravMode === mode
-                            ? "var(--cyan)"
-                            : "var(--table-header-color)",
-                      }}
-                    >
-                      {mode === "FOCUSED" ? (
-                        <Layers size={10} />
-                      ) : (
-                        <Eye size={10} />
-                      )}
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-                <CardInsightToggle
-                  isOpen={showGravInsights}
-                  onToggle={() => setShowGravInsights(v => !v)}
-                  isDark={isDark}
-                />
-                <MaximizeButton onClick={() => setMaximized("gravity")} />
-              </div>
+            zone1Toolbar={
+              <SegmentedControl<"FOCUSED" | "FULL SCALE">
+                options={[
+                  { value: "FOCUSED", label: "FOCUSED" },
+                  { value: "FULL SCALE", label: "FULL SCALE" },
+                ]}
+                value={gravMode}
+                onChange={(mode) => {
+                  setGravMode(mode);
+                  if (mode === "FULL SCALE") setEmphasizedTeam(null);
+                }}
+                isDark={isDark}
+                groupIcon={<Eye size={13} />}
+                groupTooltip="View Mode"
+              />
+            }
+            zone2Analysis={
+              <CardInsightToggle
+                isOpen={showGravInsights}
+                onToggle={() => setShowGravInsights(v => !v)}
+                isDark={isDark}
+              />
+            }
+            zone3Utility={
+              <MaximizeButton onClick={() => setMaximized("gravity")} isDark={isDark} />
             }
           />
           <CardInsightSection
@@ -2261,13 +2230,13 @@ export default function Attendance() {
                 </p>
               </div>
               {selectedTeam && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5">
                   <CardInsightToggle
                     isOpen={showAwayImpactInsights}
                     onToggle={() => setShowAwayImpactInsights(v => !v)}
                     isDark={isDark}
                   />
-                  <MaximizeButton onClick={() => setMaximized("awayImpact")} />
+                  <MaximizeButton onClick={() => setMaximized("awayImpact")} isDark={isDark} />
                 </div>
               )}
             </div>
@@ -2331,7 +2300,7 @@ export default function Attendance() {
                 </p>
               </div>
               {selectedTeam && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5">
                   <CardInsightToggle
                     isOpen={showHomeResponseInsights}
                     onToggle={() => setShowHomeResponseInsights(v => !v)}
@@ -2339,6 +2308,7 @@ export default function Attendance() {
                   />
                   <MaximizeButton
                     onClick={() => setMaximized("homeResponse")}
+                    isDark={isDark}
                   />
                 </div>
               )}

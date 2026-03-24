@@ -17,6 +17,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { lighten, darken, hexToRgba } from "@/lib/chartUtils";
 import type { TeamResilienceMetrics } from "@/lib/resilienceUtils";
 import { ChartHeader } from "@/components/ui/ChartHeader";
+import { SegmentedControl } from "@/components/ui/ChartControls";
+import { Palette, Layers } from "lucide-react";
 
 type MetricMode = "PPG" | "WIN%" | "GD";
 type SymbologyMode = "STANDARD" | "TEAM";
@@ -532,77 +534,32 @@ function DumbbellChartInner({ metrics, height = 700 }: DumbbellChartProps) {
             value − away value. Data: 2025 MLS regular season.
           </>
         }
-        rightAction={
-          <div className="flex items-center gap-3 relative z-10">
-            <div className="flex items-center gap-0">
-              {(["STANDARD", "TEAM"] as SymbologyMode[]).map(s => (
-                <button
-                  key={s}
-                  onClick={e => {
-                    e.stopPropagation();
-                    setSymbology(s);
-                  }}
-                  className={`text-[10px] px-2.5 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
-                    symbology === s
-                      ? "neu-pressed"
-                      : "neu-raised text-muted-foreground hover:text-foreground"
-                  } ${s === "STANDARD" ? "rounded-l-lg" : "rounded-r-lg"}`}
-                  style={{
-                    fontFamily: "Space Grotesk, sans-serif",
-                    minWidth: "40px",
-                    minHeight: "28px",
-                    ...(symbology === s
-                      ? {
-                          color: "var(--cyan)",
-                          background: isDark
-                            ? "rgba(0,212,255,0.06)"
-                            : "rgba(8,145,178,0.08)",
-                          boxShadow: isDark
-                            ? "inset 3px 3px 6px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(60,60,80,0.08)"
-                            : "inset 3px 3px 6px rgba(166,170,190,0.45), inset -2px -2px 4px rgba(255,255,255,0.7)",
-                        }
-                      : {}),
-                  }}
-                >
-                  {s === "STANDARD" ? "H/A" : "TEAM"}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-0">
-              {(["PPG", "WIN%", "GD"] as MetricMode[]).map(m => (
-                <button
-                  key={m}
-                  onClick={e => {
-                    e.stopPropagation();
-                    setMode(m);
-                  }}
-                  className={`text-[10px] px-3 py-1.5 font-semibold tracking-wider transition-all cursor-pointer select-none ${
-                    mode === m
-                      ? "neu-pressed"
-                      : "neu-raised text-muted-foreground hover:text-foreground"
-                  } ${m === "PPG" ? "rounded-l-lg" : m === "GD" ? "rounded-r-lg" : ""}`}
-                  style={{
-                    fontFamily: "Space Grotesk, sans-serif",
-                    minWidth: "40px",
-                    minHeight: "28px",
-                    ...(mode === m
-                      ? {
-                          color: "var(--cyan)",
-                          background: isDark
-                            ? "rgba(0,212,255,0.06)"
-                            : "rgba(8,145,178,0.08)",
-                          boxShadow: isDark
-                            ? "inset 3px 3px 6px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(60,60,80,0.08)"
-                            : "inset 3px 3px 6px rgba(166,170,190,0.45), inset -2px -2px 4px rgba(255,255,255,0.7)",
-                        }
-                      : {}),
-                  }}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
+        zone1Toolbar={
+          <>
+            <SegmentedControl<SymbologyMode>
+              options={[
+                { value: "STANDARD", label: "H/A" },
+                { value: "TEAM", label: "TEAM" },
+              ]}
+              value={symbology}
+              onChange={setSymbology}
+              isDark={isDark}
+              groupIcon={<Palette size={13} />}
+              groupTooltip="Color Symbology"
+            />
+            <SegmentedControl<MetricMode>
+              options={[
+                { value: "PPG", label: "PPG" },
+                { value: "WIN%", label: "WIN%" },
+                { value: "GD", label: "GD" },
+              ]}
+              value={mode}
+              onChange={setMode}
+              isDark={isDark}
+              groupIcon={<Layers size={13} />}
+              groupTooltip="Data Metric"
+            />
+          </>
         }
       />
 

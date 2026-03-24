@@ -32,6 +32,7 @@ import {
 } from "@/lib/seasonPulse";
 import { mutedTeamColor, hexToRgba, lighten, darken } from "@/lib/chartUtils";
 import { ChartHeader } from "@/components/ui/ChartHeader";
+import { IconAction } from "@/components/ui/ChartControls";
 import {
   CardInsightToggle,
   CardInsightSection,
@@ -1049,43 +1050,21 @@ export default function BumpChart({
             cluster, the more competitive that stretch of the season was.
           </>
         }
-        rightAction={
-          <div className="flex items-center gap-2">
+        zone1Toolbar={
+          <IconAction
+            icon={viewMode === "allFocus" ? <Sparkles size={13} /> : viewMode === "colors" ? <Eye size={13} /> : <EyeOff size={13} />}
+            label={viewMode === "allFocus" ? "All Focus" : viewMode === "colors" ? "All Colors" : "Focus Mode"}
+            tooltip="Cycle view mode: Focus → All Colors → All Focus"
+            onClick={cycleViewMode}
+            isDark={isDark}
+          />
+        }
+        zone2Analysis={
           <CardInsightToggle
             isOpen={showBumpInsights}
             onToggle={() => setShowBumpInsights(v => !v)}
             isDark={isDark}
           />
-          <button
-            onClick={cycleViewMode}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all"
-            style={{
-              fontFamily: "Space Grotesk, sans-serif",
-              background: viewMode !== "focus"
-                ? isDark
-                  ? viewMode === "allFocus" ? "rgba(245, 158, 11, 0.14)" : "rgba(0, 212, 255, 0.12)"
-                  : viewMode === "allFocus" ? "rgba(217, 119, 6, 0.12)" : "rgba(8, 145, 178, 0.10)"
-                : isDark
-                  ? "rgba(255,255,255,0.04)"
-                  : "rgba(0,0,0,0.04)",
-              color: viewMode === "allFocus" ? "var(--amber)" : viewMode === "colors" ? "var(--cyan)" : "var(--muted-foreground)",
-              boxShadow: viewMode !== "focus"
-                ? isDark
-                  ? viewMode === "allFocus"
-                    ? "0 1px 3px rgba(0,0,0,0.3), 0 0 8px rgba(245,158,11,0.15)"
-                    : "0 1px 3px rgba(0,0,0,0.3), 0 0 8px rgba(0,212,255,0.1)"
-                  : viewMode === "allFocus"
-                    ? "0 1px 3px rgba(0,0,0,0.08), 0 0 8px rgba(217,119,6,0.1)"
-                    : "0 1px 3px rgba(0,0,0,0.08), 0 0 8px rgba(8,145,178,0.08)"
-                : isDark
-                  ? "inset 1px 1px 3px rgba(0,0,0,0.4), inset -1px -1px 2px rgba(60,60,80,0.06)"
-                  : "inset 1px 1px 3px rgba(0,0,0,0.06), inset -1px -1px 2px rgba(255,255,255,0.5)",
-            }}
-          >
-            {viewMode === "allFocus" ? <Sparkles size={11} /> : viewMode === "colors" ? <Eye size={11} /> : <EyeOff size={11} />}
-            <span>{viewMode === "allFocus" ? "All Focus" : viewMode === "colors" ? "All Colors" : "Focus Mode"}</span>
-          </button>
-          </div>
         }
         methods={
           <div className="space-y-2">

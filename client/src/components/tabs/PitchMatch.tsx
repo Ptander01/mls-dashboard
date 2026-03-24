@@ -464,8 +464,8 @@ export default function PitchMatch() {
                   </p>
                 </>
               }
-              rightAction={
-                <MaximizeButton onClick={() => setMaximized("passing3d")} />
+              zone3Utility={
+                <MaximizeButton onClick={() => setMaximized("passing3d")} isDark={false} />
               }
             />
             <Suspense
