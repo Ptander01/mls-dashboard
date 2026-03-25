@@ -397,6 +397,43 @@ export default function SeasonTimeline({
               team's composite power score (0–100) across all weeks, normalized
               to the timeline height for visual context.
             </p>
+            <hr style={{ opacity: 0.15, margin: "12px 0" }} />
+            <p>
+              <strong>AI Season Analysis (GPT-4.1-mini):</strong> When a team is
+              selected, the summary card sends a structured context payload to
+              OpenAI's <code>gpt-4.1-mini</code> model via a server-side API
+              route (<code>/api/ai-commentary</code>). The payload aggregates
+              seven data dimensions:
+            </p>
+            <ul style={{ paddingLeft: 16, marginTop: 4, marginBottom: 4 }}>
+              <li>Team identity, conference standing, and current power rank</li>
+              <li>Season trajectory (rank delta, home/away splits, recent form)</li>
+              <li>Last 10 match results with scores and opponent ranks</li>
+              <li>Inflection events sorted by severity</li>
+              <li>Top scorers and assist leaders with minutes context</li>
+              <li>Salary breakdown (DP, TAM, supplemental) with per-90 efficiency</li>
+              <li>PPG trend across the season</li>
+            </ul>
+            <p>
+              The system prompt instructs the model to act as an expert MLS
+              analyst writing for The Athletic, producing 2–3 short paragraphs
+              in an analytical, journalistic tone. It emphasizes <em>why</em>{" "}
+              results happened (not just what), highlights high-salary
+              underperformers and low-salary overperformers by name, and avoids
+              markdown formatting.
+            </p>
+            <p>
+              <strong>Caching:</strong> Responses are cached in a dual layer
+              (in-memory + <code>localStorage</code>) keyed by{" "}
+              <code>teamId + maxWeek + seasonYear</code> with a 30-minute TTL.
+              Concurrent requests for the same team are deduplicated.
+            </p>
+            <p>
+              <strong>Fallback:</strong> If the API call fails or times out, the
+              card gracefully reverts to the rule-based{" "}
+              <code>seasonSummaryNarrative</code> from the insight engine, with a
+              subtle notice indicating AI analysis is unavailable.
+            </p>
           </div>
         }
         zone2Analysis={
@@ -1032,7 +1069,7 @@ function EventCard({
 }
 
 // ═══════════════════════════════════════════
-// SUMMARY CARD (with AI commentary support)
+// SUMMARY CARD (elevated neumorphic AI commentary)
 // ═══════════════════════════════════════════
 
 function SummaryCard({
@@ -1052,6 +1089,39 @@ function SummaryCard({
   isDark: boolean;
   eventCount: number;
 }) {
+  // ── Neumorphic shadow definitions (matching NeuInsightContainer) ──
+  const elevatedShadow = isDark
+    ? [
+        "0 12px 28px rgba(0,0,0,0.55)",
+        "0 6px 12px rgba(0,0,0,0.4)",
+        "-4px -4px 12px rgba(60,60,80,0.08)",
+        "inset 0 1px 0 rgba(255,255,255,0.06)",
+        "inset 0 -1px 0 rgba(0,0,0,0.2)",
+      ].join(", ")
+    : [
+        "0 12px 28px rgba(140,145,170,0.3)",
+        "0 6px 12px rgba(166,170,190,0.25)",
+        "-4px -4px 12px rgba(255,255,255,0.85)",
+        "inset 0 1px 0 rgba(255,255,255,0.75)",
+        "inset 0 -1px 0 rgba(166,170,190,0.1)",
+      ].join(", ");
+
+  const flatShadow = isDark
+    ? "2px 2px 8px rgba(0,0,0,0.3), -1px -1px 4px rgba(60,60,80,0.05)"
+    : "2px 2px 8px rgba(0,0,0,0.06), -1px -1px 4px rgba(255,255,255,0.6)";
+
+  // AI commentary gets the elevated treatment; fallback stays flat
+  const cardShadow = isAi && !isLoading ? elevatedShadow : flatShadow;
+  const cardBg = isAi && !isLoading
+    ? isDark ? "#232340" : "#ebedf6"
+    : isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.015)";
+  const cardBorder = isAi && !isLoading
+    ? isDark
+      ? "1.5px solid rgba(167, 139, 250, 0.12)"
+      : "1.5px solid rgba(124, 58, 237, 0.08)"
+    : `1.5px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`;
+  const cardY = isAi && !isLoading ? -3 : 0;
+
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
@@ -1060,62 +1130,116 @@ function SummaryCard({
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       className="overflow-hidden"
     >
-      <div
-        className="rounded-xl p-4"
+      <motion.div
+        animate={{
+          boxShadow: cardShadow,
+          background: cardBg,
+          y: cardY,
+        }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="rounded-xl p-4 relative"
         style={{
           borderLeft: `3px solid ${teamColor}`,
-          background: isDark
-            ? "rgba(255,255,255,0.02)"
-            : "rgba(0,0,0,0.015)",
-          boxShadow: isDark
-            ? "2px 2px 8px rgba(0,0,0,0.3), -1px -1px 4px rgba(60,60,80,0.05)"
-            : "2px 2px 8px rgba(0,0,0,0.06), -1px -1px 4px rgba(255,255,255,0.6)",
+          border: cardBorder,
+          borderLeftWidth: 3,
+          borderLeftColor: teamColor,
+          zIndex: isAi && !isLoading ? 5 : 1,
         }}
         role="listitem"
       >
         {/* Header row */}
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2.5 mb-3 pb-2"
+          style={{
+            borderBottom: isDark
+              ? "1px solid rgba(255,255,255,0.06)"
+              : "1px solid rgba(0,0,0,0.06)",
+          }}
+        >
+          {/* Icon with glow (matching InsightPanel Sparkles) */}
           {isAi ? (
-            <Sparkles
-              size={14}
+            <div
+              className="relative flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0"
               style={{
-                color: isDark ? "#a78bfa" : "#7c3aed",
+                background: isDark
+                  ? "rgba(167, 139, 250, 0.08)"
+                  : "rgba(124, 58, 237, 0.06)",
               }}
-            />
+            >
+              {/* Bloom glow */}
+              <div
+                className="absolute inset-0 rounded-lg pointer-events-none"
+                style={{
+                  boxShadow: isDark
+                    ? "0 0 10px rgba(167,139,250,0.3), 0 0 22px rgba(167,139,250,0.15)"
+                    : "0 0 10px rgba(124,58,237,0.25), 0 0 22px rgba(124,58,237,0.1)",
+                }}
+              />
+              <Sparkles
+                size={13}
+                style={{
+                  color: isDark ? "#a78bfa" : "#7c3aed",
+                  position: "relative",
+                  zIndex: 1,
+                  filter: isDark
+                    ? "drop-shadow(0 0 3px rgba(167,139,250,0.5))"
+                    : "drop-shadow(0 0 3px rgba(124,58,237,0.4))",
+                }}
+              />
+            </div>
           ) : (
-            <Info
-              size={14}
+            <div
+              className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0"
               style={{
-                color: isDark
-                  ? "rgba(255,255,255,0.4)"
-                  : "rgba(0,0,0,0.35)",
+                background: isDark
+                  ? "rgba(255,255,255,0.04)"
+                  : "rgba(0,0,0,0.03)",
               }}
-            />
+            >
+              <Info
+                size={13}
+                style={{
+                  color: isDark
+                    ? "rgba(255,255,255,0.4)"
+                    : "rgba(0,0,0,0.35)",
+                }}
+              />
+            </div>
           )}
-          <span
-            className="text-[10px] uppercase tracking-wider text-muted-foreground"
-            style={{ fontFamily: "Space Grotesk, sans-serif" }}
-          >
-            {isAi ? "AI Season Analysis" : "Season Summary"}
-            {isLoading && (
-              <span
-                className="ml-2 normal-case tracking-normal"
-                style={{ color: isDark ? "#a78bfa" : "#7c3aed" }}
-              >
-                — generating analysis...
-              </span>
-            )}
-            {!isLoading && !isAi && eventCount > 0 && (
-              <span className="ml-2 normal-case tracking-normal">
-                — click an event node above for details
-              </span>
-            )}
-          </span>
+
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-wider"
+              style={{
+                fontFamily: "Space Grotesk, sans-serif",
+                color: isAi
+                  ? isDark ? "#a78bfa" : "#7c3aed"
+                  : "var(--muted-foreground)",
+                letterSpacing: "0.08em",
+              }}
+            >
+              {isAi ? "AI Season Analysis" : "Season Summary"}
+            </p>
+            <p
+              className="text-[10px] mt-0.5"
+              style={{
+                fontFamily: "Space Grotesk, sans-serif",
+                color: "var(--muted-foreground)",
+              }}
+            >
+              {isLoading
+                ? "Generating holistic analysis..."
+                : isAi
+                  ? "GPT-4.1-mini · Holistic team narrative from trajectory, roster & salary data"
+                  : eventCount > 0
+                    ? "Click an event node above for details"
+                    : "Algorithmic season overview"}
+            </p>
+          </div>
 
           {/* AI badge */}
           {isAi && !isLoading && (
             <span
-              className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+              className="ml-auto text-[9px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
               style={{
                 fontFamily: "JetBrains Mono, monospace",
                 background: isDark
@@ -1132,22 +1256,34 @@ function SummaryCard({
 
         {/* Loading skeleton */}
         {isLoading && (
-          <div className="space-y-2 mb-3">
+          <div className="space-y-2.5 mb-3">
             <div
               className="skeleton-shimmer"
               style={{ height: 12, width: "100%", borderRadius: 6 }}
             />
             <div
               className="skeleton-shimmer"
-              style={{ height: 12, width: "92%", borderRadius: 6 }}
+              style={{ height: 12, width: "94%", borderRadius: 6 }}
             />
             <div
               className="skeleton-shimmer"
-              style={{ height: 12, width: "85%", borderRadius: 6 }}
+              style={{ height: 12, width: "87%", borderRadius: 6 }}
             />
             <div
               className="skeleton-shimmer"
-              style={{ height: 12, width: "60%", borderRadius: 6 }}
+              style={{ height: 8, width: "40%", borderRadius: 6, marginTop: 8 }}
+            />
+            <div
+              className="skeleton-shimmer"
+              style={{ height: 12, width: "96%", borderRadius: 6 }}
+            />
+            <div
+              className="skeleton-shimmer"
+              style={{ height: 12, width: "82%", borderRadius: 6 }}
+            />
+            <div
+              className="skeleton-shimmer"
+              style={{ height: 12, width: "65%", borderRadius: 6 }}
             />
           </div>
         )}
@@ -1158,9 +1294,9 @@ function SummaryCard({
           style={{
             fontFamily: "Space Grotesk, sans-serif",
             color: isDark
-              ? "rgba(255,255,255,0.7)"
-              : "rgba(0,0,0,0.6)",
-            opacity: isLoading ? 0.4 : 1,
+              ? "rgba(255,255,255,0.75)"
+              : "rgba(0,0,0,0.65)",
+            opacity: isLoading ? 0.3 : 1,
             transition: "opacity 0.3s ease",
             whiteSpace: "pre-line",
           }}
@@ -1171,9 +1307,12 @@ function SummaryCard({
         {/* Error notice (subtle, non-blocking) */}
         {error && !isAi && (
           <div
-            className="flex items-center gap-1.5 mt-2"
+            className="flex items-center gap-1.5 mt-3 pt-2"
             style={{
               color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)",
+              borderTop: isDark
+                ? "1px solid rgba(255,255,255,0.04)"
+                : "1px solid rgba(0,0,0,0.04)",
             }}
           >
             <AlertCircle size={10} />
@@ -1185,7 +1324,24 @@ function SummaryCard({
             </span>
           </div>
         )}
-      </div>
+      </motion.div>
+
+      {/* Cast shadow below elevated card (matching NeuInsightContainer) */}
+      {isAi && !isLoading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.3 }}
+          className="pointer-events-none"
+          style={{
+            height: 6,
+            marginTop: -2,
+            background: isDark
+              ? "radial-gradient(ellipse 70% 100% at 50% 0%, rgba(0,0,0,0.12) 0%, transparent 100%)"
+              : "radial-gradient(ellipse 70% 100% at 50% 0%, rgba(140,145,170,0.08) 0%, transparent 100%)",
+          }}
+        />
+      )}
     </motion.div>
   );
 }

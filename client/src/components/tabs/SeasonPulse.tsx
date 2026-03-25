@@ -30,6 +30,8 @@ import {
   SkipBack,
   Filter,
   Layers,
+  Sparkles,
+  MousePointerClick,
 } from "lucide-react";
 import { SegmentedControl } from "@/components/ui/ChartControls";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -792,17 +794,17 @@ export default function SeasonPulse() {
         </StaggerItem>
 
         {/* ═══ NARRATIVE TIMELINE (Layer 3) ═══ */}
-        <AnimatePresence>
-          {selectedTeam && (
-            <StaggerItem key={`timeline-${selectedTeam}`}>
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className="overflow-hidden"
-              >
-                <NeuCard className="p-4 md:p-5">
+        <StaggerItem>
+          <NeuCard className="p-4 md:p-5">
+            <AnimatePresence mode="wait">
+              {selectedTeam ? (
+                <motion.div
+                  key={`timeline-${selectedTeam}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                >
                   <SeasonTimeline
                     teamId={selectedTeam}
                     selectedWeek={selectedWeek}
@@ -815,11 +817,21 @@ export default function SeasonPulse() {
                     totalWeeks={totalWeeks}
                     seasonYear={seasonYear}
                   />
-                </NeuCard>
-              </motion.div>
-            </StaggerItem>
-          )}
-        </AnimatePresence>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="timeline-empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <TimelineEmptyState isDark={isDark} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </NeuCard>
+        </StaggerItem>
       </StaggerContainer>
     </div>
   );
@@ -828,6 +840,65 @@ export default function SeasonPulse() {
 // ═══════════════════════════════════════════
 // SELECTED TEAM SUMMARY PANEL
 // ═══════════════════════════════════════════
+
+function TimelineEmptyState({ isDark }: { isDark: boolean }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 gap-4">
+      {/* Icon cluster */}
+      <div className="relative">
+        <div
+          className="flex items-center justify-center w-14 h-14 rounded-2xl"
+          style={{
+            background: isDark
+              ? "rgba(167, 139, 250, 0.06)"
+              : "rgba(124, 58, 237, 0.04)",
+            boxShadow: isDark
+              ? "inset 2px 2px 6px rgba(0,0,0,0.3), inset -2px -2px 4px rgba(60,60,80,0.04)"
+              : "inset 2px 2px 6px rgba(0,0,0,0.04), inset -2px -2px 4px rgba(255,255,255,0.5)",
+          }}
+        >
+          <Sparkles
+            size={22}
+            style={{
+              color: isDark ? "rgba(167,139,250,0.4)" : "rgba(124,58,237,0.3)",
+            }}
+          />
+        </div>
+        <MousePointerClick
+          size={14}
+          className="absolute -bottom-1 -right-1"
+          style={{
+            color: isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.2)",
+          }}
+        />
+      </div>
+
+      {/* Text */}
+      <div className="text-center space-y-1.5">
+        <p
+          className="text-sm font-semibold"
+          style={{
+            fontFamily: "Space Grotesk, sans-serif",
+            color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)",
+          }}
+        >
+          Team Narrative Timeline
+        </p>
+        <p
+          className="text-xs max-w-xs mx-auto"
+          style={{
+            fontFamily: "Space Grotesk, sans-serif",
+            color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)",
+            lineHeight: 1.6,
+          }}
+        >
+          Select a team from the bump chart above to see their season story,
+          inflection events, and AI-powered analysis.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function SelectedTeamSummary({
   teamId,
