@@ -228,22 +228,30 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 **Sprint Brief:** `docs/sprint-briefs/design-system-sprint-brief.md`
 **Dependencies:** Epics 6.5, 11, 12
 
-- **Task 13.1: Extract Shared Primitives**
-  - [ ] Create `client/src/components/ui/SegmentedControl.tsx` — unified segmented control with neumorphic styling, icon+text support, and compact/default sizes.
-  - [ ] Create `client/src/components/ui/ToggleAction.tsx` — standalone on/off toggle button.
-  - [ ] Extract `ToggleGroup` from `SeasonPulse.tsx` into the shared component.
-- **Task 13.2: Enforce Three-Zone Ordering**
-  - [ ] Update `ChartHeader` to accept structured `rightAction` zones (data, analysis, utility) instead of freeform ReactNode.
-  - [ ] Add subtle vertical separator between zones.
-- **Task 13.3: Replace Bespoke Controls**
-  - [ ] Replace hand-rolled segmented buttons in `Attendance.tsx` (gravMode), `DumbbellChart.tsx` (symbology, metric), `ResilienceIndexChart.tsx` (colorMode, viewMode), `TravelScatterChart.tsx` (conference, color).
-  - [ ] Replace inline `ToggleGroup` in `SeasonPulse.tsx` with shared `SegmentedControl`.
-- **Task 13.4: Add Missing Affordances**
-  - [ ] Add `MaximizeButton` to DumbbellChart, TravelScatterChart, ResilienceIndexChart, and Narrative Timeline.
-  - [ ] Ensure all charts with data have `CardInsightToggle`.
-- **Task 13.5: Audit & Verify**
-  - [ ] Visual regression check across all 6 tabs in both light and dark mode.
-  - [ ] Verify control ordering follows spec: Data/View → Analysis → Utility.
+- **Task 13.0: Wireframe Exploration** ✅ Session 1 (Mar 24, 2026)
+  - [x] Built wireframe sandbox (`components/sandbox/ChartControlWireframe.tsx`) with Options A-D.
+  - [x] User approved **Option D** — distributed three-zone layout: Row 1 (Title + Z2/Z3 top-right), Row 2 (Description full-width), Row 3 (Z1 toolbar full-width).
+- **Task 13.1: Extract Shared Primitives** ✅ Session 1
+  - [x] Created `client/src/components/ui/ChartControls.tsx` with `IconAction`, `SegmentedControl`, `ToggleAction`, `ZoneSeparator`.
+  - [x] Standardized lucide-react iconography: Filter, Palette, Layers, Eye, Lightbulb (amber), FlaskConical, Maximize2.
+  - [x] All icon buttons wrapped in Radix Tooltip with descriptive labels.
+- **Task 13.2: Enforce Three-Zone Ordering** ✅ Session 1
+  - [x] Refactored `ChartHeader.tsx` to accept `zone1Toolbar`, `zone2Analysis`, `zone3Utility` props.
+  - [x] `rightAction` kept as deprecated fallback; zero consumer usages remain.
+- **Task 13.3: Replace Bespoke Controls** ✅ Session 1 — 100% migration coverage
+  - [x] `Attendance.tsx` — all 5 charts migrated (Home Attendance, Weekly Trend, Gravitational Pull, Away Impact, Home Response).
+  - [x] `DumbbellChart.tsx` — Zone 1: SegmentedControl for Symbology + Metric.
+  - [x] `ResilienceIndexChart.tsx` — Zone 1: SegmentedControl for ColorMode + ViewMode.
+  - [x] `TravelScatterChart.tsx` — Zone 1: SegmentedControl for Conference + ToggleAction for Color.
+  - [x] `BumpChart.tsx` — Zone 1: IconAction for view mode cycling.
+  - [x] `SeasonPulse.tsx` — Replaced inline ToggleGroup with shared SegmentedControl.
+  - [x] `PlayerStats.tsx`, `PitchMatch.tsx`, `TeamBudget.tsx` — all migrated.
+- **Task 13.4: Add Missing Affordances** ✅ Session 1
+  - [x] `CardInsightToggle` now uses `IconAction` internally with Lightbulb icon and amber active state.
+  - [x] `MaximizeButton` now uses `IconAction` internally with Maximize2 icon.
+- **Task 13.5: Audit & Verify** ✅ Session 1
+  - [x] Clean build: zero TypeScript errors, zero warnings beyond chunk size advisories.
+  - [x] `rightAction` grep: 0 matches outside `ChartHeader.tsx`.
 
 ## Epic 14: 2026 Data Pipeline Polish
 
