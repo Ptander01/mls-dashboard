@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import FilterPanel from "@/components/FilterPanel";
 import TabSkeleton from "@/components/TabSkeleton";
 import { useFilters } from "@/contexts/FilterContext";
@@ -54,7 +54,15 @@ const tabVariants = {
 };
 
 /** Render the active tab component */
-function TabContent({ activeTab }: { activeTab: string }) {
+function TabContent({
+  activeTab,
+  deepLinkTeam,
+  onPulseTeamChange,
+}: {
+  activeTab: string;
+  deepLinkTeam?: string | null;
+  onPulseTeamChange?: (teamId: string | null) => void;
+}) {
   switch (activeTab) {
     case "players":
       return <PlayerStats />;
@@ -67,7 +75,12 @@ function TabContent({ activeTab }: { activeTab: string }) {
     case "pitch":
       return <PitchMatch />;
     case "pulse":
-      return <SeasonPulse />;
+      return (
+        <SeasonPulse
+          deepLinkTeam={deepLinkTeam}
+          onTeamChange={onPulseTeamChange}
+        />
+      );
     default:
       return null;
   }
@@ -191,8 +204,36 @@ function ThemeToggle() {
   );
 }
 
+/** Valid tab IDs for URL deep-linking */
+const VALID_TABS = new Set(tabs.map((t) => t.id));
+
+/** Read initial state from URL search params (?tab=pulse&team=LAFC) */
+function readUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get("tab");
+  const team = params.get("team");
+  return {
+    tab: tab && VALID_TABS.has(tab) ? tab : null,
+    team: team || null,
+  };
+}
+
+/** Write state into URL search params without page reload */
+function writeUrlParams(tab: string, team: string | null) {
+  const params = new URLSearchParams();
+  // Only write params for non-default state
+  if (tab !== "players") params.set("tab", tab);
+  if (team) params.set("team", team);
+  const search = params.toString();
+  const url = search ? `${window.location.pathname}?${search}` : window.location.pathname;
+  window.history.replaceState(null, "", url);
+}
+
 export default function Home() {
-  const [activeTab, setActiveTab] = useState("players");
+  // Read initial tab/team from URL params on mount
+  const urlState = readUrlParams();
+  const [activeTab, setActiveTab] = useState(urlState.tab || "players");
+  const [deepLinkTeam, setDeepLinkTeam] = useState<string | null>(urlState.team);
   const [loaded, setLoaded] = useState(false);
   const { isFilterActive, filteredPlayers, filteredTeams, filteredMatches, activeSeasonData } = useFilters();
   const { theme } = useTheme();
@@ -203,10 +244,18 @@ export default function Home() {
     return () => clearTimeout(t);
   }, []);
 
-  const handleTabChange = (tabId: string) => {
+  // Sync tab changes to URL
+  const handleTabChange = useCallback((tabId: string) => {
     if (tabId === activeTab) return;
     setActiveTab(tabId);
-  };
+    // Clear team param when switching away from pulse
+    writeUrlParams(tabId, tabId === "pulse" ? null : null);
+  }, [activeTab]);
+
+  // Callback for SeasonPulse to report team selection changes to the URL
+  const handlePulseTeamChange = useCallback((teamId: string | null) => {
+    writeUrlParams("pulse", teamId);
+  }, []);
 
   return (
     <div
@@ -377,7 +426,11 @@ export default function Home() {
             exit="exit"
           >
             <Suspense fallback={<TabSkeleton />}>
-              <TabContent activeTab={activeTab} />
+              <TabContent
+                activeTab={activeTab}
+                deepLinkTeam={deepLinkTeam}
+                onPulseTeamChange={handlePulseTeamChange}
+              />
             </Suspense>
           </motion.div>
         </AnimatePresence>

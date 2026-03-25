@@ -363,7 +363,13 @@ function TierSeparator({
 // MAIN COMPONENT
 // ═══════════════════════════════════════════
 
-export default function SeasonPulse() {
+export default function SeasonPulse({
+  deepLinkTeam,
+  onTeamChange,
+}: {
+  deepLinkTeam?: string | null;
+  onTeamChange?: (teamId: string | null) => void;
+} = {}) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const { filters, filteredTeams, activeSeasonData, seasonLoading } = useFilters();
@@ -372,11 +378,25 @@ export default function SeasonPulse() {
   const { matches, totalWeeks, seasonYear, teams } = activeSeasonData;
 
   // Shared state for all three layers
-  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  const [selectedTeam, setSelectedTeamRaw] = useState<string | null>(
+    deepLinkTeam && teams.some((t) => t.id === deepLinkTeam) ? deepLinkTeam : null
+  );
   const [selectedWeek, setSelectedWeek] = useState<number>(totalWeeks);
   const [conferenceFilter, setConferenceFilter] = useState<ConferenceFilter>("ALL");
   const [rankMode, setRankMode] = useState<RankMode>("POWER");
   const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
+
+  // Wrap setSelectedTeam to also notify parent for URL sync
+  const setSelectedTeam = useCallback(
+    (teamOrFn: string | null | ((prev: string | null) => string | null)) => {
+      setSelectedTeamRaw((prev) => {
+        const next = typeof teamOrFn === "function" ? teamOrFn(prev) : teamOrFn;
+        onTeamChange?.(next);
+        return next;
+      });
+    },
+    [onTeamChange]
+  );
 
   const maxWeek = getMaxWeek(totalWeeks);
 
@@ -384,14 +404,14 @@ export default function SeasonPulse() {
   useEffect(() => {
     setSelectedWeek(totalWeeks);
     setSelectedTeam(null);
-  }, [seasonYear, totalWeeks]);
+  }, [seasonYear, totalWeeks, setSelectedTeam]);
 
   // Auto-select team when exactly one team is filtered globally
   useEffect(() => {
     if (filters.selectedTeams.length === 1) {
       setSelectedTeam(filters.selectedTeams[0]);
     }
-  }, [filters.selectedTeams]);
+  }, [filters.selectedTeams, setSelectedTeam]);
 
   // Get standings for selected week — pass season data
   const weekStandings = useMemo(() => {

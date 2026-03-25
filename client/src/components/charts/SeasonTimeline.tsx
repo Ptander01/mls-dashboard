@@ -21,6 +21,8 @@ import {
   Info,
   Sparkles,
   AlertCircle,
+  Share2,
+  Filter,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getTeam } from "@/lib/mlsData";
@@ -32,6 +34,7 @@ import {
   getTeamWeeklyResults,
   type TeamWeekStanding,
   type SeasonEvent,
+  type EventType,
   type WeekMatchResult,
 } from "@/lib/seasonPulse";
 import { mutedTeamColor, hexToRgba } from "@/lib/chartUtils";
@@ -41,11 +44,50 @@ import {
   CardInsightSection,
 } from "@/components/CardInsight";
 import type { CardInsightItem } from "@/components/CardInsight";
+import { IconAction, ZoneSeparator } from "@/components/ui/ChartControls";
 import {
   seasonNarrativeInsights,
   seasonPulseHeadline,
   seasonSummaryNarrative,
 } from "@/lib/insightEngine";
+
+// ═══════════════════════════════════════════
+// EVENT FILTER CATEGORIES
+// ═══════════════════════════════════════════
+
+interface EventCategory {
+  id: string;
+  label: string;
+  types: EventType[];
+  color: { dark: string; light: string };
+}
+
+const EVENT_CATEGORIES: EventCategory[] = [
+  {
+    id: "streaks",
+    label: "Streaks",
+    types: ["winning_streak", "losing_streak", "unbeaten_run", "winless_run"],
+    color: { dark: "#10b981", light: "#059669" },
+  },
+  {
+    id: "rank",
+    label: "Rank Changes",
+    types: ["rank_surge", "rank_collapse"],
+    color: { dark: "#f59e0b", light: "#d97706" },
+  },
+  {
+    id: "upsets",
+    label: "Upsets",
+    types: ["upset_win", "upset_loss"],
+    color: { dark: "#ef4444", light: "#dc2626" },
+  },
+  {
+    id: "milestones",
+    label: "Milestones",
+    types: ["milestone"],
+    color: { dark: "#06b6d4", light: "#0891b2" },
+  },
+];
 
 // ═══════════════════════════════════════════
 // TYPES
@@ -264,6 +306,10 @@ export default function SeasonTimeline({
   const [hoveredWeek, setHoveredWeek] = useState<number | null>(null);
   const [hoveredResult, setHoveredResult] = useState<{ week: number; result: WeekMatchResult; x: number } | null>(null);
   const [showInsights, setShowInsights] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(
+    () => new Set(EVENT_CATEGORIES.map((c) => c.id))
+  );
+  const [showCopied, setShowCopied] = useState(false);
 
   const team = getTeam(teamId);
   const teamColor = mutedTeamColor(teamId, isDark);
@@ -274,10 +320,51 @@ export default function SeasonTimeline({
     [teamId, teams, matches, totalWeeks]
   );
 
-  const events = useMemo(
+  const allEvents = useMemo(
     () => getTeamEvents(teamId, teams, matches, totalWeeks),
     [teamId, teams, matches, totalWeeks]
   );
+
+  // Apply event category filters
+  const events = useMemo(() => {
+    if (activeFilters.size === EVENT_CATEGORIES.length) return allEvents;
+    const allowedTypes = new Set<EventType>();
+    for (const cat of EVENT_CATEGORIES) {
+      if (activeFilters.has(cat.id)) {
+        for (const t of cat.types) allowedTypes.add(t);
+      }
+    }
+    return allEvents.filter((e) => allowedTypes.has(e.type));
+  }, [allEvents, activeFilters]);
+
+  // Toggle a filter category
+  const toggleFilter = useCallback((catId: string) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(catId)) {
+        // Don't allow deselecting all — at least one must remain
+        if (next.size <= 1) return prev;
+        next.delete(catId);
+      } else {
+        next.add(catId);
+      }
+      return next;
+    });
+    // Clear selected event if it no longer matches filters
+    setSelectedEvent(null);
+  }, []);
+
+  // Share link handler
+  const handleShare = useCallback(() => {
+    const params = new URLSearchParams();
+    params.set("tab", "pulse");
+    params.set("team", teamId);
+    const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 2000);
+    });
+  }, [teamId]);
 
   const weeklyResults = useMemo(
     () => getTeamWeeklyResults(teamId, teams, matches, totalWeeks),
@@ -364,7 +451,11 @@ export default function SeasonTimeline({
       {/* ─── CHART HEADER ─── */}
       <ChartHeader
         title={`${team.short}'s Season Story`}
-        subtitle={`${events.length} inflection event${events.length !== 1 ? "s" : ""} across ${totalWeeks} weeks`}
+        subtitle={
+          activeFilters.size < EVENT_CATEGORIES.length
+            ? `${events.length} of ${allEvents.length} events shown (filtered) · ${totalWeeks} weeks`
+            : `${allEvents.length} inflection event${allEvents.length !== 1 ? "s" : ""} across ${totalWeeks} weeks`
+        }
         description={headline}
         methods={
           <div className="space-y-2">
@@ -436,12 +527,81 @@ export default function SeasonTimeline({
             </p>
           </div>
         }
+        zone1Toolbar={
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Filter size={12} style={{ opacity: 0.5, marginRight: 2 }} />
+            {EVENT_CATEGORIES.map((cat) => {
+              const isActive = activeFilters.has(cat.id);
+              const catColor = isDark ? cat.color.dark : cat.color.light;
+              const count = allEvents.filter((e) =>
+                cat.types.includes(e.type)
+              ).length;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => toggleFilter(cat.id)}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-all cursor-pointer select-none"
+                  style={{
+                    fontFamily: "Space Grotesk, sans-serif",
+                    background: isActive
+                      ? `${catColor}18`
+                      : isDark
+                        ? "rgba(255,255,255,0.03)"
+                        : "rgba(0,0,0,0.03)",
+                    border: `1px solid ${isActive ? `${catColor}40` : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
+                    color: isActive
+                      ? catColor
+                      : isDark
+                        ? "rgba(255,255,255,0.3)"
+                        : "rgba(0,0,0,0.3)",
+                    opacity: isActive ? 1 : 0.6,
+                  }}
+                  title={`${isActive ? "Hide" : "Show"} ${cat.label.toLowerCase()} events`}
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{
+                      background: isActive ? catColor : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
+                    }}
+                  />
+                  {cat.label}
+                  {count > 0 && (
+                    <span style={{ opacity: 0.6 }}>{count}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        }
         zone2Analysis={
           <CardInsightToggle
             isOpen={showInsights}
             onToggle={() => setShowInsights((v) => !v)}
             isDark={isDark}
           />
+        }
+        zone3Utility={
+          <div className="relative">
+            <IconAction
+              icon={<Share2 size={13} />}
+              tooltip={showCopied ? "Link copied!" : "Copy shareable link"}
+              onClick={handleShare}
+              isDark={isDark}
+              activeColor="cyan"
+            />
+            {showCopied && (
+              <span
+                className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-semibold whitespace-nowrap px-1.5 py-0.5 rounded"
+                style={{
+                  fontFamily: "Space Grotesk, sans-serif",
+                  background: isDark ? "rgba(0,212,255,0.15)" : "rgba(8,145,178,0.15)",
+                  color: "var(--cyan)",
+                }}
+              >
+                Copied!
+              </span>
+            )}
+          </div>
         }
       />
 
@@ -886,7 +1046,9 @@ export default function SeasonTimeline({
           className="text-center py-6 text-sm text-muted-foreground"
           style={{ fontFamily: "Space Grotesk, sans-serif" }}
         >
-          No major inflection events detected yet.
+          {allEvents.length > 0
+            ? "No events match the active filters. Try enabling more categories above."
+            : "No major inflection events detected yet."}
         </div>
       )}
     </div>
