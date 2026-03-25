@@ -16,7 +16,7 @@
  * FilterContext and passes it to the seasonPulse engine.
  */
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, type SetStateAction } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy,
@@ -55,7 +55,7 @@ import { ChartHeader } from "@/components/ui/ChartHeader";
 import { InsightPanel } from "@/components/InsightPanel";
 import StaggerContainer, { StaggerItem } from "@/components/StaggerContainer";
 import BumpChart from "@/components/charts/BumpChart";
-import SeasonTimeline from "@/components/charts/SeasonTimeline";
+import SeasonTimeline, { EVENT_CATEGORIES } from "@/components/charts/SeasonTimeline";
 
 // ═══════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -385,6 +385,24 @@ export default function SeasonPulse({
   const [conferenceFilter, setConferenceFilter] = useState<ConferenceFilter>("ALL");
   const [rankMode, setRankMode] = useState<RankMode>("POWER");
   const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
+
+  // ─── Event filter state (shared between BumpChart & SeasonTimeline) ───
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(
+    () => new Set(EVENT_CATEGORIES.map((c) => c.id))
+  );
+
+  const toggleFilter = useCallback((catId: string) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(catId)) {
+        if (next.size <= 1) return prev;
+        next.delete(catId);
+      } else {
+        next.add(catId);
+      }
+      return next;
+    });
+  }, []);
 
   // Wrap setSelectedTeam to also notify parent for URL sync
   const setSelectedTeam = useCallback(
@@ -809,6 +827,7 @@ export default function SeasonPulse({
               rankMode={rankMode}
               selectedWeek={selectedWeek}
               onSelectWeek={setSelectedWeek}
+              activeFilters={activeFilters}
             />
           </NeuCard>
         </StaggerItem>
@@ -836,6 +855,8 @@ export default function SeasonPulse({
                     teamBudgets={activeSeasonData.teamBudgets}
                     totalWeeks={totalWeeks}
                     seasonYear={seasonYear}
+                    activeFilters={activeFilters}
+                    onToggleFilter={toggleFilter}
                   />
                 </motion.div>
               ) : (

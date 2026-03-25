@@ -26,11 +26,14 @@ import {
   computeWeeklyStandings,
   getTeamTrajectory,
   getTeamEvents,
+  detectInflectionEvents,
   getMaxWeek,
   type TeamWeekStanding,
   type SeasonEvent,
+  type EventType,
 } from "@/lib/seasonPulse";
 import { mutedTeamColor, hexToRgba, lighten, darken } from "@/lib/chartUtils";
+import { EVENT_CATEGORIES } from "@/components/charts/SeasonTimeline";
 import { ChartHeader } from "@/components/ui/ChartHeader";
 import { IconAction } from "@/components/ui/ChartControls";
 import {
@@ -53,6 +56,7 @@ interface BumpChartProps {
   rankMode: "POWER" | "POINTS";
   selectedWeek: number;
   onSelectWeek: (week: number) => void;
+  activeFilters: Set<string>;
 }
 
 type WeekPreset = "full" | "first" | "second" | "last10";
@@ -293,6 +297,140 @@ const TeamLine = memo(function TeamLine({
       onClick={onClick}
       data-team={teamId}
     />
+  );
+});
+
+// ═══════════════════════════════════════════
+// DESATURATION HELPER
+// ═══════════════════════════════════════════
+
+/**
+ * Convert a hex color to a desaturated monochrome version.
+ * Computes luminance and returns a grey hex.
+ */
+function desaturate(hex: string, amount: number = 1): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  // Perceptual luminance
+  const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+  const nr = Math.round(r + (lum - r) * amount);
+  const ng = Math.round(g + (lum - g) * amount);
+  const nb = Math.round(b + (lum - b) * amount);
+  return `#${nr.toString(16).padStart(2, "0")}${ng.toString(16).padStart(2, "0")}${nb.toString(16).padStart(2, "0")}`;
+}
+
+// ═══════════════════════════════════════════
+// EVENT SEGMENT LINE COMPONENT
+// ═══════════════════════════════════════════
+
+/**
+ * Renders a team line with selective 3D breach effect on event segments.
+ * The full path is rendered as a flat 2D line, then 3D tube segments are
+ * overlaid only on the week ranges surrounding filtered events.
+ */
+interface EventSegmentLineProps {
+  teamId: string;
+  /** Full path string for the entire team line */
+  fullPathD: string;
+  /** Array of sub-path strings for segments that should get 3D treatment */
+  segmentPaths: string[];
+  opacity: number;
+  strokeWidth: number;
+  color: string;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  onClick: () => void;
+}
+
+const EventSegmentLine = memo(function EventSegmentLine({
+  teamId,
+  fullPathD,
+  segmentPaths,
+  opacity,
+  strokeWidth,
+  color,
+  onMouseEnter,
+  onMouseLeave,
+  onClick,
+}: EventSegmentLineProps) {
+  const shadowColor = darken(color, 0.5);
+  const highlightColor = lighten(color, 0.5);
+
+  return (
+    <g
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onClick={onClick}
+      style={{ cursor: "pointer" }}
+      data-team={teamId}
+    >
+      {/* Base flat 2D line for the entire path */}
+      <path
+        d={fullPathD}
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{
+          opacity,
+          transition: "opacity 0.25s ease, stroke-width 0.25s ease, stroke 0.25s ease",
+          pointerEvents: "stroke",
+        }}
+      />
+
+      {/* 3D breach segments overlaid on event weeks */}
+      {segmentPaths.map((segD, i) => (
+        <g key={`seg-${teamId}-${i}`}>
+          {/* Cast shadow (offset down-right) */}
+          <path
+            d={segD}
+            fill="none"
+            stroke={shadowColor}
+            strokeWidth={strokeWidth + 4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              opacity: opacity * 0.35,
+              transition: "opacity 0.25s ease",
+              pointerEvents: "none",
+            }}
+            transform="translate(1.5, 2.5)"
+          />
+          {/* Base color path (thicker) */}
+          <path
+            d={segD}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth + 1}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              opacity,
+              transition: "opacity 0.25s ease",
+              pointerEvents: "none",
+              filter: `drop-shadow(0 0 4px ${hexToRgba(color, 0.4)})`,
+            }}
+          />
+          {/* Specular highlight (offset up-left) */}
+          <path
+            d={segD}
+            fill="none"
+            stroke={highlightColor}
+            strokeWidth={Math.max(1, strokeWidth - 1)}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              opacity: opacity * 0.6,
+              transition: "opacity 0.25s ease",
+              pointerEvents: "none",
+            }}
+            transform="translate(-0.5, -0.8)"
+          />
+        </g>
+      ))}
+    </g>
   );
 });
 
@@ -591,6 +729,7 @@ export default function BumpChart({
   rankMode,
   selectedWeek,
   onSelectWeek,
+  activeFilters,
 }: BumpChartProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -675,8 +814,8 @@ export default function BumpChart({
     // If showing all teams, use global ranks directly
     if (conferenceFilter === "ALL") {
       const map = new Map<string, { week: number; rank: number }[]>();
-      for (const [id, traj] of globalTrajectories) {
-        map.set(id, traj.map((d) => ({ week: d.week, rank: d.rank })));
+      for (const [id, traj] of Array.from(globalTrajectories.entries())) {
+        map.set(id, traj.map((d: { week: number; rank: number; score: number }) => ({ week: d.week, rank: d.rank })));
       }
       return map;
     }
@@ -687,16 +826,16 @@ export default function BumpChart({
 
     // Determine the max week present in the data
     const allWeeks = new Set<number>();
-    for (const [id, traj] of globalTrajectories) {
+    for (const [id, traj] of Array.from(globalTrajectories.entries())) {
       if (filteredIds.has(id)) {
         for (const d of traj) allWeeks.add(d.week);
       }
     }
 
     // For each week, sort the filtered teams by their score and assign conference-relative ranks
-    for (const week of allWeeks) {
+    for (const week of Array.from(allWeeks)) {
       const weekEntries: { id: string; score: number }[] = [];
-      for (const [id, traj] of globalTrajectories) {
+      for (const [id, traj] of Array.from(globalTrajectories.entries())) {
         if (!filteredIds.has(id)) continue;
         const weekData = traj.find((d) => d.week === week);
         if (weekData) weekEntries.push({ id, score: weekData.score });
@@ -710,8 +849,8 @@ export default function BumpChart({
     }
 
     // Sort each team's trajectory by week
-    for (const [, traj] of map) {
-      traj.sort((a, b) => a.week - b.week);
+    for (const [, traj] of Array.from(map.entries())) {
+      traj.sort((a: { week: number; rank: number }, b: { week: number; rank: number }) => a.week - b.week);
     }
 
     return map;
@@ -765,6 +904,106 @@ export default function BumpChart({
       (e) => e.week >= startWeek && e.week <= endWeek
     );
   }, [selectedTeam, startWeek, endWeek, teams, matches, totalWeeks]);
+
+  // ─── Event View Mode detection ───
+  // Event view activates when NOT all filter categories are active
+  const isEventViewMode = useMemo(() => {
+    return activeFilters.size < EVENT_CATEGORIES.length;
+  }, [activeFilters]);
+
+  // ─── Compute allowed event types from active filters ───
+  const allowedEventTypes = useMemo(() => {
+    const types = new Set<EventType>();
+    for (const cat of EVENT_CATEGORIES) {
+      if (activeFilters.has(cat.id)) {
+        for (const t of cat.types) types.add(t);
+      }
+    }
+    return types;
+  }, [activeFilters]);
+
+  // ─── All events for all teams (for event view mode) ───
+  const allTeamEvents = useMemo(() => {
+    if (!isEventViewMode) return new Map<string, SeasonEvent[]>();
+    const allEvents = detectInflectionEvents(teams, matches, totalWeeks);
+    const filtered = allEvents.filter(
+      (e) => allowedEventTypes.has(e.type) && e.week >= startWeek && e.week <= endWeek
+    );
+    const map = new Map<string, SeasonEvent[]>();
+    for (const e of filtered) {
+      if (!map.has(e.teamId)) map.set(e.teamId, []);
+      map.get(e.teamId)!.push(e);
+    }
+    return map;
+  }, [isEventViewMode, teams, matches, totalWeeks, allowedEventTypes, startWeek, endWeek]);
+
+  // ─── Teams with matching events (for desaturation) ───
+  const teamsWithEvents = useMemo(() => {
+    if (!isEventViewMode) return new Set<string>();
+    return new Set(allTeamEvents.keys());
+  }, [isEventViewMode, allTeamEvents]);
+
+  // ─── Event segment paths per team (for 3D breach rendering) ───
+  const eventSegmentPaths = useMemo(() => {
+    if (!isEventViewMode) return new Map<string, string[]>();
+    const result = new Map<string, string[]>();
+
+    for (const [teamId, events] of Array.from(allTeamEvents.entries())) {
+      const trajectory = allTrajectories.get(teamId);
+      if (!trajectory) continue;
+
+      // Collect event weeks and expand to surrounding segments
+      const eventWeeks = new Set<number>();
+      for (const e of events) {
+        eventWeeks.add(e.week);
+      }
+
+      // Build breach week ranges: for each event at week N, include N-1 to N+1
+      const breachWeeks = new Set<number>();
+      for (const w of Array.from(eventWeeks.values())) {
+        breachWeeks.add(Math.max(startWeek, w - 1));
+        breachWeeks.add(w);
+        breachWeeks.add(Math.min(endWeek, w + 1));
+      }
+
+      // Find contiguous runs of breach weeks
+      const sortedWeeks = Array.from(breachWeeks).sort((a, b) => a - b);
+      const runs: [number, number][] = [];
+      let runStart = sortedWeeks[0];
+      let runEnd = sortedWeeks[0];
+      for (let i = 1; i < sortedWeeks.length; i++) {
+        if (sortedWeeks[i] === runEnd + 1) {
+          runEnd = sortedWeeks[i];
+        } else {
+          runs.push([runStart, runEnd]);
+          runStart = sortedWeeks[i];
+          runEnd = sortedWeeks[i];
+        }
+      }
+      runs.push([runStart, runEnd]);
+
+      // Generate sub-paths for each contiguous run
+      const segPaths: string[] = [];
+      for (const [rStart, rEnd] of runs) {
+        if (rStart === rEnd) continue; // Need at least 2 points for a visible segment
+        const points: Point[] = trajectory
+          .filter((d) => d.week >= rStart && d.week <= rEnd)
+          .map((d) => ({
+            x: xScale(d.week),
+            y: yScale(d.rank),
+          }));
+        if (points.length >= 2) {
+          segPaths.push(monotoneCubicPath(points));
+        }
+      }
+
+      if (segPaths.length > 0) {
+        result.set(teamId, segPaths);
+      }
+    }
+
+    return result;
+  }, [isEventViewMode, allTeamEvents, allTrajectories, startWeek, endWeek, xScale, yScale]);
 
   // ─── Play animation ───
   // Progressive reveal: starts from week 1 and adds one week at a time
@@ -845,6 +1084,26 @@ export default function BumpChart({
       const teamColor = mutedTeamColor(teamId, isDark);
       const neutralColor = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)";
 
+      // ─── Event View Mode: desaturate teams without events, keep color for event teams ───
+      if (isEventViewMode) {
+        const hasEvents = teamsWithEvents.has(teamId);
+        const monoColor = desaturate(teamColor, 0.85);
+
+        // Hovered/selected teams always get full treatment even in event mode
+        if (isHovered || isSelected) {
+          return { opacity: 1, strokeWidth: 2.5, color: teamColor };
+        }
+
+        if (hasEvents) {
+          // Teams WITH events: keep team color, flat 2D base (3D applied via segments)
+          return { opacity: 0.7, strokeWidth: 1.5, color: teamColor };
+        } else {
+          // Teams WITHOUT events: fully monochrome, low opacity
+          return { opacity: 0.12, strokeWidth: 0.8, color: monoColor };
+        }
+      }
+
+      // ─── Normal mode (unchanged) ───
       if (!hasAnyHighlight) {
         if (viewMode === "allFocus") return { opacity: 0.9, strokeWidth: 2.2, color: teamColor };
         if (viewMode === "colors") return { opacity: 0.4, strokeWidth: 1.2, color: teamColor };
@@ -870,7 +1129,7 @@ export default function BumpChart({
       if (viewMode === "colors") return { opacity: 0.3, strokeWidth: 1, color: teamColor };
       return { opacity: 0.08, strokeWidth: 1, color: neutralColor };
     },
-    [selectedTeam, hoveredTeam, isDark, viewMode]
+    [selectedTeam, hoveredTeam, isDark, viewMode, isEventViewMode, teamsWithEvents]
   );
 
   // ─── X-axis labels ───
@@ -1266,6 +1525,26 @@ export default function BumpChart({
               const appearance = getLineAppearance(team.id);
               // In allFocus mode with no specific selection, render all lines as 3D
               const allFocus3D = viewMode === "allFocus" && selectedTeam === null && hoveredTeam === null;
+
+              // Event view mode: use EventSegmentLine for teams with events
+              if (isEventViewMode && teamsWithEvents.has(team.id)) {
+                const segPaths = eventSegmentPaths.get(team.id) || [];
+                return (
+                  <EventSegmentLine
+                    key={`evt-${team.id}`}
+                    teamId={team.id}
+                    fullPathD={pathD}
+                    segmentPaths={segPaths}
+                    opacity={appearance.opacity}
+                    strokeWidth={appearance.strokeWidth}
+                    color={appearance.color}
+                    onMouseEnter={() => handleTeamHover(team.id)}
+                    onMouseLeave={() => handleTeamHover(null)}
+                    onClick={() => handleTeamClick(team.id)}
+                  />
+                );
+              }
+
               return (
                 <TeamLine
                   key={team.id}
@@ -1287,6 +1566,26 @@ export default function BumpChart({
             const pathD = pathStrings.get(teamId);
             if (!pathD) return null;
             const appearance = getLineAppearance(teamId);
+
+            // In event view mode, highlighted teams also get event segment treatment
+            if (isEventViewMode && teamsWithEvents.has(teamId)) {
+              const segPaths = eventSegmentPaths.get(teamId) || [];
+              return (
+                <EventSegmentLine
+                  key={`hl-evt-${teamId}`}
+                  teamId={teamId}
+                  fullPathD={pathD}
+                  segmentPaths={segPaths}
+                  opacity={appearance.opacity}
+                  strokeWidth={appearance.strokeWidth}
+                  color={appearance.color}
+                  onMouseEnter={() => handleTeamHover(teamId)}
+                  onMouseLeave={() => handleTeamHover(null)}
+                  onClick={() => handleTeamClick(teamId)}
+                />
+              );
+            }
+
             return (
               <TeamLine
                 key={`hl-${teamId}`}
@@ -1374,7 +1673,11 @@ export default function BumpChart({
           {visibleTeams.map((team) => {
             const label = getEndpointLabel(team.id);
             if (!label) return null;
-            const teamColor = mutedTeamColor(team.id, isDark);
+            const rawTeamColor = mutedTeamColor(team.id, isDark);
+            // In event view mode, desaturate labels for teams without events
+            const isEventDesat = isEventViewMode && !teamsWithEvents.has(team.id) && !highlightedTeams.includes(team.id);
+            const teamColor = isEventDesat ? desaturate(rawTeamColor, 0.85) : rawTeamColor;
+            const labelOpacityMod = isEventDesat ? 0.35 : 1;
             const isHL = highlightedTeams.includes(team.id);
             const labelW = 100; // uniform width for all tabs
             const labelH = isHL ? 18 : 16;
@@ -1402,7 +1705,7 @@ export default function BumpChart({
                     height={labelH}
                     rx={4}
                     fill={teamColor}
-                    opacity={isHL ? 1 : 0.8}
+                    opacity={(isHL ? 1 : 0.8) * labelOpacityMod}
                     filter={isHL ? "url(#label-neu-shadow-hl)" : "url(#label-neu-shadow)"}
                   />
                   {/* Inset top highlight edge — matches table row pattern */}
@@ -1456,7 +1759,7 @@ export default function BumpChart({
                     fontSize={isHL ? 9.5 : 7.5}
                     fontWeight={isHL ? 700 : 500}
                     fontFamily="Space Grotesk, sans-serif"
-                    opacity={1}
+                    opacity={1 * labelOpacityMod}
                     style={{ textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}
                   >
                     {label.name}

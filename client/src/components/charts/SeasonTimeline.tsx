@@ -62,7 +62,7 @@ interface EventCategory {
   color: { dark: string; light: string };
 }
 
-const EVENT_CATEGORIES: EventCategory[] = [
+export const EVENT_CATEGORIES: EventCategory[] = [
   {
     id: "streaks",
     label: "Streaks",
@@ -104,6 +104,8 @@ interface SeasonTimelineProps {
   teamBudgets: Record<string, TeamBudget>;
   totalWeeks: number;
   seasonYear: number;
+  activeFilters: Set<string>;
+  onToggleFilter: (catId: string) => void;
 }
 
 // ═══════════════════════════════════════════
@@ -297,6 +299,8 @@ export default function SeasonTimeline({
   teamBudgets,
   totalWeeks,
   seasonYear,
+  activeFilters,
+  onToggleFilter,
 }: SeasonTimelineProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -306,9 +310,6 @@ export default function SeasonTimeline({
   const [hoveredWeek, setHoveredWeek] = useState<number | null>(null);
   const [hoveredResult, setHoveredResult] = useState<{ week: number; result: WeekMatchResult; x: number } | null>(null);
   const [showInsights, setShowInsights] = useState(false);
-  const [activeFilters, setActiveFilters] = useState<Set<string>>(
-    () => new Set(EVENT_CATEGORIES.map((c) => c.id))
-  );
   const [showCopied, setShowCopied] = useState(false);
 
   const team = getTeam(teamId);
@@ -337,22 +338,11 @@ export default function SeasonTimeline({
     return allEvents.filter((e) => allowedTypes.has(e.type));
   }, [allEvents, activeFilters]);
 
-  // Toggle a filter category
+  // Alias for prop-based toggle (also clears selected event)
   const toggleFilter = useCallback((catId: string) => {
-    setActiveFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(catId)) {
-        // Don't allow deselecting all — at least one must remain
-        if (next.size <= 1) return prev;
-        next.delete(catId);
-      } else {
-        next.add(catId);
-      }
-      return next;
-    });
-    // Clear selected event if it no longer matches filters
+    onToggleFilter(catId);
     setSelectedEvent(null);
-  }, []);
+  }, [onToggleFilter]);
 
   // Share link handler
   const handleShare = useCallback(() => {
