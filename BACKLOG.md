@@ -96,21 +96,22 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 ---
 
-## Epic 7: The Relief Scatter (Visual Overhaul)
+## Epic 7: The Relief Scatter (Visual Overhaul) — COMPLETE
 
 **Effort:** 1 Session
 **Goal:** Redesign the Travel Scatter chart into a monochromatic relief sculpture using SVG filters and physical depth encoding (Vaughn Horseman aesthetic).
 **Files Touched:** `TravelScatterChart.tsx`
 **Dependencies:** Epic 5
+**Issues:** #36, #37, #38, #61, #62, #63 (all closed)
 
 - **Task 7.1: Surface Texture & Geometry**
-  - Implement `feTurbulence` background and monochromatic base.
-  - Build simplified crater geometry with cast shadows and inward gradients.
+  - [x] Implement `feTurbulence` background and monochromatic base.
+  - [x] Build simplified crater geometry with cast shadows and inward gradients using `@react-three/fiber`.
 - **Task 7.2: Data Encoding & Labels**
-  - Map Rings = Squad Depth, Radius = PPG Gap.
-  - Add recessed/embossed text labels inside craters.
+  - [x] Map Rings = Squad Depth, Radius = PPG Gap.
+  - [x] Add recessed/embossed 3D text labels inside craters.
 - **Task 7.3: Color System**
-  - Implement `TERRAIN`/`TEAMS` color toggle and flood animation.
+  - [x] Implement `TERRAIN`/`TEAMS` color toggle and flood animation.
 
 ## Epic 8: Pitch Match Real Data Integration
 
