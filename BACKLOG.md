@@ -134,20 +134,17 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - [x] On-canvas glassmorphism NETWORK METRICS card.
   - [x] Maximize modal with full-viewport 3D scene, lazy-loaded with Suspense fallback.
 
-## Epic 9: Travel Map deck.gl Spike
+## Epic 9: Travel Map Overhaul (Deferred — Awaiting Visual Direction)
 
-**Effort:** 1 Session
-**Goal:** Upgrade the Travel Map to use `deck.gl` for geospatial accuracy and cinematic lighting.
-**Files Touched:** `vite.config.ts`, `TravelMap.tsx`, `DeckTravelMap.tsx`
+**Effort:** 1-2 Sessions
+**Goal:** Upgrade the Travel Map with 3D terrain, animated arcs, and cinematic lighting.
+**Files Touched:** `vite.config.ts`, `TravelMap.tsx`, new map component TBD
 **Dependencies:** Epic 5
+**Decision (Mar 25, 2026):** deck.gl rejected due to bundle size concerns (~400-500KB gzipped). Will use **MapLibre GL** instead for a lighter footprint with equivalent 3D terrain and arc capabilities. Sprint brief to be written once the user finalizes the visual direction and functional requirements.
 
-- **Task 9.1: Setup & Optimization**
-  - Configure Vite manual chunks and lazy loading for `deck.gl` to protect bundle size.
-- **Task 9.2: Geospatial Layers**
-  - Implement `DeckTravelMap` with Carto basemaps and `TerrainLayer`.
-  - Implement `ColumnLayer` for stadiums and `TripsLayer` for animated travel arcs.
-- **Task 9.3: Lighting & Polish**
-  - Apply directional lighting and bloom post-processing.
+- **Task 9.1:** TBD — awaiting visual direction
+- **Task 9.2:** TBD
+- **Task 9.3:** TBD
 
 ## Epic 10: Race Chart Tab
 
