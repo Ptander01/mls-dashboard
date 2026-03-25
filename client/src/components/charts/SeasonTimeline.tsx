@@ -19,10 +19,13 @@ import {
   Zap,
   Trophy,
   Info,
+  Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getTeam } from "@/lib/mlsData";
-import type { Team, Match } from "@/lib/mlsData";
+import type { Team, Match, Player, TeamBudget } from "@/lib/mlsData";
+import { useAiCommentary } from "@/hooks/useAiCommentary";
 import {
   getTeamTrajectory,
   getTeamEvents,
@@ -55,7 +58,10 @@ interface SeasonTimelineProps {
   rankMode: "POWER" | "POINTS";
   teams: Team[];
   matches: Match[];
+  players: Player[];
+  teamBudgets: Record<string, TeamBudget>;
   totalWeeks: number;
+  seasonYear: number;
 }
 
 // ═══════════════════════════════════════════
@@ -245,7 +251,10 @@ export default function SeasonTimeline({
   rankMode,
   teams,
   matches,
+  players,
+  teamBudgets,
   totalWeeks,
+  seasonYear,
 }: SeasonTimelineProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -288,6 +297,18 @@ export default function SeasonTimeline({
   const summaryNarrative = useMemo(
     () => seasonSummaryNarrative(teamId, teams, matches, totalWeeks),
     [teamId, teams, matches, totalWeeks]
+  );
+
+  // AI-generated holistic commentary (with fallback to rule-based narrative)
+  const aiCommentary = useAiCommentary(
+    teamId,
+    teams,
+    matches,
+    players,
+    teamBudgets,
+    totalWeeks,
+    seasonYear,
+    summaryNarrative
   );
 
   // The week to display stats for (hovered week or selected week)
@@ -811,7 +832,10 @@ export default function SeasonTimeline({
         ) : (
           <SummaryCard
             key="summary"
-            narrative={summaryNarrative}
+            narrative={aiCommentary.commentary}
+            isLoading={aiCommentary.isLoading}
+            isAi={aiCommentary.isAi}
+            error={aiCommentary.error}
             teamColor={teamColor}
             isDark={isDark}
             eventCount={events.length}
@@ -1008,16 +1032,22 @@ function EventCard({
 }
 
 // ═══════════════════════════════════════════
-// SUMMARY CARD
+// SUMMARY CARD (with AI commentary support)
 // ═══════════════════════════════════════════
 
 function SummaryCard({
   narrative,
+  isLoading,
+  isAi,
+  error,
   teamColor,
   isDark,
   eventCount,
 }: {
   narrative: string;
+  isLoading: boolean;
+  isAi: boolean;
+  error: string | null;
   teamColor: string;
   isDark: boolean;
   eventCount: number;
@@ -1043,27 +1073,86 @@ function SummaryCard({
         }}
         role="listitem"
       >
+        {/* Header row */}
         <div className="flex items-center gap-2 mb-2">
-          <Info
-            size={14}
-            style={{
-              color: isDark
-                ? "rgba(255,255,255,0.4)"
-                : "rgba(0,0,0,0.35)",
-            }}
-          />
+          {isAi ? (
+            <Sparkles
+              size={14}
+              style={{
+                color: isDark ? "#a78bfa" : "#7c3aed",
+              }}
+            />
+          ) : (
+            <Info
+              size={14}
+              style={{
+                color: isDark
+                  ? "rgba(255,255,255,0.4)"
+                  : "rgba(0,0,0,0.35)",
+              }}
+            />
+          )}
           <span
             className="text-[10px] uppercase tracking-wider text-muted-foreground"
             style={{ fontFamily: "Space Grotesk, sans-serif" }}
           >
-            Season Summary
-            {eventCount > 0 && (
+            {isAi ? "AI Season Analysis" : "Season Summary"}
+            {isLoading && (
+              <span
+                className="ml-2 normal-case tracking-normal"
+                style={{ color: isDark ? "#a78bfa" : "#7c3aed" }}
+              >
+                — generating analysis...
+              </span>
+            )}
+            {!isLoading && !isAi && eventCount > 0 && (
               <span className="ml-2 normal-case tracking-normal">
                 — click an event node above for details
               </span>
             )}
           </span>
+
+          {/* AI badge */}
+          {isAi && !isLoading && (
+            <span
+              className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+              style={{
+                fontFamily: "JetBrains Mono, monospace",
+                background: isDark
+                  ? "rgba(167, 139, 250, 0.12)"
+                  : "rgba(124, 58, 237, 0.08)",
+                color: isDark ? "#a78bfa" : "#7c3aed",
+                border: `1px solid ${isDark ? "rgba(167, 139, 250, 0.2)" : "rgba(124, 58, 237, 0.15)"}`,
+              }}
+            >
+              GPT-4.1
+            </span>
+          )}
         </div>
+
+        {/* Loading skeleton */}
+        {isLoading && (
+          <div className="space-y-2 mb-3">
+            <div
+              className="skeleton-shimmer"
+              style={{ height: 12, width: "100%", borderRadius: 6 }}
+            />
+            <div
+              className="skeleton-shimmer"
+              style={{ height: 12, width: "92%", borderRadius: 6 }}
+            />
+            <div
+              className="skeleton-shimmer"
+              style={{ height: 12, width: "85%", borderRadius: 6 }}
+            />
+            <div
+              className="skeleton-shimmer"
+              style={{ height: 12, width: "60%", borderRadius: 6 }}
+            />
+          </div>
+        )}
+
+        {/* Narrative text */}
         <p
           className="text-[12px] leading-relaxed"
           style={{
@@ -1071,10 +1160,31 @@ function SummaryCard({
             color: isDark
               ? "rgba(255,255,255,0.7)"
               : "rgba(0,0,0,0.6)",
+            opacity: isLoading ? 0.4 : 1,
+            transition: "opacity 0.3s ease",
+            whiteSpace: "pre-line",
           }}
         >
           {narrative}
         </p>
+
+        {/* Error notice (subtle, non-blocking) */}
+        {error && !isAi && (
+          <div
+            className="flex items-center gap-1.5 mt-2"
+            style={{
+              color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)",
+            }}
+          >
+            <AlertCircle size={10} />
+            <span
+              className="text-[9px]"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              AI analysis unavailable — showing algorithmic summary
+            </span>
+          </div>
+        )}
       </div>
     </motion.div>
   );

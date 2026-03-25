@@ -810,7 +810,10 @@ export default function SeasonPulse() {
                     rankMode={rankMode}
                     teams={teams}
                     matches={matches}
+                    players={activeSeasonData.players}
+                    teamBudgets={activeSeasonData.teamBudgets}
                     totalWeeks={totalWeeks}
+                    seasonYear={seasonYear}
                   />
                 </NeuCard>
               </motion.div>

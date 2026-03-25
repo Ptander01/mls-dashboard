@@ -278,18 +278,18 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 **Dependencies:** Epic 11 (Season Pulse), Epic 12 (2026 data integration)
 
 - **Task 15.1: Data Aggregation Engine**
-  - [ ] Create `client/src/lib/aiNarrativeEngine.ts` with `buildTeamContextPrompt(teamId, seasonYear)` to compile standings trajectory, match results, player stats, and salary data into an optimized prompt payload.
-  - [ ] Implement `generateHolisticCommentary(teamId)` calling OpenAI API (`gpt-4.1-mini`) with expert MLS analyst system prompt.
+  - [x] Create `client/src/lib/aiNarrativeEngine.ts` with `buildTeamContextPrompt(teamId, seasonYear)` to compile standings trajectory, match results, player stats, and salary data into an optimized prompt payload.
+  - [x] Implement `generateHolisticCommentary(teamId)` calling OpenAI API (`gpt-4.1-mini`) with expert MLS analyst system prompt.
 - **Task 15.2: Prompt Engineering**
-  - [ ] Design system prompt enforcing analytical, journalistic tone (2-3 short paragraphs).
-  - [ ] Include directives to focus on *why* things happened, mention high-salary underperformers/carriers, and note managerial changes.
+  - [x] Design system prompt enforcing analytical, journalistic tone (2-3 short paragraphs).
+  - [x] Include directives to focus on *why* things happened, mention high-salary underperformers/carriers, and note managerial changes.
 - **Task 15.3: Component Integration**
-  - [ ] Create `useAiCommentary(teamId)` hook with async fetch, loading state, and error handling.
-  - [ ] Update `SummaryCard` in `SeasonTimeline.tsx` to display AI-generated text with skeleton loader.
-  - [ ] Implement client-side cache (keyed by `teamId` + `maxWeek`) to prevent redundant API calls.
+  - [x] Create `useAiCommentary(teamId)` hook with async fetch, loading state, and error handling.
+  - [x] Update `SummaryCard` in `SeasonTimeline.tsx` to display AI-generated text with skeleton loader.
+  - [x] Implement client-side cache (keyed by `teamId` + `maxWeek`) to prevent redundant API calls.
 - **Task 15.4: Fallback & Verification**
-  - [ ] Graceful fallback to existing `seasonSummaryNarrative` from `insightEngine.ts` if API fails.
-  - [ ] Verify loading states, caching behavior, and fallback across multiple teams.
+  - [x] Graceful fallback to existing `seasonSummaryNarrative` from `insightEngine.ts` if API fails.
+  - [x] Verify loading states, caching behavior, and fallback across multiple teams.
 
 ---
 
