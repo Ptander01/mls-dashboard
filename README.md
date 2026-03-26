@@ -1,5 +1,7 @@
 # MLS Analytics Dashboard
 
+**[🚀 View Live Demo](https://mls-dashboard-one.vercel.app)**
+
 An advanced interactive dashboard for Major League Soccer statistical analysis featuring the live 2026 season and complete 2025 historical data. Built with React 19, Tailwind CSS 4, Recharts, and Three.js, the dashboard showcases a custom **Industrial Neumorphic 3D** design system with extruded chart elements, gradient lighting, cast shadows, and glassmorphic overlays.
 
 ![Player Stats — Scatter plot, top scorers, and full player database](docs/screenshots/01-player-stats.webp)
