@@ -18,7 +18,7 @@ import {
   type ReactNode,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, SkipForward, SkipBack, Eye, EyeOff, Sparkles } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Eye, EyeOff, Sparkles, Filter } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useFilters } from "@/contexts/FilterContext";
 import { TEAMS, getTeam } from "@/lib/mlsData";
@@ -57,6 +57,7 @@ interface BumpChartProps {
   selectedWeek: number;
   onSelectWeek: (week: number) => void;
   activeFilters: Set<string>;
+  onToggleFilter: (catId: string) => void;
 }
 
 type WeekPreset = "full" | "first" | "second" | "last10";
@@ -338,6 +339,10 @@ interface EventSegmentLineProps {
   opacity: number;
   strokeWidth: number;
   color: string;
+  /** Ghost styling for the flat base path (non-3D segments) */
+  ghostColor: string;
+  ghostOpacity: number;
+  ghostStrokeWidth: number;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onClick: () => void;
@@ -350,6 +355,9 @@ const EventSegmentLine = memo(function EventSegmentLine({
   opacity,
   strokeWidth,
   color,
+  ghostColor,
+  ghostOpacity,
+  ghostStrokeWidth,
   onMouseEnter,
   onMouseLeave,
   onClick,
@@ -365,16 +373,16 @@ const EventSegmentLine = memo(function EventSegmentLine({
       style={{ cursor: "pointer" }}
       data-team={teamId}
     >
-      {/* Base flat 2D line for the entire path */}
+      {/* Base flat 2D line for the entire path — ghosted to push focus onto 3D segments */}
       <path
         d={fullPathD}
         fill="none"
-        stroke={color}
-        strokeWidth={strokeWidth}
+        stroke={ghostColor}
+        strokeWidth={ghostStrokeWidth}
         strokeLinecap="round"
         strokeLinejoin="round"
         style={{
-          opacity,
+          opacity: ghostOpacity,
           transition: "opacity 0.25s ease, stroke-width 0.25s ease, stroke 0.25s ease",
           pointerEvents: "stroke",
         }}
@@ -730,6 +738,7 @@ export default function BumpChart({
   selectedWeek,
   onSelectWeek,
   activeFilters,
+  onToggleFilter,
 }: BumpChartProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -1084,21 +1093,15 @@ export default function BumpChart({
       const teamColor = mutedTeamColor(teamId, isDark);
       const neutralColor = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)";
 
-      // ─── Event View Mode: desaturate teams without events, keep color for event teams ───
+      // ─── Event View Mode: all flat paths ghosted, only 3D segments get color ───
       if (isEventViewMode) {
         const hasEvents = teamsWithEvents.has(teamId);
-        const monoColor = desaturate(teamColor, 0.85);
-
-        // Hovered/selected teams always get full treatment even in event mode
-        if (isHovered || isSelected) {
-          return { opacity: 1, strokeWidth: 2.5, color: teamColor };
-        }
 
         if (hasEvents) {
-          // Teams WITH events: keep team color, flat 2D base (3D applied via segments)
-          return { opacity: 0.7, strokeWidth: 1.5, color: teamColor };
+          // Teams WITH events: color is for 3D segments; base path will be ghosted via EventSegmentLine
+          return { opacity: 0.85, strokeWidth: 2, color: teamColor };
         } else {
-          // Teams WITHOUT events: identical to the unfocused ghost treatment
+          // Teams WITHOUT events: fully ghosted
           return { opacity: 0.08, strokeWidth: 1, color: neutralColor };
         }
       }
@@ -1310,13 +1313,55 @@ export default function BumpChart({
           </>
         }
         zone1Toolbar={
-          <IconAction
-            icon={viewMode === "allFocus" ? <Sparkles size={13} /> : viewMode === "colors" ? <Eye size={13} /> : <EyeOff size={13} />}
-            label={viewMode === "allFocus" ? "All Focus" : viewMode === "colors" ? "All Colors" : "Focus Mode"}
-            tooltip="Cycle view mode: Focus → All Colors → All Focus"
-            onClick={cycleViewMode}
-            isDark={isDark}
-          />
+          <div className="flex items-center gap-2">
+            <IconAction
+              icon={viewMode === "allFocus" ? <Sparkles size={13} /> : viewMode === "colors" ? <Eye size={13} /> : <EyeOff size={13} />}
+              label={viewMode === "allFocus" ? "All Focus" : viewMode === "colors" ? "All Colors" : "Focus Mode"}
+              tooltip="Cycle view mode: Focus → All Colors → All Focus"
+              onClick={cycleViewMode}
+              isDark={isDark}
+            />
+            {/* Event filter pills */}
+            <div
+              className="flex items-center gap-1 ml-1 pl-2"
+              style={{ borderLeft: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}` }}
+            >
+              <Filter size={11} className="mr-0.5" style={{ opacity: 0.4, color: isDark ? '#fff' : '#000' }} />
+              {EVENT_CATEGORIES.map((cat) => {
+                const isActive = activeFilters.has(cat.id);
+                const catColor = isDark ? cat.color.dark : cat.color.light;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={(e) => { e.stopPropagation(); onToggleFilter(cat.id); }}
+                    title={`${isActive ? 'Hide' : 'Show'} ${cat.label}`}
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-semibold tracking-wide transition-all duration-200"
+                    style={{
+                      fontFamily: 'Space Grotesk, sans-serif',
+                      background: isActive
+                        ? `${catColor}22`
+                        : isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      color: isActive ? catColor : (isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)'),
+                      border: `1px solid ${isActive ? `${catColor}44` : 'transparent'}`,
+                      opacity: isActive ? 1 : 0.5,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        background: isActive ? catColor : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'),
+                        flexShrink: 0,
+                      }}
+                    />
+                    {cat.label.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         }
         zone2Analysis={
           <CardInsightToggle
@@ -1529,6 +1574,7 @@ export default function BumpChart({
               // Event view mode: use EventSegmentLine for teams with events
               if (isEventViewMode && teamsWithEvents.has(team.id)) {
                 const segPaths = eventSegmentPaths.get(team.id) || [];
+                const ghostNeutral = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)";
                 return (
                   <EventSegmentLine
                     key={`evt-${team.id}`}
@@ -1538,6 +1584,9 @@ export default function BumpChart({
                     opacity={appearance.opacity}
                     strokeWidth={appearance.strokeWidth}
                     color={appearance.color}
+                    ghostColor={ghostNeutral}
+                    ghostOpacity={0.08}
+                    ghostStrokeWidth={1}
                     onMouseEnter={() => handleTeamHover(team.id)}
                     onMouseLeave={() => handleTeamHover(null)}
                     onClick={() => handleTeamClick(team.id)}
@@ -1570,6 +1619,7 @@ export default function BumpChart({
             // In event view mode, highlighted teams also get event segment treatment
             if (isEventViewMode && teamsWithEvents.has(teamId)) {
               const segPaths = eventSegmentPaths.get(teamId) || [];
+              const ghostNeutral = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)";
               return (
                 <EventSegmentLine
                   key={`hl-evt-${teamId}`}
@@ -1579,6 +1629,9 @@ export default function BumpChart({
                   opacity={appearance.opacity}
                   strokeWidth={appearance.strokeWidth}
                   color={appearance.color}
+                  ghostColor={ghostNeutral}
+                  ghostOpacity={0.08}
+                  ghostStrokeWidth={1}
                   onMouseEnter={() => handleTeamHover(teamId)}
                   onMouseLeave={() => handleTeamHover(null)}
                   onClick={() => handleTeamClick(teamId)}

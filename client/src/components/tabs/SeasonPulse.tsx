@@ -821,6 +821,7 @@ export default function SeasonPulse({
             <BumpChart
               selectedTeam={selectedTeam}
               onSelectTeam={setSelectedTeam}
+              onToggleFilter={toggleFilter}
               hoveredTeam={hoveredTeam}
               onHoverTeam={setHoveredTeam}
               conferenceFilter={conferenceFilter}
@@ -828,6 +829,7 @@ export default function SeasonPulse({
               selectedWeek={selectedWeek}
               onSelectWeek={setSelectedWeek}
               activeFilters={activeFilters}
+              onToggleFilter={toggleFilter}
             />
           </NeuCard>
         </StaggerItem>
