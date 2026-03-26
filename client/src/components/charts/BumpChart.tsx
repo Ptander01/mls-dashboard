@@ -1098,8 +1098,8 @@ export default function BumpChart({
           // Teams WITH events: keep team color, flat 2D base (3D applied via segments)
           return { opacity: 0.7, strokeWidth: 1.5, color: teamColor };
         } else {
-          // Teams WITHOUT events: fully monochrome, low opacity
-          return { opacity: 0.12, strokeWidth: 0.8, color: monoColor };
+          // Teams WITHOUT events: identical to the unfocused ghost treatment
+          return { opacity: 0.08, strokeWidth: 1, color: neutralColor };
         }
       }
 
@@ -1676,8 +1676,9 @@ export default function BumpChart({
             const rawTeamColor = mutedTeamColor(team.id, isDark);
             // In event view mode, desaturate labels for teams without events
             const isEventDesat = isEventViewMode && !teamsWithEvents.has(team.id) && !highlightedTeams.includes(team.id);
-            const teamColor = isEventDesat ? desaturate(rawTeamColor, 0.85) : rawTeamColor;
-            const labelOpacityMod = isEventDesat ? 0.35 : 1;
+            const neutralLabel = isDark ? "#555" : "#bbb";
+            const teamColor = isEventDesat ? neutralLabel : rawTeamColor;
+            const labelOpacityMod = isEventDesat ? 0.2 : 1;
             const isHL = highlightedTeams.includes(team.id);
             const labelW = 100; // uniform width for all tabs
             const labelH = isHL ? 18 : 16;
