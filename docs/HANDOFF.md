@@ -100,7 +100,7 @@ client/src/
 
 ## Sprint Briefs (in repo)
 
-All sprint briefs are committed at `docs/sprint-briefs/`:
+All sprint briefs are committed at `docs/sprints/briefs/`:
 
 | File | Status | Description |
 |---|---|---|
@@ -121,7 +121,7 @@ All sprint briefs are committed at `docs/sprint-briefs/`:
 
 | Issue | Title | Context |
 |---|---|---|
-| **#76** | Season Pulse: Narrative Timeline (Session 3) | Sprint prompt ready at `docs/sprint-briefs/session3-narrative-timeline-prompt.md`. **BLOCKED: user needs to review Sessions 1 and 2 on desktop before this starts.** |
+| **#76** | Season Pulse: Narrative Timeline (Session 3) | Sprint prompt ready at `docs/sprints/briefs/session3-narrative-timeline-prompt.md`. **BLOCKED: user needs to review Sessions 1 and 2 on desktop before this starts.** |
 | **#69** | Splash Intro Video | Component is wired, CDN URL is set. Needs user to verify live and close. May need minor adjustments after review. |
 
 ### Tier 2: Feature Epics (ready for sprint briefs)
@@ -190,7 +190,7 @@ All sprint briefs are committed at `docs/sprint-briefs/`:
 
 **PR workflow:** Feature branch → PR with description referencing issue number → merge to main → auto-deploy. PRs should reference the issue they close with `Closes #XX` in the body.
 
-**Sprint briefs:** For complex features, a sprint brief is written first and committed to `docs/sprint-briefs/`. The brief contains exact file paths, API signatures, integration points, and acceptance criteria. New task threads should read the brief before starting implementation.
+**Sprint briefs:** For complex features, a sprint brief is written first and committed to `docs/sprints/briefs/`. The brief contains exact file paths, API signatures, integration points, and acceptance criteria. New task threads should read the brief before starting implementation.
 
 **BACKLOG.md:** The master backlog tracker in the repo root. Updated after every sprint with checkboxes for completed tasks. Organized by Epics.
 
@@ -224,12 +224,18 @@ All sprint briefs are committed at `docs/sprint-briefs/`:
 4. Check open issues: `gh issue list --state open`
 5. Ask the user what they want to work on next
 
-**If continuing Season Pulse Session 3:** Read `docs/sprint-briefs/session3-narrative-timeline-prompt.md` first. But confirm the user has reviewed Sessions 1 and 2 on desktop before starting.
+**If continuing Season Pulse Session 3:** Read `docs/sprints/briefs/session3-narrative-timeline-prompt.md` first. But confirm the user has reviewed Sessions 1 and 2 on desktop before starting.
 
 ---
 
-## LinkedIn Content (In Progress)
+## LinkedIn Content
 
-A LinkedIn architecture post has been drafted at `/home/ubuntu/linkedin-architecture-post.md` (not committed to repo — it's content, not code). The post covers the full tech stack, development workflow, and learning journey. A 2D architecture diagram has been generated at `/home/ubuntu/mls-arch-2d.png`. The user may want to iterate on the diagram or post copy before publishing.
+All blog post drafts and feature release announcements are now consolidated in `docs/blog/`:
+
+| File | Description |
+|---|---|
+| `docs/blog/design-system-post.md` | LinkedIn post on maturing the dashboard design system |
+| `docs/blog/season-pulse-post.md` | LinkedIn post on the Season Pulse tab and event filter upgrade |
+| `docs/blog/event-filter-handoff.md` | PM handoff brief for the BumpChart event filter sprint |
 
 **Posting strategy:** Tuesday or Wednesday, 8-10am ET. First comment tags Manus and Vercel. Second comment invites questions.
