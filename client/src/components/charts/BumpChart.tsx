@@ -1329,10 +1329,7 @@ export default function BumpChart({
         subtitle={subtitle}
         description={
           <>
-            Watch how the league table shifted week by week. Each line traces a team's
-            ranking across the season — <strong>hover to isolate a team</strong>,
-            click to lock it and see their inflection events. The tighter the lines
-            cluster, the more competitive that stretch of the season was.
+            Watch how the league table shifted week by week. Each line traces a team's ranking trajectory. <strong>Hover or click to isolate a team</strong> and view their inflection events. Use the filter pills above to toggle <strong>Event View Mode</strong> — non-event segments will fade out, while event-relevant weeks pop with 3D highlights and dot markers to pinpoint exactly where streaks, upsets, and milestones occurred.
           </>
         }
         zone1Toolbar={
@@ -1416,6 +1413,9 @@ export default function BumpChart({
               matches), rank surges/collapses (5+ position change in one week), upsets
               (10+ rank gap), and milestones (30/50 point thresholds). Severity scaled
               1-5 based on magnitude.
+            </p>
+            <p>
+              <strong>Event Symbology & Filtering:</strong> Toggling event categories activates a 3-tier visual hierarchy. <em>Tier 1:</em> Selected teams render as full 3D tubes. <em>Tier 2:</em> Event-relevant teams show 3D breach segments and colored dot markers (Green=Streaks, Amber=Rank, Red=Upsets, Cyan=Milestones) only during the weeks the events occurred. <em>Tier 3:</em> All non-event teams and flat path segments fade to a ghost grey, creating maximum contrast.
             </p>
             <p>
               <strong>Tier Bands:</strong> Background regions correspond to quartile
