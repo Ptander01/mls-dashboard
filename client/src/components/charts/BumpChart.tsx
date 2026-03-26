@@ -1232,6 +1232,29 @@ export default function BumpChart({
     }).filter(Boolean) as { event: SeasonEvent; cx: number; cy: number }[];
   }, [selectedTeam, selectedTeamEvents, allTrajectories, xScale, yScale]);
 
+  // ─── Event marker positions for ALL teams in event view mode ───
+  const allEventMarkerPositions = useMemo(() => {
+    if (!isEventViewMode) return [];
+    const markers: { event: SeasonEvent; cx: number; cy: number }[] = [];
+    for (const [teamId, events] of Array.from(allTeamEvents.entries())) {
+      // Skip the selected team — their markers are rendered separately via eventMarkerPositions
+      if (teamId === selectedTeam) continue;
+      const trajectory = allTrajectories.get(teamId);
+      if (!trajectory) continue;
+      for (const event of events) {
+        const weekData = trajectory.find((d) => d.week === event.week);
+        if (weekData) {
+          markers.push({
+            event,
+            cx: xScale(event.week),
+            cy: yScale(weekData.rank),
+          });
+        }
+      }
+    }
+    return markers;
+  }, [isEventViewMode, allTeamEvents, selectedTeam, allTrajectories, xScale, yScale]);
+
   // ─── Selected week indicator position ───
   const selectedWeekX = useMemo(() => {
     if (selectedWeek < startWeek || selectedWeek > endWeek) return null;
@@ -1714,6 +1737,18 @@ export default function BumpChart({
           {eventMarkerPositions.map((marker, i) => (
             <InflectionMarker
               key={`event-${marker.event.week}-${marker.event.type}-${i}`}
+              event={marker.event}
+              cx={marker.cx}
+              cy={marker.cy}
+              isDark={isDark}
+              onHover={handleEventHover}
+            />
+          ))}
+
+          {/* Event view mode: inflection markers on ALL event-relevant teams */}
+          {allEventMarkerPositions.map((marker, i) => (
+            <InflectionMarker
+              key={`all-evt-${marker.event.teamId}-${marker.event.week}-${marker.event.type}-${i}`}
               event={marker.event}
               cx={marker.cx}
               cy={marker.cy}
