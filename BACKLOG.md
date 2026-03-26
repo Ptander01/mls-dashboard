@@ -140,9 +140,12 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 **Goal:** Upgrade the Travel Map with 3D terrain, animated arcs, and cinematic lighting.
 **Files Touched:** `vite.config.ts`, `TravelMap.tsx`, new map component TBD
 **Dependencies:** Epic 5
-**Decision (Mar 25, 2026):** deck.gl rejected due to bundle size concerns (~400-500KB gzipped). Will use **MapLibre GL** instead for a lighter footprint with equivalent 3D terrain and arc capabilities. Sprint brief to be written once the user finalizes the visual direction and functional requirements.
+**Decision (Mar 25, 2026):** deck.gl rejected due to bundle size concerns (~400-500KB gzipped).
+**Research Sprint (Mar 26, 2026):** Completed technical evaluation. **Pure Three.js recommended** over MapLibre GL — provides full control over cinematic lighting, shadows, and depth-of-field with zero additional bundle size (Three.js already loaded). Three conceptual directions proposed (Narrative Journey, Physical Network, Battleground). Proof-of-concept `sandbox.html` built demonstrating displacement-map terrain, warm lighting, and animated arcs.
+**Research Docs:** `docs/travel-map-research/`, `docs/sprint-briefs/travel-map-research-brief.md`
+**Status:** Awaiting user decision on conceptual direction before implementation.
 
-- **Task 9.1:** TBD — awaiting visual direction
+- **Task 9.1:** TBD — awaiting visual direction decision
 - **Task 9.2:** TBD
 - **Task 9.3:** TBD
 
@@ -270,26 +273,50 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - [x] `mls2026.json` updated: yellowCards (0→199), redCards (0→13), fouls (0→90), fouled (0→87), tackles (0→354), interceptions (0→273), offsides (0→106).
   - [x] Remaining gaps: `crosses` (no Fox Sports source), `salary` (MLSPA guide pending).
 
-## Epic 15: AI-Powered Holistic Team Commentary
+## Epic 15: AI-Powered Holistic Team Commentary — COMPLETE
 
 **Effort:** 1 Session
 **Goal:** Replace the rule-based algorithmic summary card in the Season Pulse narrative timeline with a rich, AI-generated holistic commentary. By feeding an LLM the team's complete trajectory data, match results, roster information, and salary context, generate compelling, context-aware storylines.
 **Sprint Brief:** `docs/sprint-briefs/ai-holistic-commentary-brief.md`
 **Dependencies:** Epic 11 (Season Pulse), Epic 12 (2026 data integration)
+**Commits:** `5110af2`, `c95fd69`, `daf1e18`
 
-- **Task 15.1: Data Aggregation Engine**
+- **Task 15.1: Data Aggregation Engine** ✅
   - [x] Create `client/src/lib/aiNarrativeEngine.ts` with `buildTeamContextPrompt(teamId, seasonYear)` to compile standings trajectory, match results, player stats, and salary data into an optimized prompt payload.
   - [x] Implement `generateHolisticCommentary(teamId)` calling OpenAI API (`gpt-4.1-mini`) with expert MLS analyst system prompt.
-- **Task 15.2: Prompt Engineering**
+- **Task 15.2: Prompt Engineering** ✅
   - [x] Design system prompt enforcing analytical, journalistic tone (2-3 short paragraphs).
   - [x] Include directives to focus on *why* things happened, mention high-salary underperformers/carriers, and note managerial changes.
-- **Task 15.3: Component Integration**
+- **Task 15.3: Component Integration** ✅
   - [x] Create `useAiCommentary(teamId)` hook with async fetch, loading state, and error handling.
   - [x] Update `SummaryCard` in `SeasonTimeline.tsx` to display AI-generated text with skeleton loader.
   - [x] Implement client-side cache (keyed by `teamId` + `maxWeek`) to prevent redundant API calls.
-- **Task 15.4: Fallback & Verification**
+- **Task 15.4: Fallback & Verification** ✅
   - [x] Graceful fallback to existing `seasonSummaryNarrative` from `insightEngine.ts` if API fails.
   - [x] Verify loading states, caching behavior, and fallback across multiple teams.
+- **Task 15.5: UX Refinements** ✅ (Commit `c95fd69`)
+  - [x] Always-visible empty-state prompt for Narrative Timeline when no team selected.
+  - [x] Elevated neumorphic styling for AI card matching InsightPanel aesthetic.
+  - [x] Methods section documentation for the AI commentary feature.
+- **Task 15.6: Shareable Deep-Links + Event Filtering** ✅ (Commit `daf1e18`)
+  - [x] URL search param sync (`?tab=pulse&team=LAFC`) for shareable team story links.
+  - [x] Event category filter chips (Streaks, Rank Changes, Upsets, Milestones) in timeline header.
+
+## Epic 16: BumpChart Event Symbology
+
+**Effort:** 1 Session
+**Goal:** Add "breach the surface" faux-3D effect on individual BumpChart line segments during event view, with filter state lifting, monochrome desaturation for non-event teams, and enhanced visual contrast.
+**Sprint Brief:** `docs/sprint-briefs/bumpchart-event-symbology-brief.md`
+**Dependencies:** Epic 11 (Season Pulse), Epic 15
+**Commits:** `39905f2`, `68fba2b`
+**Status:** COMPLETE
+
+- **Task 16.1: 3D Breach Segments** ✅
+  - [x] Event-bearing line segments rendered with faux-3D raised effect.
+- **Task 16.2: Monochrome Desaturation** ✅
+  - [x] Non-event teams use fully ghosted grey symbology for maximum contrast.
+- **Task 16.3: Filter State Lifting** ✅
+  - [x] Event category filters lifted to shared state between BumpChart and Timeline.
 
 ---
 
