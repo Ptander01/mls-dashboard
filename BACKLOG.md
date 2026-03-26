@@ -142,7 +142,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 **Dependencies:** Epic 5
 **Decision (Mar 25, 2026):** deck.gl rejected due to bundle size concerns (~400-500KB gzipped).
 **Research Sprint (Mar 26, 2026):** Completed technical evaluation. **Pure Three.js recommended** over MapLibre GL — provides full control over cinematic lighting, shadows, and depth-of-field with zero additional bundle size (Three.js already loaded). Three conceptual directions proposed (Narrative Journey, Physical Network, Battleground). Proof-of-concept `sandbox.html` built demonstrating displacement-map terrain, warm lighting, and animated arcs.
-**Research Docs:** `docs/travel-map-research/`, `docs/sprint-briefs/travel-map-research-brief.md`
+**Research Docs:** `docs/research/travel-map/`, `docs/sprints/briefs/travel-map-research-brief.md`
 **Status:** Awaiting user decision on conceptual direction before implementation.
 
 - **Task 9.1:** TBD — awaiting visual direction decision
@@ -164,7 +164,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 **Effort:** 3 Sessions
 **Goal:** Build a unified "Season Pulse" tab combining power rankings, a bump chart (rank flow visualization), and a narrative season timeline. Three layers of the same question — "How has the season unfolded?" — at macro, meso, and micro zoom levels. Consolidates former Power Rankings (#45-47) and Season Timeline (#48-50) issues.
-**Sprint Brief:** `docs/sprint-briefs/season-pulse-brief.md`
+**Sprint Brief:** `docs/sprints/briefs/season-pulse-brief.md`
 **Dependencies:** Epics 1-6
 
 - **Session 1: Data Engine + Snapshot Table (#74) — COMPLETE (PR #77)**
@@ -193,7 +193,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 **Effort:** 1 Session
 **Goal:** Integrate live 2026 MLS season data from the American Soccer Analysis (ASA) API, enabling a global season toggle (2025/2026) and surfacing early-season storylines via the Insight Engine.
-**Sprint Brief:** `docs/sprint-briefs/2026-data-integration.md`
+**Sprint Brief:** `docs/sprints/briefs/2026-data-integration.md`
 **Verification:** `docs/verification/2026-integration-verification.md`
 **Commit:** `77416fe`
 **Issue:** #26 (closed)
@@ -226,7 +226,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 **Effort:** 1-2 Sessions
 **Goal:** Standardize all chart header controls across the dashboard into a predictable three-zone architecture (Data/View Controls | Analytical Actions | Utility Actions), replacing 4+ bespoke segmented control implementations with unified `SegmentedControl` and `ToggleAction` primitives.
 **Spec:** `docs/design-system/chart-control-spec.md`
-**Sprint Brief:** `docs/sprint-briefs/design-system-sprint-brief.md`
+**Sprint Brief:** `docs/sprints/briefs/design-system-sprint-brief.md`
 **Dependencies:** Epics 6.5, 11, 12
 
 - **Task 13.0: Wireframe Exploration** ✅ Session 1 (Mar 24, 2026)
@@ -258,7 +258,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 **Effort:** 1 Session
 **Goal:** Fill the zeros in the 2026 player dataset by scraping Fox Sports for basic counting stats (cards, tackles, interceptions, fouls, offsides) and merging them into the existing ASA pipeline.
-**Sprint Brief:** `docs/sprint-briefs/data-pipeline-polish.md`
+**Sprint Brief:** `docs/sprints/briefs/data-pipeline-polish.md`
 **Dependencies:** Epic 12 (2026 data integration)
 
 - **Task 14.1: Fox Sports Scraper** ✅ Session 1 (Mar 24, 2026)
@@ -277,7 +277,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 **Effort:** 1 Session
 **Goal:** Replace the rule-based algorithmic summary card in the Season Pulse narrative timeline with a rich, AI-generated holistic commentary. By feeding an LLM the team's complete trajectory data, match results, roster information, and salary context, generate compelling, context-aware storylines.
-**Sprint Brief:** `docs/sprint-briefs/ai-holistic-commentary-brief.md`
+**Sprint Brief:** `docs/sprints/briefs/ai-holistic-commentary-brief.md`
 **Dependencies:** Epic 11 (Season Pulse), Epic 12 (2026 data integration)
 **Commits:** `5110af2`, `c95fd69`, `daf1e18`
 
@@ -306,7 +306,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 **Effort:** 1 Session
 **Goal:** Add "breach the surface" faux-3D effect on individual BumpChart line segments during event view, with filter state lifting, monochrome desaturation for non-event teams, and enhanced visual contrast.
-**Sprint Brief:** `docs/sprint-briefs/bumpchart-event-symbology-brief.md`
+**Sprint Brief:** `docs/sprints/briefs/bumpchart-event-symbology-brief.md`
 **Dependencies:** Epic 11 (Season Pulse), Epic 15
 **Commits:** `39905f2`, `68fba2b`
 **Status:** COMPLETE
