@@ -10,9 +10,10 @@
  * trajectory arcs. Goals are the visual heroes — thicker, brighter,
  * higher arcs. Non-goals recede gracefully.
  *
- * Interaction: OrbitControls with constrained tilt, pinch-to-zoom,
- * drag-to-pan, reset-view button, and browser Fullscreen API for
- * immersive mobile viewing.
+ * Interaction: PerspectiveCamera + OrbitControls with distance-based
+ * zoom (minDistance 3 = walk amongst the data, maxDistance 140 = overview).
+ * Unconstrained orbit target, nearly eye-level polar angle, pinch-to-zoom,
+ * drag-to-pan, reset-view button, and browser Fullscreen API.
  *
  * Reuses GlassNode and NeonTube from the Passing Network.
  */
@@ -26,7 +27,7 @@ import {
   Suspense,
 } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
-import { OrthographicCamera, MapControls, Html } from "@react-three/drei";
+import { PerspectiveCamera, OrbitControls, Html } from "@react-three/drei";
 import {
   EffectComposer,
   Bloom,
@@ -88,6 +89,7 @@ export type OutcomeFilter = {
   offTarget: boolean;
   blocked: boolean;
 };
+export type SymbologyMode = "OUTCOME" | "TEAM";
 
 // ═══════════════════════════════════════════
 // CONSTANTS
@@ -110,6 +112,12 @@ const OUTCOME_COLOR: Record<string, string> = {
   blocked: "#4a5f78",  // Cool slate — intentional, not broken
 };
 
+// Team colors — canonical from mlsData.ts
+const TEAM_COLOR: Record<string, string> = {
+  "Inter Miami": "#F7B5CD",
+  "Toronto FC": "#E31937",
+};
+
 // Outcome visual hierarchy multipliers
 const OUTCOME_TUBE_THICKNESS: Record<string, number> = {
   goal: 1.0,
@@ -130,14 +138,12 @@ const OUTCOME_GLOW: Record<string, number> = {
   blocked: 0.4,
 };
 
-// Camera defaults
-const DEFAULT_CAM_POS: [number, number, number] = [5, 60, 40];
+// Camera defaults — PerspectiveCamera uses distance, not zoom factor
+const DEFAULT_CAM_POS: [number, number, number] = [15, 45, 50];
 const DEFAULT_CAM_TARGET: [number, number, number] = [10, 0, 0];
-const DEFAULT_ZOOM_DESKTOP = 5.8;
-const DEFAULT_ZOOM_MODAL = 7.5;
-const DEFAULT_ZOOM_MOBILE = 3.8;
-const MIN_ZOOM = 2;
-const MAX_ZOOM = 18;
+const MIN_DISTANCE = 3;   // can get right up to the data
+const MAX_DISTANCE = 140; // can pull way back for overview
+const DEFAULT_FOV = 50;   // natural perspective, not too wide
 
 // ═══════════════════════════════════════════
 // MOBILE DETECTION HOOK (inline, lightweight)
@@ -705,11 +711,15 @@ function CameraBreathe({ enabled }: { enabled: boolean }) {
 function ShotTooltip({
   shot,
   position,
+  symbology,
 }: {
   shot: ShotEvent;
   position: [number, number, number];
+  symbology: SymbologyMode;
 }) {
-  const color = OUTCOME_COLOR[shot.outcome] || "#4a5f78";
+  const color = symbology === "TEAM"
+    ? (TEAM_COLOR[shot.team] || "#4a5f78")
+    : (OUTCOME_COLOR[shot.outcome] || "#4a5f78");
   const isGoal = shot.outcome === "goal";
   const lastName = shot.player.split(" ").slice(-1)[0];
 
@@ -807,12 +817,14 @@ function ShotScene({
   outcomeFilter,
   controlsRef,
   breatheEnabled,
+  symbology,
 }: {
   data: ShotData;
   teamFilter: TeamFilter;
   outcomeFilter: OutcomeFilter;
   controlsRef: React.MutableRefObject<any>;
   breatheEnabled: boolean;
+  symbology: SymbologyMode;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [lockedId, setLockedId] = useState<string | null>(null);
@@ -872,24 +884,24 @@ function ShotScene({
       <CameraBreathe enabled={breatheEnabled} />
 
       {/* Fog — subtle depth falloff */}
-      <fogExp2 attach="fog" args={[SCENE_BG, 0.005]} />
+      <fogExp2 attach="fog" args={[SCENE_BG, 0.003]} />
 
-      {/* ── MapControls — pan/zoom, constrained tilt ── */}
-      <MapControls
+      {/* ── OrbitControls — immersive distance-based zoom, free target ── */}
+      <OrbitControls
         ref={controlsRef}
         enableRotate={true}
         enableZoom={true}
         enablePan={true}
         enableDamping={true}
         dampingFactor={0.12}
-        minZoom={MIN_ZOOM}
-        maxZoom={MAX_ZOOM}
-        maxPolarAngle={Math.PI / 2.3}
-        minPolarAngle={Math.PI / 8}
+        minDistance={MIN_DISTANCE}
+        maxDistance={MAX_DISTANCE}
+        maxPolarAngle={Math.PI / 2.05}  // can get nearly eye-level
+        minPolarAngle={0.05}             // can go almost directly overhead
         target={new THREE.Vector3(...DEFAULT_CAM_TARGET)}
-        zoomSpeed={1.2}
-        panSpeed={0.8}
-        rotateSpeed={0.5}
+        zoomSpeed={1.8}                  // faster zoom for responsiveness
+        panSpeed={1.2}                   // faster pan for exploration
+        rotateSpeed={0.6}
         // Touch: one finger = rotate, two = zoom/pan
         touches={{
           ONE: THREE.TOUCH.ROTATE,
@@ -904,7 +916,9 @@ function ShotScene({
 
       {/* ── Trajectory arcs ── */}
       {filteredShots.map((shot) => {
-        const color = OUTCOME_COLOR[shot.outcome] || "#4a5f78";
+        const color = symbology === "TEAM"
+          ? (TEAM_COLOR[shot.team] || "#4a5f78")
+          : (OUTCOME_COLOR[shot.outcome] || "#4a5f78");
         const isActive = activeId === shot.id;
         const isDeemphasized = activeId !== null && !isActive;
 
@@ -929,7 +943,9 @@ function ShotScene({
 
       {/* ── Shot nodes + contact shadows ── */}
       {filteredShots.map((shot) => {
-        const color = OUTCOME_COLOR[shot.outcome] || "#4a5f78";
+        const color = symbology === "TEAM"
+          ? (TEAM_COLOR[shot.team] || "#4a5f78")
+          : (OUTCOME_COLOR[shot.outcome] || "#4a5f78");
         const isActive = activeId === shot.id;
         const isDeemphasized = activeId !== null && !isActive;
 
@@ -979,6 +995,7 @@ function ShotScene({
             <ShotTooltip
               shot={shot}
               position={[shot.location[0], NODE_Y, shot.location[1]]}
+              symbology={symbology}
             />
           );
         })()}
@@ -1021,6 +1038,7 @@ function SceneOverlay({
   onResetView,
   onToggleFullscreen,
   isFullscreen,
+  symbology,
 }: {
   data: ShotData;
   teamFilter: TeamFilter;
@@ -1028,6 +1046,7 @@ function SceneOverlay({
   onResetView: () => void;
   onToggleFullscreen: () => void;
   isFullscreen: boolean;
+  symbology: SymbologyMode;
 }) {
   const stats = useMemo(() => {
     const relevant =
@@ -1039,18 +1058,23 @@ function SceneOverlay({
     return { shots: relevant.length, goals, totalXG: totalXG.toFixed(2) };
   }, [data.shots, teamFilter]);
 
-  const legendItems = [
-    { label: "Goal", color: OUTCOME_COLOR.goal },
-    { label: "Saved", color: OUTCOME_COLOR.saved },
-    { label: "Off Target", color: OUTCOME_COLOR.off_target },
-    { label: "Blocked", color: OUTCOME_COLOR.blocked },
-  ];
+  const legendItems = symbology === "TEAM"
+    ? [
+        { label: "Inter Miami", color: TEAM_COLOR["Inter Miami"] },
+        { label: "Toronto FC", color: TEAM_COLOR["Toronto FC"] },
+      ]
+    : [
+        { label: "Goal", color: OUTCOME_COLOR.goal },
+        { label: "Saved", color: OUTCOME_COLOR.saved },
+        { label: "Off Target", color: OUTCOME_COLOR.off_target },
+        { label: "Blocked", color: OUTCOME_COLOR.blocked },
+      ];
 
-  // Responsive font sizes
-  const legendSize = isMobile ? "11px" : "9px";
+  // Responsive font sizes — legend enlarged for readability
+  const legendSize = isMobile ? "13px" : "12px";
   const metricSize = isMobile ? "22px" : "18px";
   const metricLabelSize = isMobile ? "9px" : "7px";
-  const dotSize = isMobile ? "9px" : "7px";
+  const dotSize = isMobile ? "12px" : "10px";
   const pad = isMobile ? "18px" : "14px";
 
   // SVG icons inline (no extra deps)
@@ -1088,7 +1112,7 @@ function SceneOverlay({
 
   return (
     <>
-      {/* Bottom-left: Legend */}
+      {/* Bottom-left: Legend — glassmorphism panel */}
       <div
         style={{
           position: "absolute",
@@ -1096,22 +1120,40 @@ function SceneOverlay({
           left: pad,
           display: "flex",
           flexDirection: "column",
-          gap: isMobile ? "7px" : "5px",
+          gap: isMobile ? "9px" : "8px",
           zIndex: 10,
           pointerEvents: "none",
+          background: "rgba(6, 8, 16, 0.7)",
+          backdropFilter: "blur(12px)",
+          borderRadius: "8px",
+          border: "1px solid rgba(255,255,255,0.06)",
+          padding: isMobile ? "12px 16px" : "10px 14px",
         }}
       >
+        <div
+          style={{
+            fontFamily: "var(--font-body, 'Space Grotesk', sans-serif)",
+            fontSize: isMobile ? "9px" : "8px",
+            fontWeight: 600,
+            color: "rgba(255,255,255,0.25)",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            marginBottom: "2px",
+          }}
+        >
+          {symbology === "TEAM" ? "Team" : "Outcome"}
+        </div>
         {legendItems.map((item) => (
           <div
             key={item.label}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "7px",
+              gap: "9px",
               fontFamily: "var(--font-body, 'Space Grotesk', sans-serif)",
               fontSize: legendSize,
               fontWeight: 500,
-              color: "rgba(255,255,255,0.45)",
+              color: "rgba(255,255,255,0.55)",
               letterSpacing: "0.04em",
             }}
           >
@@ -1121,7 +1163,7 @@ function SceneOverlay({
                 height: dotSize,
                 borderRadius: "50%",
                 background: item.color,
-                boxShadow: `0 0 6px ${item.color}60`,
+                boxShadow: `0 0 8px ${item.color}60`,
                 display: "inline-block",
                 flexShrink: 0,
               }}
@@ -1277,7 +1319,7 @@ function TouchHint({ isMobile }: { isMobile: boolean }) {
       }}
     >
       {isMobile
-        ? "Pinch to zoom · Drag to rotate · Two-finger drag to pan"
+        ? "Pinch to zoom in · Drag to explore · Two-finger drag to pan"
         : "Scroll to zoom · Left-drag to rotate · Right-drag to pan"}
     </div>
   );
@@ -1291,12 +1333,14 @@ interface ShotMap3DProps {
   isModal?: boolean;
   teamFilter?: TeamFilter;
   outcomeFilter?: OutcomeFilter;
+  symbology?: SymbologyMode;
 }
 
 export default function ShotMap3D({
   isModal = false,
   teamFilter = "both",
   outcomeFilter = { goals: true, saved: true, offTarget: true, blocked: true },
+  symbology = "OUTCOME",
 }: ShotMap3DProps) {
   const [data, setData] = useState<ShotData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1354,15 +1398,9 @@ export default function ShotMap3D({
       const controls = controlsRef.current;
       controls.target.set(...DEFAULT_CAM_TARGET);
       controls.object.position.set(...DEFAULT_CAM_POS);
-      controls.object.zoom = isModal
-        ? DEFAULT_ZOOM_MODAL
-        : isMobile
-          ? DEFAULT_ZOOM_MOBILE
-          : DEFAULT_ZOOM_DESKTOP;
-      controls.object.updateProjectionMatrix();
       controls.update();
     }
-  }, [isModal, isMobile]);
+  }, []);
 
   const handleToggleFullscreen = useCallback(() => {
     const el = containerRef.current;
@@ -1377,14 +1415,7 @@ export default function ShotMap3D({
     }
   }, []);
 
-  // Determine zoom level
-  const defaultZoom = isFullscreen
-    ? (isMobile ? 5.5 : 8)
-    : isModal
-      ? DEFAULT_ZOOM_MODAL
-      : isMobile
-        ? DEFAULT_ZOOM_MOBILE
-        : DEFAULT_ZOOM_DESKTOP;
+  // No zoom factor needed — PerspectiveCamera uses distance
 
   // Determine aspect ratio: taller on mobile for better visibility
   const aspectRatio = isFullscreen
@@ -1474,11 +1505,11 @@ export default function ShotMap3D({
       >
         <Suspense fallback={null}>
           <CameraSetup />
-          <OrthographicCamera
+          <PerspectiveCamera
             makeDefault
-            zoom={defaultZoom}
-            near={0.1}
-            far={200}
+            fov={DEFAULT_FOV}
+            near={0.05}
+            far={300}
             position={DEFAULT_CAM_POS}
           />
           <ShotScene
@@ -1487,6 +1518,7 @@ export default function ShotMap3D({
             outcomeFilter={outcomeFilter}
             controlsRef={controlsRef}
             breatheEnabled={breatheEnabled}
+            symbology={symbology}
           />
         </Suspense>
       </Canvas>
@@ -1498,6 +1530,7 @@ export default function ShotMap3D({
         onResetView={handleResetView}
         onToggleFullscreen={handleToggleFullscreen}
         isFullscreen={isFullscreen}
+        symbology={symbology}
       />
 
       <TouchHint isMobile={isMobile} />

@@ -28,11 +28,13 @@ import {
   Ban,
   CircleOff,
   Sparkles,
+  Palette,
 } from "lucide-react";
 import StaggerContainer, { StaggerItem } from "@/components/StaggerContainer";
 import type {
   TeamFilter,
   OutcomeFilter,
+  SymbologyMode,
 } from "@/components/charts/ShotMap3D";
 
 const PassingNetwork3D = lazy(
@@ -222,6 +224,7 @@ export default function PitchMatch() {
     blocked: true,
   });
   const [shotInsightOpen, setShotInsightOpen] = useState(false);
+  const [shotSymbology, setShotSymbology] = useState<SymbologyMode>("OUTCOME");
 
   // Auto-sync team when exactly one team is filtered globally
   useEffect(() => {
@@ -539,6 +542,17 @@ export default function PitchMatch() {
               }
               zone1Toolbar={
                 <div className="flex items-center gap-3 flex-wrap">
+                  <SegmentedControl<SymbologyMode>
+                    options={[
+                      { value: "OUTCOME", label: "Outcome" },
+                      { value: "TEAM", label: "Team" },
+                    ]}
+                    value={shotSymbology}
+                    onChange={setShotSymbology}
+                    isDark={isDark}
+                    groupIcon={<Palette size={12} />}
+                    groupTooltip="Color Symbology"
+                  />
                   <SegmentedControl<TeamFilter>
                     options={[
                       { value: "both", label: "Both" },
@@ -677,6 +691,7 @@ export default function PitchMatch() {
               <ShotMap3D
                 teamFilter={shotTeamFilter}
                 outcomeFilter={shotOutcomeFilter}
+                symbology={shotSymbology}
               />
             </Suspense>
 
@@ -1077,6 +1092,7 @@ export default function PitchMatch() {
               isModal
               teamFilter={shotTeamFilter}
               outcomeFilter={shotOutcomeFilter}
+              symbology={shotSymbology}
             />
           </Suspense>
         </div>
