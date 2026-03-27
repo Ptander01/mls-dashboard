@@ -1,26 +1,50 @@
 /**
- * PitchMatch — Heatmaps, Shot Maps, Passing Networks
+ * PitchMatch — Heatmaps, Shot Maps, Passing Networks, 3D Shot Map
  * Uses procedurally generated pitch data derived from real player statistics
- * for heatmaps and shot maps, and real StatsBomb event data for the
- * cinematic 3D passing network & centrality analysis.
+ * for heatmaps and shot maps, real StatsBomb event data for the
+ * cinematic 3D passing network & centrality analysis, and real StatsBomb
+ * shot events for the 3D Shot Map & xG visualization.
  */
 import { useState, useMemo, useRef, useEffect, lazy, Suspense } from "react";
 import { useFilters } from "@/contexts/FilterContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { PLAYERS, getTeam } from "@/lib/mlsData";
 import NeuCard from "@/components/NeuCard";
 import { ChartHeader } from "@/components/ui/ChartHeader";
 import { ChartModal, MaximizeButton } from "@/components/ChartModal";
-import { Flame, Crosshair, Share2 } from "lucide-react";
+import {
+  SegmentedControl,
+  ToggleAction,
+  IconAction,
+} from "@/components/ui/ChartControls";
+import {
+  Flame,
+  Crosshair,
+  Share2,
+  Target,
+  Users,
+  CircleDot,
+  Shield,
+  Ban,
+  CircleOff,
+  Sparkles,
+} from "lucide-react";
 import StaggerContainer, { StaggerItem } from "@/components/StaggerContainer";
+import type {
+  TeamFilter,
+  OutcomeFilter,
+} from "@/components/charts/ShotMap3D";
 
 const PassingNetwork3D = lazy(
   () => import("@/components/charts/PassingNetwork3D")
 );
 
+const ShotMap3D = lazy(() => import("@/components/charts/ShotMap3D"));
+
 const PITCH_BG =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663348511113/fBEeqeVYwBHXg2g2gjhenP/pitch-bg-SCSoxY6mUL64vxkYMYHLEF.webp";
 
-type PitchView = "heatmap" | "shotmap" | "passing";
+type PitchView = "heatmap" | "shotmap" | "passing" | "shotmap3d";
 
 // Seeded random for deterministic generation
 function seededRandom(seed: number) {
@@ -181,11 +205,23 @@ function PitchLines() {
 
 export default function PitchMatch() {
   const { filteredTeams, filteredPlayers } = useFilters();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [view, setView] = useState<PitchView>("heatmap");
   const [selectedTeam, setSelectedTeam] = useState<string>(
     filteredTeams[0]?.id || "MIA"
   );
   const [selectedPlayer, setSelectedPlayer] = useState<number | null>(null);
+
+  // 3D Shot Map state
+  const [shotTeamFilter, setShotTeamFilter] = useState<TeamFilter>("both");
+  const [shotOutcomeFilter, setShotOutcomeFilter] = useState<OutcomeFilter>({
+    goals: true,
+    saved: true,
+    offTarget: true,
+    blocked: true,
+  });
+  const [shotInsightOpen, setShotInsightOpen] = useState(false);
 
   // Auto-sync team when exactly one team is filtered globally
   useEffect(() => {
@@ -325,7 +361,7 @@ export default function PitchMatch() {
                   ? "#ffb347"
                   : shot.result === "off_target"
                     ? "#ff6b6b"
-                    : "#666";
+                    : "#999";
             const size =
               shot.result === "goal" ? 1.2 + shot.xG * 2 : 0.6 + shot.xG * 1.5;
             return (
@@ -359,6 +395,11 @@ export default function PitchMatch() {
     </div>
   );
 
+  // Toggle helper for outcome filters
+  const toggleOutcome = (key: keyof OutcomeFilter) => {
+    setShotOutcomeFilter((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <StaggerContainer className="space-y-6 mt-4">
       {/* Tab Header Card — elevated command center */}
@@ -371,16 +412,17 @@ export default function PitchMatch() {
             <span className="font-semibold text-foreground">Pitch Match</span> —
             Dive into tactical match data on a virtual pitch. The heatmap shows
             player positioning intensity, the shot map plots every attempt with
-            xG-scaled markers (goals highlighted), and the passing network
-            reveals team shape and key link-up play. Select a team to see their
-            tactical fingerprint.
+            xG-scaled markers (goals highlighted), the 3D shot map renders real
+            StatsBomb shot events as glass spheres with neon trajectory arcs, and
+            the passing network reveals team shape and key link-up play. Select a
+            view to explore different tactical dimensions.
           </p>
         </NeuCard>
       </StaggerItem>
 
       {/* View Selector */}
       <StaggerItem>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {[
             {
               id: "heatmap" as PitchView,
@@ -388,6 +430,11 @@ export default function PitchMatch() {
               icon: Flame,
             },
             { id: "shotmap" as PitchView, label: "Shot Map", icon: Crosshair },
+            {
+              id: "shotmap3d" as PitchView,
+              label: "3D Shot Map",
+              icon: Target,
+            },
             {
               id: "passing" as PitchView,
               label: "Passing Network",
@@ -412,6 +459,266 @@ export default function PitchMatch() {
           })}
         </div>
       </StaggerItem>
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* 3D SHOT MAP — Full-width cinematic card    */}
+      {/* ═══════════════════════════════════════════ */}
+      {view === "shotmap3d" && (
+        <StaggerItem>
+          <NeuCard delay={0.08} className="p-5">
+            <ChartHeader
+              title="3D Shot Map x xG Analysis"
+              description={
+                <>
+                  In Inter Miami&apos;s commanding 4-0 victory over Toronto FC,
+                  all 21 shots are plotted as glass spheres sized by their
+                  expected goals (xG) value, with neon trajectory arcs tracing
+                  each shot&apos;s path toward goal.{" "}
+                  <strong>Inter Miami</strong> generated 1.03 xG from 13 shots,
+                  converting 4 goals from relatively low-xG chances — a clinical
+                  finishing display.{" "}
+                  <strong>Toronto FC</strong> managed 0.78 xG from 8 attempts
+                  but failed to find the net. Hover over any shot to see the
+                  player, minute, xG, and outcome.
+                </>
+              }
+              methods={
+                <>
+                  <p style={{ marginBottom: "8px" }}>
+                    <strong>Data Source:</strong> StatsBomb Open Data, Match ID
+                    3877115 (Inter Miami 4-0 Toronto FC, Sept 20, 2023). 21 shot
+                    events extracted (type == &apos;Shot&apos;).
+                  </p>
+                  <p style={{ marginBottom: "8px" }}>
+                    <strong>xG (Expected Goals):</strong> StatsBomb&apos;s
+                    proprietary expected goals model assigns a probability
+                    (0.00–1.00) to each shot based on location, body part, shot
+                    type, defensive pressure, and other contextual features. The
+                    xG value represents the likelihood of the shot resulting in a
+                    goal.
+                  </p>
+                  <p style={{ marginBottom: "8px" }}>
+                    <strong>Node Sizing:</strong> Each glass sphere&apos;s radius
+                    uses a perceptual power-curve to maximize visual hierarchy:{" "}
+                    <code style={{ fontSize: "9px" }}>
+                      r = 0.45 + (xG / max_xG)^0.55 × (2.6 − 0.45)
+                    </code>
+                    . The sub-linear exponent spreads the mid-range while keeping
+                    extremes dramatic — a 0.30 xG tap-in reads as clearly larger
+                    than a 0.03 speculative effort.
+                  </p>
+                  <p style={{ marginBottom: "8px" }}>
+                    <strong>Trajectory Arcs:</strong> Each shot&apos;s origin
+                    [x, y] is connected to its end location via a quadratic
+                    Bézier curve (NeonTube component) with a vertical apex that
+                    scales with distance, simulating ball flight.
+                  </p>
+                  <p style={{ marginBottom: "8px" }}>
+                    <strong>Coordinate Mapping:</strong> StatsBomb 120×80
+                    coordinates are mapped to a centered Three.js system:{" "}
+                    <code style={{ fontSize: "9px" }}>
+                      ThreeX = SB_X − 60, ThreeZ = SB_Y − 40
+                    </code>
+                    .
+                  </p>
+                  <p style={{ marginBottom: "8px" }}>
+                    <strong>Outcome Colors:</strong> Goal = Emerald (#00c897),
+                    Saved = Warm Amber (#e8a84c), Off Target/Post = Muted Coral
+                    (#c75050), Blocked = Cool Slate (#4a5f78). Goals receive
+                    thicker, brighter trajectory arcs with higher glow intensity;
+                    blocked shots recede with thinner, fainter arcs.
+                  </p>
+                  <p>
+                    <strong>Visual Hierarchy:</strong> Outcome-differentiated
+                    tube thickness, opacity, and glow intensity ensure goals
+                    dominate the composition while non-goals provide context
+                    without competing for attention. Contact shadows beneath
+                    each sphere anchor them to the pitch surface.
+                  </p>
+                </>
+              }
+              zone1Toolbar={
+                <div className="flex items-center gap-3 flex-wrap">
+                  <SegmentedControl<TeamFilter>
+                    options={[
+                      { value: "both", label: "Both" },
+                      { value: "Inter Miami", label: "Miami" },
+                      { value: "Toronto FC", label: "Toronto" },
+                    ]}
+                    value={shotTeamFilter}
+                    onChange={setShotTeamFilter}
+                    isDark={isDark}
+                    groupIcon={<Users size={12} />}
+                    groupTooltip="Filter by team"
+                  />
+                  <div className="flex items-center gap-1">
+                    <ToggleAction
+                      icon={<CircleDot size={11} />}
+                      label="Goals"
+                      tooltip="Show/hide goals"
+                      isActive={shotOutcomeFilter.goals}
+                      onToggle={() => toggleOutcome("goals")}
+                      isDark={isDark}
+                    />
+                    <ToggleAction
+                      icon={<Shield size={11} />}
+                      label="Saved"
+                      tooltip="Show/hide saved shots"
+                      isActive={shotOutcomeFilter.saved}
+                      onToggle={() => toggleOutcome("saved")}
+                      isDark={isDark}
+                    />
+                    <ToggleAction
+                      icon={<CircleOff size={11} />}
+                      label="Off Target"
+                      tooltip="Show/hide off-target shots"
+                      isActive={shotOutcomeFilter.offTarget}
+                      onToggle={() => toggleOutcome("offTarget")}
+                      isDark={isDark}
+                    />
+                    <ToggleAction
+                      icon={<Ban size={11} />}
+                      label="Blocked"
+                      tooltip="Show/hide blocked shots"
+                      isActive={shotOutcomeFilter.blocked}
+                      onToggle={() => toggleOutcome("blocked")}
+                      isDark={isDark}
+                    />
+                  </div>
+                </div>
+              }
+              zone2Analysis={
+                <IconAction
+                  icon={<Sparkles size={13} />}
+                  tooltip="AI Insight"
+                  isActive={shotInsightOpen}
+                  onToggle={() => setShotInsightOpen((v) => !v)}
+                  isDark={isDark}
+                  activeColor="amber"
+                />
+              }
+              zone3Utility={
+                <MaximizeButton
+                  onClick={() => setMaximized("shotmap3d")}
+                  isDark={isDark}
+                />
+              }
+            />
+
+            {/* AI Insight panel */}
+            {shotInsightOpen && (
+              <div
+                className="rounded-lg p-3 mb-3"
+                style={{
+                  background: isDark
+                    ? "rgba(255,179,71,0.06)"
+                    : "rgba(255,179,71,0.08)",
+                  border: `1px solid ${
+                    isDark
+                      ? "rgba(255,179,71,0.15)"
+                      : "rgba(255,179,71,0.2)"
+                  }`,
+                  fontFamily: "Space Grotesk, sans-serif",
+                  fontSize: "11px",
+                  lineHeight: 1.6,
+                  color: isDark
+                    ? "rgba(255,255,255,0.7)"
+                    : "rgba(0,0,0,0.65)",
+                }}
+              >
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Sparkles
+                    size={12}
+                    style={{ color: "#ffb347" }}
+                  />
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "10px",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "#ffb347",
+                    }}
+                  >
+                    Insight
+                  </span>
+                </div>
+                Miami generated 1.03 xG from 13 shots but scored 4 goals —
+                overperforming their expected output by nearly 3 goals. Their
+                most dangerous zone was the left half-space inside the box, where{" "}
+                <strong>Facundo Far&iacute;as</strong> (47&apos;) and{" "}
+                <strong>Benjamin Cremaschi</strong> (72&apos;) both converted
+                from tight angles. Toronto&apos;s best chance came from{" "}
+                <strong>Deandre Kerr</strong>&apos;s 0.30 xG effort in the 12th
+                minute, saved by Callender. The xG differential (Miami 1.03 vs
+                Toronto 0.78) was far closer than the scoreline suggests — a
+                testament to Miami&apos;s ruthless finishing.
+              </div>
+            )}
+
+            <Suspense
+              fallback={
+                <div
+                  className="flex items-center justify-center rounded-xl"
+                  style={{
+                    aspectRatio: "16/9",
+                    background: "#040810",
+                    color: "rgba(255,255,255,0.2)",
+                    fontFamily: "JetBrains Mono, monospace",
+                    fontSize: "10px",
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase" as const,
+                  }}
+                >
+                  Loading…
+                </div>
+              }
+            >
+              <ShotMap3D
+                teamFilter={shotTeamFilter}
+                outcomeFilter={shotOutcomeFilter}
+              />
+            </Suspense>
+
+            {/* Summary stats below the 3D canvas */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+              {[
+                {
+                  label: "Total Shots",
+                  value: "21",
+                  color: "var(--table-header-color)",
+                },
+                { label: "Goals", value: "4", color: "#00c897" },
+                {
+                  label: "Miami xG",
+                  value: "1.03",
+                  color: "var(--cyan)",
+                },
+                {
+                  label: "Toronto xG",
+                  value: "0.78",
+                  color: "var(--cyan)",
+                },
+              ].map(s => (
+                <div
+                  key={s.label}
+                  className="neu-concave rounded-lg p-2 text-center"
+                >
+                  <div className="text-[10px] text-muted-foreground uppercase">
+                    {s.label}
+                  </div>
+                  <div
+                    className="font-mono text-sm font-bold"
+                    style={{ color: s.color }}
+                  >
+                    {s.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </NeuCard>
+        </StaggerItem>
+      )}
 
       {/* Passing Network — Full-width cinematic 3D card */}
       {view === "passing" && (
@@ -465,7 +772,7 @@ export default function PitchMatch() {
                 </>
               }
               zone3Utility={
-                <MaximizeButton onClick={() => setMaximized("passing3d")} isDark={false} />
+                <MaximizeButton onClick={() => setMaximized("passing3d")} isDark={isDark} />
               }
             />
             <Suspense
@@ -576,7 +883,7 @@ export default function PitchMatch() {
                       className={`text-[10px] px-1 rounded ${
                         p.position === "FW"
                           ? "bg-red-500/15 text-red-400"
-                          : p.position === "MF"
+                          : p.position === "GK"
                             ? "bg-blue-500/15 text-blue-400"
                             : p.position === "DF"
                               ? "bg-green-500/15 text-green-400"
@@ -738,6 +1045,39 @@ export default function PitchMatch() {
             }
           >
             <PassingNetwork3D isModal />
+          </Suspense>
+        </div>
+      </ChartModal>
+
+      <ChartModal
+        isOpen={maximized === "shotmap3d"}
+        onClose={() => setMaximized(null)}
+        title="3D Shot Map x xG Analysis"
+      >
+        <div style={{ height: "calc(100vh - 10rem)" }}>
+          <Suspense
+            fallback={
+              <div
+                className="flex items-center justify-center"
+                style={{
+                  height: "100%",
+                  background: "#040810",
+                  color: "rgba(255,255,255,0.2)",
+                  fontFamily: "JetBrains Mono, monospace",
+                  fontSize: "10px",
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase" as const,
+                }}
+              >
+                Loading…
+              </div>
+            }
+          >
+            <ShotMap3D
+              isModal
+              teamFilter={shotTeamFilter}
+              outcomeFilter={shotOutcomeFilter}
+            />
           </Suspense>
         </div>
       </ChartModal>

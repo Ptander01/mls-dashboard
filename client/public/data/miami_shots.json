@@ -1,0 +1,476 @@
+{
+  "matchId": 3877115,
+  "matchLabel": "Inter Miami 4-0 Toronto FC",
+  "matchDate": "2023-09-20",
+  "teams": [
+    {
+      "name": "Inter Miami",
+      "shots": 13,
+      "goals": 4,
+      "saved": 1,
+      "blocked": 3,
+      "offTarget": 5,
+      "totalXG": 1.0278,
+      "avgXG": 0.0791
+    },
+    {
+      "name": "Toronto FC",
+      "shots": 8,
+      "goals": 0,
+      "saved": 2,
+      "blocked": 2,
+      "offTarget": 4,
+      "totalXG": 0.7802,
+      "avgXG": 0.0975
+    }
+  ],
+  "shots": [
+    {
+      "id": "ab6c5ca2-dbbf-4086-a814-4cd974276767",
+      "minute": 3,
+      "second": 49,
+      "team": "Inter Miami",
+      "player": "Josef Alexander Mart\u00ednez Mencia",
+      "location": [
+        43.6,
+        -2.6
+      ],
+      "endLocation": [
+        60.0,
+        -6.4
+      ],
+      "outcome": "off_target",
+      "outcomeRaw": "Off T",
+      "xG": 0.1477,
+      "bodyPart": "Left Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "4aa118bf-1c7c-4337-8a46-3fc7043d79f3",
+      "minute": 9,
+      "second": 50,
+      "team": "Toronto FC",
+      "player": "Lorenzo Insigne",
+      "location": [
+        44.2,
+        -12.3
+      ],
+      "endLocation": [
+        60.0,
+        10.9
+      ],
+      "outcome": "off_target",
+      "outcomeRaw": "Off T",
+      "xG": 0.0621,
+      "bodyPart": "Right Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "5e03da9c-16a8-492c-9816-3dd95f82c901",
+      "minute": 12,
+      "second": 22,
+      "team": "Toronto FC",
+      "player": "Deandre Kerr",
+      "location": [
+        48.0,
+        -7.5
+      ],
+      "endLocation": [
+        57.1,
+        -1.8
+      ],
+      "outcome": "saved",
+      "outcomeRaw": "Saved",
+      "xG": 0.2986,
+      "bodyPart": "Left Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "5a843d07-2bfa-4b3a-a193-d0883cdea667",
+      "minute": 12,
+      "second": 24,
+      "team": "Toronto FC",
+      "player": "Deandre Kerr",
+      "location": [
+        54.5,
+        -9.5
+      ],
+      "endLocation": [
+        60.0,
+        4.0
+      ],
+      "outcome": "off_target",
+      "outcomeRaw": "Post",
+      "xG": 0.1095,
+      "bodyPart": "Right Foot",
+      "technique": "Volley",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "a77d1464-89e4-4de9-ba9c-1e2fbc612085",
+      "minute": 13,
+      "second": 50,
+      "team": "Inter Miami",
+      "player": "Josef Alexander Mart\u00ednez Mencia",
+      "location": [
+        50.4,
+        -11.0
+      ],
+      "endLocation": [
+        60.0,
+        -4.8
+      ],
+      "outcome": "off_target",
+      "outcomeRaw": "Off T",
+      "xG": 0.0611,
+      "bodyPart": "Left Foot",
+      "technique": "Half Volley",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "f36e0140-2cbb-4ded-9e70-732ca15f02f2",
+      "minute": 17,
+      "second": 35,
+      "team": "Inter Miami",
+      "player": "Lionel Andr\u00e9s Messi Cuccittini",
+      "location": [
+        35.9,
+        0.4
+      ],
+      "endLocation": [
+        55.5,
+        -0.2
+      ],
+      "outcome": "saved",
+      "outcomeRaw": "Saved",
+      "xG": 0.0563,
+      "bodyPart": "Left Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "887fea6c-5ab0-42ce-a009-beb004337c6a",
+      "minute": 20,
+      "second": 58,
+      "team": "Inter Miami",
+      "player": "Lionel Andr\u00e9s Messi Cuccittini",
+      "location": [
+        45.9,
+        1.3
+      ],
+      "endLocation": [
+        47.9,
+        1.4
+      ],
+      "outcome": "blocked",
+      "outcomeRaw": "Blocked",
+      "xG": 0.0734,
+      "bodyPart": "Right Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "b455b808-fdec-43bf-b097-ec50e4d2de8c",
+      "minute": 22,
+      "second": 39,
+      "team": "Inter Miami",
+      "player": "Lionel Andr\u00e9s Messi Cuccittini",
+      "location": [
+        54.8,
+        6.6
+      ],
+      "endLocation": [
+        60.0,
+        -3.8
+      ],
+      "outcome": "off_target",
+      "outcomeRaw": "Off T",
+      "xG": 0.1602,
+      "bodyPart": "Right Foot",
+      "technique": "Volley",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "6b091e61-0f72-4517-a55c-7d2bcd32554e",
+      "minute": 30,
+      "second": 46,
+      "team": "Toronto FC",
+      "player": "Federico Bernardeschi",
+      "location": [
+        43.0,
+        11.7
+      ],
+      "endLocation": [
+        45.2,
+        10.2
+      ],
+      "outcome": "blocked",
+      "outcomeRaw": "Blocked",
+      "xG": 0.0367,
+      "bodyPart": "Left Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "83c67615-968b-4ef3-bfd1-ebd13da4d483",
+      "minute": 47,
+      "second": 25,
+      "team": "Inter Miami",
+      "player": "Facundo Far\u00edas",
+      "location": [
+        47.8,
+        4.0
+      ],
+      "endLocation": [
+        60.0,
+        3.3
+      ],
+      "outcome": "goal",
+      "outcomeRaw": "Goal",
+      "xG": 0.0769,
+      "bodyPart": "Right Foot",
+      "technique": "Volley",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "ca871290-2e7a-4498-98d7-dd595ace766c",
+      "minute": 47,
+      "second": 44,
+      "team": "Toronto FC",
+      "player": "Lorenzo Insigne",
+      "location": [
+        46.8,
+        0.2
+      ],
+      "endLocation": [
+        57.9,
+        -0.3
+      ],
+      "outcome": "saved",
+      "outcomeRaw": "Saved",
+      "xG": 0.1284,
+      "bodyPart": "Right Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "49a688cf-c9b6-4a4b-ada3-0bed3d770110",
+      "minute": 50,
+      "second": 58,
+      "team": "Inter Miami",
+      "player": "Tom\u00e1s Agust\u00edn Avil\u00e9s Mancilla",
+      "location": [
+        37.3,
+        -12.8
+      ],
+      "endLocation": [
+        60.0,
+        9.5
+      ],
+      "outcome": "off_target",
+      "outcomeRaw": "Off T",
+      "xG": 0.031,
+      "bodyPart": "Right Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "1a54731a-5f2b-4fd2-9ddf-a1d34e09a986",
+      "minute": 53,
+      "second": 1,
+      "team": "Inter Miami",
+      "player": "Robert Taylor",
+      "location": [
+        41.1,
+        11.0
+      ],
+      "endLocation": [
+        60.0,
+        -3.4
+      ],
+      "outcome": "goal",
+      "outcomeRaw": "Goal",
+      "xG": 0.0765,
+      "bodyPart": "Right Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "779f06c4-d2b2-4919-bf84-dd37e5404738",
+      "minute": 53,
+      "second": 22,
+      "team": "Toronto FC",
+      "player": "Lorenzo Insigne",
+      "location": [
+        39.9,
+        -1.5
+      ],
+      "endLocation": [
+        60.0,
+        6.7
+      ],
+      "outcome": "off_target",
+      "outcomeRaw": "Off T",
+      "xG": 0.0836,
+      "bodyPart": "Right Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "d879c221-2ab0-404b-8c1e-665d5dbcae19",
+      "minute": 62,
+      "second": 50,
+      "team": "Toronto FC",
+      "player": "Federico Bernardeschi",
+      "location": [
+        41.2,
+        -10.3
+      ],
+      "endLocation": [
+        42.5,
+        -9.6
+      ],
+      "outcome": "blocked",
+      "outcomeRaw": "Blocked",
+      "xG": 0.0249,
+      "bodyPart": "Left Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "c824320a-450d-4456-a8c8-cdf253cc6f0f",
+      "minute": 66,
+      "second": 25,
+      "team": "Inter Miami",
+      "player": "Robert Taylor",
+      "location": [
+        44.9,
+        13.0
+      ],
+      "endLocation": [
+        60.0,
+        5.1
+      ],
+      "outcome": "off_target",
+      "outcomeRaw": "Off T",
+      "xG": 0.0415,
+      "bodyPart": "Right Foot",
+      "technique": "Half Volley",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "3e292edf-3362-420f-a9bf-b41b3f9f8361",
+      "minute": 72,
+      "second": 21,
+      "team": "Inter Miami",
+      "player": "Benjamin Cremaschi",
+      "location": [
+        51.5,
+        12.3
+      ],
+      "endLocation": [
+        60.0,
+        -3.3
+      ],
+      "outcome": "goal",
+      "outcomeRaw": "Goal",
+      "xG": 0.1367,
+      "bodyPart": "Right Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "a2fb99cb-8e41-4200-8b7b-522fb7ffafb5",
+      "minute": 78,
+      "second": 16,
+      "team": "Inter Miami",
+      "player": "Leonardo Campana Romero",
+      "location": [
+        48.8,
+        9.8
+      ],
+      "endLocation": [
+        50.0,
+        8.6
+      ],
+      "outcome": "blocked",
+      "outcomeRaw": "Blocked",
+      "xG": 0.0608,
+      "bodyPart": "Left Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "9e22f947-dc97-47f7-be03-44d36c67ffdf",
+      "minute": 79,
+      "second": 1,
+      "team": "Inter Miami",
+      "player": "Noah Allen",
+      "location": [
+        42.7,
+        -14.3
+      ],
+      "endLocation": [
+        50.0,
+        -7.7
+      ],
+      "outcome": "blocked",
+      "outcomeRaw": "Blocked",
+      "xG": 0.0327,
+      "bodyPart": "Left Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "8c4f7238-f54f-44a5-b2cb-8891e8078caf",
+      "minute": 82,
+      "second": 54,
+      "team": "Toronto FC",
+      "player": "Lorenzo Insigne",
+      "location": [
+        35.6,
+        4.5
+      ],
+      "endLocation": [
+        60.0,
+        4.0
+      ],
+      "outcome": "off_target",
+      "outcomeRaw": "Post",
+      "xG": 0.0364,
+      "bodyPart": "Right Foot",
+      "technique": "Normal",
+      "shotType": "Open Play"
+    },
+    {
+      "id": "a11607c8-db30-4983-a3d6-a5e8def99531",
+      "minute": 86,
+      "second": 23,
+      "team": "Inter Miami",
+      "player": "Robert Taylor",
+      "location": [
+        53.9,
+        12.9
+      ],
+      "endLocation": [
+        60.0,
+        0.4
+      ],
+      "outcome": "goal",
+      "outcomeRaw": "Goal",
+      "xG": 0.073,
+      "bodyPart": "Right Foot",
+      "technique": "Half Volley",
+      "shotType": "Open Play"
+    }
+  ],
+  "meta": {
+    "totalShots": 21,
+    "totalGoals": 4,
+    "coordinateSystem": "Three.js centered (X: -60 to 60, Z: -40 to 40)",
+    "source": "StatsBomb Open Data"
+  }
+}
