@@ -308,15 +308,46 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 **Goal:** Add "breach the surface" faux-3D effect on individual BumpChart line segments during event view, with filter state lifting, monochrome desaturation for non-event teams, and enhanced visual contrast.
 **Sprint Brief:** `docs/sprints/briefs/bumpchart-event-symbology-brief.md`
 **Dependencies:** Epic 11 (Season Pulse), Epic 15
-**Commits:** `39905f2`, `68fba2b`
+**Commits:** `39905f2`, `68fba2b`, `11ad660`, `39d16a9`, `4868fc8`
 **Status:** COMPLETE
 
-- **Task 16.1: 3D Breach Segments** ✅
-  - [x] Event-bearing line segments rendered with faux-3D raised effect.
-- **Task 16.2: Monochrome Desaturation** ✅
-  - [x] Non-event teams use fully ghosted grey symbology for maximum contrast.
-- **Task 16.3: Filter State Lifting** ✅
-  - [x] Event category filters lifted to shared state between BumpChart and Timeline.
+- **Task 16.1: Architectural State Lifting** ✅
+  - [x] `activeFilters` state and `toggleFilter` callback lifted from `SeasonTimeline` to parent `SeasonPulse` container.
+  - [x] Single source of truth shared by BumpChart and SeasonTimeline for synchronized event filtering.
+- **Task 16.2: Event-Aware 3D Breach Rendering** ✅
+  - [x] New memoized `EventSegmentLine` component renders faux-3D tube effects only on matchweeks where filtered events occurred.
+  - [x] Breach week ranges computed (event week ±1), contiguous ranges merged, sub-paths via `monotoneCubicPath()`.
+  - [x] 3D tube (shadow, base, specular highlight) renders exclusively on breach segments.
+- **Task 16.3: Three-Tier Visual Hierarchy** ✅
+  - [x] Tier 1: Selected team — bold 3D tube, full color.
+  - [x] Tier 2: Event-relevant teams — 3D breach segments + colored dot markers at 0.85 opacity.
+  - [x] Tier 3: Everything else — ghost grey at 0.08 opacity, 1px stroke.
+- **Task 16.4: Event Dot Markers on All Teams** ✅ (Commit `39d16a9`)
+  - [x] Colored dots (Green=Streaks, Amber=Rank Changes, Red=Upsets, Cyan=Milestones) on all event-relevant team lines.
+  - [x] Dot radius scales with event severity; glow ring and hover tooltip on each.
+- **Task 16.5: Event Filter Pills in BumpChart Header** ✅ (Commit `11ad660`)
+  - [x] Compact filter pill bar in BumpChart `zone1Toolbar` with Filter icon and four toggleable category pills.
+  - [x] Fully synced with SeasonTimeline filter buttons — toggling from either location updates both views.
+- **Task 16.6: Documentation & Methods Update** ✅ (Commit `4868fc8`)
+  - [x] Chart description rewritten to explain Event View Mode, filter pills, 3D highlights, and dot markers.
+  - [x] Methods panel updated with "Event Symbology & Filtering" section documenting three-tier hierarchy and color legend.
+- **Future Refinements (Non-Blocking):**
+  - 3D breach subtlety improves as season progresses (currently only 5 weeks of 2026 data).
+  - Potential animation enhancement: fade-in/out transition between default and Event View Mode.
+  - Opacity gap tuning (0.85 vs 0.08) may need mid-season adjustment with denser data.
+
+## Epic 17: Portfolio Site Scaffold (S-3)
+
+**Effort:** 1 Session
+**Goal:** Initialize the Next.js 15 App Router scaffold for the "PTA Geospatial Intelligence" portfolio site, establish the design system bridging from the MLS Dashboard aesthetic, and configure the Vercel deployment pipeline.
+**Sprint Brief:** `sprints/S-3_Portfolio_Site_Scaffold.md`
+**Dependencies:** None (separate repository)
+**Status:** Ready to hand off
+
+- **Task 17.1:** Next.js 15 App Router scaffolding with `src/` directory convention.
+- **Task 17.2:** Design system translation — port Dark Forge Industrial Neumorphism to portfolio brand.
+- **Task 17.3:** Animation foundation (Framer Motion page transitions).
+- **Task 17.4:** Vercel deployment pipeline configuration.
 
 ---
 
