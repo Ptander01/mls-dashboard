@@ -122,9 +122,10 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 - **Task 8.1: Data Preparation**
   - [x] Python script (`scripts/fetch_miami_network.py`) fetches, parses, and computes centrality metrics for Inter Miami 2023 event data. Outputs `miami_network.json`.
-- **Task 8.2: Shot Map Visualization**
+- **Task 8.2: Shot Map Visualization (Ready for Handoff)**
   - [ ] Build frontend data loading hooks and match selector UI.
   - [ ] Implement 3D Shot Map (spheres colored by outcome mapped to Three.js coordinates).
+  - *Sprint Brief:* `docs/sprints/briefs/shot-map-brief.md`
 - **Task 8.3: Cinematic 3D Passing Network — COMPLETE (Commits `24bb251`, `8791e89`; Issue #41 closed)**
   - [x] `PassingNetwork3D.tsx` (1,003 lines): Three.js scene with stadium floodlights, atmospheric haze, exponential fog, Bloom post-processing.
   - [x] `GlassNode.tsx` (231 lines): MeshPhysicalMaterial glass spheres with radial glow halos, sized by combined Degree (60%) + Betweenness (40%) centrality.
