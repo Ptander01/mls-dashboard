@@ -10,6 +10,10 @@
  * trajectory arcs. Goals are the visual heroes — thicker, brighter,
  * higher arcs. Non-goals recede gracefully.
  *
+ * Interaction: OrbitControls with constrained tilt, pinch-to-zoom,
+ * drag-to-pan, reset-view button, and browser Fullscreen API for
+ * immersive mobile viewing.
+ *
  * Reuses GlassNode and NeonTube from the Passing Network.
  */
 
@@ -22,7 +26,7 @@ import {
   Suspense,
 } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
-import { OrthographicCamera, Html } from "@react-three/drei";
+import { OrthographicCamera, MapControls, Html } from "@react-three/drei";
 import {
   EffectComposer,
   Bloom,
@@ -126,6 +130,30 @@ const OUTCOME_GLOW: Record<string, number> = {
   blocked: 0.4,
 };
 
+// Camera defaults
+const DEFAULT_CAM_POS: [number, number, number] = [5, 60, 40];
+const DEFAULT_CAM_TARGET: [number, number, number] = [10, 0, 0];
+const DEFAULT_ZOOM_DESKTOP = 5.8;
+const DEFAULT_ZOOM_MODAL = 7.5;
+const DEFAULT_ZOOM_MOBILE = 3.8;
+const MIN_ZOOM = 2;
+const MAX_ZOOM = 18;
+
+// ═══════════════════════════════════════════
+// MOBILE DETECTION HOOK (inline, lightweight)
+// ═══════════════════════════════════════════
+
+function useIsMobileLocal() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return mobile;
+}
+
 // ═══════════════════════════════════════════
 // PITCH GROUND — 2048px procedural texture
 // Mow-stripe fibre, organic micro-noise, subtle sheen
@@ -143,7 +171,7 @@ function PitchGround() {
     ctx.fillStyle = "#060d06";
     ctx.fillRect(0, 0, size, size);
 
-    // Mow stripes — alternating luminance bands (horizontal = across pitch width)
+    // Mow stripes — alternating luminance bands
     const stripeCount = 24;
     const stripeH = size / stripeCount;
     for (let i = 0; i < stripeCount; i++) {
@@ -160,7 +188,7 @@ function PitchGround() {
       const x = Math.random() * size;
       const y = Math.random() * size;
       const len = 3 + Math.random() * 8;
-      const angle = -0.1 + Math.random() * 0.2; // mostly vertical
+      const angle = -0.1 + Math.random() * 0.2;
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(x + Math.sin(angle) * len, y + Math.cos(angle) * len);
@@ -229,17 +257,14 @@ function ChalkLine({
       const [x1, y1, z1] = points[i];
       const [x2, y2, z2] = points[i + 1];
 
-      // Direction vector
       const dx = x2 - x1;
       const dz = z2 - z1;
       const len = Math.sqrt(dx * dx + dz * dz);
       if (len < 0.001) continue;
 
-      // Perpendicular in XZ plane
       const nx = (-dz / len) * hw;
       const nz = (dx / len) * hw;
 
-      // Quad as two triangles
       vertices.push(
         x1 + nx, y1, z1 + nz,
         x1 - nx, y1, z1 - nz,
@@ -310,7 +335,6 @@ function PitchLines3D() {
   const hx = PITCH_HALF_X;
   const hz = PITCH_HALF_Z;
 
-  // Penalty area dimensions (scaled from real 105×68m pitch)
   const paW = 16.5 * (hx / 52.5);
   const paH = 20.15 * (hz / 34);
   const gaW = 5.5 * (hx / 52.5);
@@ -337,14 +361,11 @@ function PitchLines3D() {
 
       {/* Left penalty area */}
       <ChalkLine points={[[-hx, y, -paH], [-hx + paW, y, -paH], [-hx + paW, y, paH], [-hx, y, paH]]} />
-      {/* Left goal area */}
       <ChalkLine points={[[-hx, y, -gaH], [-hx + gaW, y, -gaH], [-hx + gaW, y, gaH], [-hx, y, gaH]]} />
-      {/* Left penalty spot */}
       <mesh position={[-hx + penSpotX, y + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.2, 12]} />
         <meshStandardMaterial color="#e8e4dc" emissive="#e8e4dc" emissiveIntensity={0.1} transparent opacity={0.2} />
       </mesh>
-      {/* Left penalty arc (D) */}
       <ChalkArc
         center={[-hx + penSpotX, 0]}
         radius={circleR}
@@ -355,14 +376,11 @@ function PitchLines3D() {
 
       {/* Right penalty area */}
       <ChalkLine points={[[hx, y, -paH], [hx - paW, y, -paH], [hx - paW, y, paH], [hx, y, paH]]} />
-      {/* Right goal area */}
       <ChalkLine points={[[hx, y, -gaH], [hx - gaW, y, -gaH], [hx - gaW, y, gaH], [hx, y, gaH]]} />
-      {/* Right penalty spot */}
       <mesh position={[hx - penSpotX, y + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.2, 12]} />
         <meshStandardMaterial color="#e8e4dc" emissive="#e8e4dc" emissiveIntensity={0.1} transparent opacity={0.2} />
       </mesh>
-      {/* Right penalty arc (D) */}
       <ChalkArc
         center={[hx - penSpotX, 0]}
         radius={circleR}
@@ -384,7 +402,6 @@ function GoalFrame({ xSign }: { xSign: 1 | -1 }) {
   const postR = 0.1;
   const netDepth = 2.0;
 
-  // Net texture — procedural grid
   const netTexture = useMemo(() => {
     const size = 256;
     const canvas = document.createElement("canvas");
@@ -415,7 +432,6 @@ function GoalFrame({ xSign }: { xSign: 1 | -1 }) {
 
   return (
     <group position={[x, 0, 0]}>
-      {/* Posts — polished aluminium */}
       {[-1, 1].map((side) => (
         <mesh
           key={side}
@@ -433,7 +449,6 @@ function GoalFrame({ xSign }: { xSign: 1 | -1 }) {
         </mesh>
       ))}
 
-      {/* Crossbar */}
       <mesh
         position={[0, goalHeight, 0]}
         rotation={[Math.PI / 2, 0, 0]}
@@ -449,7 +464,6 @@ function GoalFrame({ xSign }: { xSign: 1 | -1 }) {
         />
       </mesh>
 
-      {/* Net — back plane */}
       <mesh position={[xSign * netDepth, goalHeight / 2, 0]}>
         <planeGeometry args={[0.01, goalHeight, 1, 1]} />
         <meshBasicMaterial
@@ -461,7 +475,6 @@ function GoalFrame({ xSign }: { xSign: 1 | -1 }) {
         />
       </mesh>
 
-      {/* Net — side planes */}
       {[-1, 1].map((side) => (
         <mesh
           key={`net-side-${side}`}
@@ -483,7 +496,6 @@ function GoalFrame({ xSign }: { xSign: 1 | -1 }) {
         </mesh>
       ))}
 
-      {/* Net — top plane */}
       <mesh
         position={[(xSign * netDepth) / 2, goalHeight, 0]}
         rotation={[Math.PI / 2, 0, 0]}
@@ -503,13 +515,11 @@ function GoalFrame({ xSign }: { xSign: 1 | -1 }) {
 
 // ═══════════════════════════════════════════
 // CINEMATIC LIGHTING — Asymmetric 3-point rig
-// Key: cool overhead. Fill: warm side. Rim: behind goal.
 // ═══════════════════════════════════════════
 
 function CinematicLighting() {
   return (
     <group>
-      {/* Key light — cool blue-white from upper-left behind camera */}
       <directionalLight
         position={[-25, 65, 45]}
         intensity={0.55}
@@ -525,29 +535,21 @@ function CinematicLighting() {
         shadow-camera-bottom={-50}
         shadow-bias={-0.002}
       />
-
-      {/* Fill light — warm from the right side */}
       <directionalLight
         position={[40, 30, -20]}
         intensity={0.2}
         color="#f0d8b0"
       />
-
-      {/* Rim light — cool edge definition from behind far goal */}
       <directionalLight
         position={[0, 15, -55]}
         intensity={0.25}
         color="#6080b0"
       />
-
-      {/* Top-down wash for ground illumination */}
       <directionalLight
         position={[0, 80, 0]}
         intensity={0.18}
         color="#e0e8f0"
       />
-
-      {/* Subtle accent on the attacking goal area */}
       <pointLight
         position={[50, 12, 0]}
         intensity={0.15}
@@ -555,11 +557,7 @@ function CinematicLighting() {
         distance={35}
         decay={2}
       />
-
-      {/* Hemisphere — very subtle ambient fill */}
       <hemisphereLight args={["#101820", "#040608", 0.15]} />
-
-      {/* Near-zero ambient — let shadows exist */}
       <ambientLight intensity={0.04} color="#0a1020" />
     </group>
   );
@@ -674,15 +672,20 @@ function AtmosphericDust() {
 }
 
 // ═══════════════════════════════════════════
-// SLOW CAMERA BREATHE — subtle life
+// SLOW CAMERA BREATHE — pauses when user interacts
 // ═══════════════════════════════════════════
 
-function CameraBreathe() {
+function CameraBreathe({ enabled }: { enabled: boolean }) {
   const { camera } = useThree();
   const basePos = useRef(new THREE.Vector3());
   const initialized = useRef(false);
 
   useFrame(({ clock }) => {
+    if (!enabled) {
+      // Reset base position when user takes control
+      initialized.current = false;
+      return;
+    }
     if (!initialized.current) {
       basePos.current.copy(camera.position);
       initialized.current = true;
@@ -708,8 +711,6 @@ function ShotTooltip({
 }) {
   const color = OUTCOME_COLOR[shot.outcome] || "#4a5f78";
   const isGoal = shot.outcome === "goal";
-
-  // Short player name: last name only
   const lastName = shot.player.split(" ").slice(-1)[0];
 
   return (
@@ -731,7 +732,6 @@ function ShotTooltip({
           animation: "fadeIn 0.2s ease-out",
         }}
       >
-        {/* Player name */}
         <div
           style={{
             fontSize: "12px",
@@ -754,7 +754,6 @@ function ShotTooltip({
           </span>
         </div>
 
-        {/* xG — hero number */}
         <div
           style={{
             fontSize: isGoal ? "20px" : "16px",
@@ -780,7 +779,6 @@ function ShotTooltip({
           </span>
         </div>
 
-        {/* Metadata — minimal */}
         <div
           style={{
             display: "flex",
@@ -807,10 +805,14 @@ function ShotScene({
   data,
   teamFilter,
   outcomeFilter,
+  controlsRef,
+  breatheEnabled,
 }: {
   data: ShotData;
   teamFilter: TeamFilter;
   outcomeFilter: OutcomeFilter;
+  controlsRef: React.MutableRefObject<any>;
+  breatheEnabled: boolean;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [lockedId, setLockedId] = useState<string | null>(null);
@@ -827,7 +829,6 @@ function ShotScene({
     });
   }, [data.shots, teamFilter, outcomeFilter]);
 
-  // Compute max xG for power-curve normalization
   const maxXG = useMemo(
     () => Math.max(...data.shots.map((s) => s.xG), 0.01),
     [data.shots]
@@ -868,10 +869,38 @@ function ShotScene({
       <GoalFrame xSign={-1} />
       <CinematicLighting />
       <AtmosphericDust />
-      <CameraBreathe />
+      <CameraBreathe enabled={breatheEnabled} />
 
       {/* Fog — subtle depth falloff */}
       <fogExp2 attach="fog" args={[SCENE_BG, 0.005]} />
+
+      {/* ── MapControls — pan/zoom, constrained tilt ── */}
+      <MapControls
+        ref={controlsRef}
+        enableRotate={true}
+        enableZoom={true}
+        enablePan={true}
+        enableDamping={true}
+        dampingFactor={0.12}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
+        maxPolarAngle={Math.PI / 2.3}
+        minPolarAngle={Math.PI / 8}
+        target={new THREE.Vector3(...DEFAULT_CAM_TARGET)}
+        zoomSpeed={1.2}
+        panSpeed={0.8}
+        rotateSpeed={0.5}
+        // Touch: one finger = rotate, two = zoom/pan
+        touches={{
+          ONE: THREE.TOUCH.ROTATE,
+          TWO: THREE.TOUCH.DOLLY_PAN,
+        }}
+        mouseButtons={{
+          LEFT: THREE.MOUSE.ROTATE,
+          MIDDLE: THREE.MOUSE.DOLLY,
+          RIGHT: THREE.MOUSE.PAN,
+        }}
+      />
 
       {/* ── Trajectory arcs ── */}
       {filteredShots.map((shot) => {
@@ -879,11 +908,9 @@ function ShotScene({
         const isActive = activeId === shot.id;
         const isDeemphasized = activeId !== null && !isActive;
 
-        // Outcome-differentiated thickness
         const baseThickness = 0.06 * (OUTCOME_TUBE_THICKNESS[shot.outcome] || 0.4);
         const thickness = baseThickness + shot.xG * 0.06;
 
-        // Outcome-differentiated opacity
         let tubeOpacity = OUTCOME_TUBE_OPACITY[shot.outcome] || 0.3;
         if (isDeemphasized) tubeOpacity = DEEMPHASIS_OPACITY;
         if (isActive) tubeOpacity = Math.min(1, tubeOpacity * 1.6);
@@ -906,7 +933,6 @@ function ShotScene({
         const isActive = activeId === shot.id;
         const isDeemphasized = activeId !== null && !isActive;
 
-        // Power-curve radius scaling
         const normalizedXG = shot.xG / maxXG;
         const radius =
           MIN_NODE_RADIUS +
@@ -915,7 +941,7 @@ function ShotScene({
         let nodeOpacity = 1;
         let glowIntensity = OUTCOME_GLOW[shot.outcome] || 0.7;
         if (isDeemphasized) {
-          nodeOpacity = DEEMPHASIS_OPACITY + 0.04; // slightly more visible than tubes
+          nodeOpacity = DEEMPHASIS_OPACITY + 0.04;
           glowIntensity = 0.03;
         }
         if (isActive) {
@@ -924,7 +950,6 @@ function ShotScene({
 
         return (
           <group key={`node-${shot.id}`}>
-            {/* Contact shadow on ground */}
             <ContactShadow
               position={[shot.location[0], 0, shot.location[1]]}
               color={color}
@@ -979,23 +1004,30 @@ function ShotScene({
 function CameraSetup() {
   const { camera } = useThree();
   useEffect(() => {
-    camera.position.set(5, 60, 40);
-    camera.lookAt(10, 0, 0);
+    camera.position.set(...DEFAULT_CAM_POS);
+    camera.lookAt(...DEFAULT_CAM_TARGET);
   }, [camera]);
   return null;
 }
 
 // ═══════════════════════════════════════════
-// OVERLAY — Single consolidated legend + metrics
-// Minimal, transparent, not competing with the scene
+// OVERLAY — Legend + metrics + controls
 // ═══════════════════════════════════════════
 
 function SceneOverlay({
   data,
   teamFilter,
+  isMobile,
+  onResetView,
+  onToggleFullscreen,
+  isFullscreen,
 }: {
   data: ShotData;
   teamFilter: TeamFilter;
+  isMobile: boolean;
+  onResetView: () => void;
+  onToggleFullscreen: () => void;
+  isFullscreen: boolean;
 }) {
   const stats = useMemo(() => {
     const relevant =
@@ -1014,17 +1046,57 @@ function SceneOverlay({
     { label: "Blocked", color: OUTCOME_COLOR.blocked },
   ];
 
+  // Responsive font sizes
+  const legendSize = isMobile ? "11px" : "9px";
+  const metricSize = isMobile ? "22px" : "18px";
+  const metricLabelSize = isMobile ? "9px" : "7px";
+  const dotSize = isMobile ? "9px" : "7px";
+  const pad = isMobile ? "18px" : "14px";
+
+  // SVG icons inline (no extra deps)
+  const resetIcon = (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
+  );
+
+  const fullscreenIcon = isFullscreen ? (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+    </svg>
+  ) : (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+    </svg>
+  );
+
+  const btnStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: isMobile ? "36px" : "28px",
+    height: isMobile ? "36px" : "28px",
+    borderRadius: "6px",
+    background: "rgba(6, 8, 16, 0.75)",
+    backdropFilter: "blur(8px)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    color: "rgba(255,255,255,0.5)",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  };
+
   return (
     <>
       {/* Bottom-left: Legend */}
       <div
         style={{
           position: "absolute",
-          bottom: "14px",
-          left: "14px",
+          bottom: pad,
+          left: pad,
           display: "flex",
           flexDirection: "column",
-          gap: "5px",
+          gap: isMobile ? "7px" : "5px",
           zIndex: 10,
           pointerEvents: "none",
         }}
@@ -1037,7 +1109,7 @@ function SceneOverlay({
               alignItems: "center",
               gap: "7px",
               fontFamily: "var(--font-body, 'Space Grotesk', sans-serif)",
-              fontSize: "9px",
+              fontSize: legendSize,
               fontWeight: 500,
               color: "rgba(255,255,255,0.45)",
               letterSpacing: "0.04em",
@@ -1045,12 +1117,13 @@ function SceneOverlay({
           >
             <span
               style={{
-                width: "7px",
-                height: "7px",
+                width: dotSize,
+                height: dotSize,
                 borderRadius: "50%",
                 background: item.color,
                 boxShadow: `0 0 6px ${item.color}60`,
                 display: "inline-block",
+                flexShrink: 0,
               }}
             />
             {item.label}
@@ -1058,99 +1131,54 @@ function SceneOverlay({
         ))}
       </div>
 
-      {/* Bottom-right: Minimal metrics */}
+      {/* Bottom-right: Metrics */}
       <div
         style={{
           position: "absolute",
-          bottom: "14px",
-          right: "14px",
+          bottom: pad,
+          right: pad,
           zIndex: 10,
           pointerEvents: "none",
           display: "flex",
-          gap: "16px",
+          gap: isMobile ? "20px" : "16px",
           alignItems: "baseline",
           fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
         }}
       >
         <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              fontSize: "18px",
-              fontWeight: 800,
-              color: "rgba(255,255,255,0.7)",
-              lineHeight: 1,
-            }}
-          >
+          <div style={{ fontSize: metricSize, fontWeight: 800, color: "rgba(255,255,255,0.7)", lineHeight: 1 }}>
             {stats.shots}
           </div>
-          <div
-            style={{
-              fontSize: "7px",
-              color: "rgba(255,255,255,0.25)",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              marginTop: "2px",
-            }}
-          >
+          <div style={{ fontSize: metricLabelSize, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: "2px" }}>
             Shots
           </div>
         </div>
         <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              fontSize: "18px",
-              fontWeight: 800,
-              color: OUTCOME_COLOR.goal,
-              lineHeight: 1,
-            }}
-          >
+          <div style={{ fontSize: metricSize, fontWeight: 800, color: OUTCOME_COLOR.goal, lineHeight: 1 }}>
             {stats.goals}
           </div>
-          <div
-            style={{
-              fontSize: "7px",
-              color: "rgba(255,255,255,0.25)",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              marginTop: "2px",
-            }}
-          >
+          <div style={{ fontSize: metricLabelSize, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: "2px" }}>
             Goals
           </div>
         </div>
         <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              fontSize: "18px",
-              fontWeight: 800,
-              color: "rgba(0,212,255,0.8)",
-              lineHeight: 1,
-            }}
-          >
+          <div style={{ fontSize: metricSize, fontWeight: 800, color: "rgba(0,212,255,0.8)", lineHeight: 1 }}>
             {stats.totalXG}
           </div>
-          <div
-            style={{
-              fontSize: "7px",
-              color: "rgba(255,255,255,0.25)",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              marginTop: "2px",
-            }}
-          >
+          <div style={{ fontSize: metricLabelSize, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: "2px" }}>
             xG
           </div>
         </div>
       </div>
 
-      {/* Top-right: Match badge — whisper-quiet */}
+      {/* Top-right: Match badge */}
       <div
         style={{
           position: "absolute",
           top: "12px",
-          right: "14px",
+          right: pad,
           fontFamily: "var(--font-body, 'Space Grotesk', sans-serif)",
-          fontSize: "9px",
+          fontSize: isMobile ? "11px" : "9px",
           fontWeight: 500,
           color: "rgba(255,255,255,0.2)",
           textAlign: "right",
@@ -1160,11 +1188,98 @@ function SceneOverlay({
         }}
       >
         <div>Inter Miami 4 — 0 Toronto FC</div>
-        <div style={{ fontSize: "8px", color: "rgba(255,255,255,0.12)" }}>
+        <div style={{ fontSize: isMobile ? "10px" : "8px", color: "rgba(255,255,255,0.12)" }}>
           Sept 20, 2023
         </div>
       </div>
+
+      {/* Top-left: Control buttons (Reset + Fullscreen) */}
+      <div
+        style={{
+          position: "absolute",
+          top: "12px",
+          left: pad,
+          zIndex: 20,
+          display: "flex",
+          gap: "6px",
+        }}
+      >
+        <button
+          onClick={onResetView}
+          style={btnStyle}
+          title="Reset view"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "rgba(255,255,255,0.5)";
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+          }}
+        >
+          {resetIcon}
+        </button>
+        <button
+          onClick={onToggleFullscreen}
+          style={btnStyle}
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "rgba(255,255,255,0.5)";
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+          }}
+        >
+          {fullscreenIcon}
+        </button>
+      </div>
     </>
+  );
+}
+
+// ═══════════════════════════════════════════
+// TOUCH HINT — auto-fading interaction prompt
+// ═══════════════════════════════════════════
+
+function TouchHint({ isMobile }: { isMobile: boolean }) {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(false), 4000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: isMobile ? "70px" : "55px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 15,
+        pointerEvents: "none",
+        fontFamily: "var(--font-body, 'Space Grotesk', sans-serif)",
+        fontSize: isMobile ? "12px" : "10px",
+        color: "rgba(255,255,255,0.35)",
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        background: "rgba(6, 8, 16, 0.6)",
+        backdropFilter: "blur(8px)",
+        padding: isMobile ? "8px 16px" : "6px 14px",
+        borderRadius: "20px",
+        border: "1px solid rgba(255,255,255,0.06)",
+        whiteSpace: "nowrap",
+        animation: "fadeIn 0.5s ease-out, fadeOut 0.8s ease-in 3.2s forwards",
+      }}
+    >
+      {isMobile
+        ? "Pinch to zoom · Drag to rotate · Two-finger drag to pan"
+        : "Scroll to zoom · Left-drag to rotate · Right-drag to pan"}
+    </div>
   );
 }
 
@@ -1185,6 +1300,12 @@ export default function ShotMap3D({
 }: ShotMap3DProps) {
   const [data, setData] = useState<ShotData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [breatheEnabled, setBreatheEnabled] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<any>(null);
+  const isMobile = useIsMobileLocal();
+  const interactionTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     fetch("/data/miami_shots.json")
@@ -1195,6 +1316,84 @@ export default function ShotMap3D({
       .then((d) => setData(d))
       .catch((e) => setError(e.message));
   }, []);
+
+  // Listen for fullscreen changes (user might press Esc)
+  useEffect(() => {
+    const handler = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  // Pause breathe when user interacts, resume after idle
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onInteract = () => {
+      setBreatheEnabled(false);
+      if (interactionTimer.current) clearTimeout(interactionTimer.current);
+      interactionTimer.current = setTimeout(() => setBreatheEnabled(true), 3000);
+    };
+
+    el.addEventListener("pointerdown", onInteract);
+    el.addEventListener("wheel", onInteract, { passive: true });
+    el.addEventListener("touchstart", onInteract, { passive: true });
+
+    return () => {
+      el.removeEventListener("pointerdown", onInteract);
+      el.removeEventListener("wheel", onInteract);
+      el.removeEventListener("touchstart", onInteract);
+      if (interactionTimer.current) clearTimeout(interactionTimer.current);
+    };
+  }, [data]); // re-attach when data loads
+
+  const handleResetView = useCallback(() => {
+    if (controlsRef.current) {
+      const controls = controlsRef.current;
+      controls.target.set(...DEFAULT_CAM_TARGET);
+      controls.object.position.set(...DEFAULT_CAM_POS);
+      controls.object.zoom = isModal
+        ? DEFAULT_ZOOM_MODAL
+        : isMobile
+          ? DEFAULT_ZOOM_MOBILE
+          : DEFAULT_ZOOM_DESKTOP;
+      controls.object.updateProjectionMatrix();
+      controls.update();
+    }
+  }, [isModal, isMobile]);
+
+  const handleToggleFullscreen = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    if (!document.fullscreenElement) {
+      el.requestFullscreen?.().catch(() => {
+        // Fallback: some browsers block programmatic fullscreen
+      });
+    } else {
+      document.exitFullscreen?.();
+    }
+  }, []);
+
+  // Determine zoom level
+  const defaultZoom = isFullscreen
+    ? (isMobile ? 5.5 : 8)
+    : isModal
+      ? DEFAULT_ZOOM_MODAL
+      : isMobile
+        ? DEFAULT_ZOOM_MOBILE
+        : DEFAULT_ZOOM_DESKTOP;
+
+  // Determine aspect ratio: taller on mobile for better visibility
+  const aspectRatio = isFullscreen
+    ? undefined
+    : isModal
+      ? undefined
+      : isMobile
+        ? "4/3"
+        : "16/9";
 
   if (error) {
     return (
@@ -1241,13 +1440,28 @@ export default function ShotMap3D({
 
   return (
     <div
+      ref={containerRef}
       className="relative rounded-xl overflow-hidden"
       style={{
-        aspectRatio: isModal ? undefined : "16/9",
-        height: isModal ? "100%" : undefined,
+        aspectRatio: aspectRatio,
+        height: (isModal || isFullscreen) ? "100%" : undefined,
+        width: isFullscreen ? "100%" : undefined,
         background: SCENE_BG,
+        touchAction: "none", // prevent browser gestures from interfering
       }}
     >
+      {/* CSS keyframes for hint animation */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+      `}</style>
+
       <Canvas
         gl={{
           antialias: true,
@@ -1262,20 +1476,31 @@ export default function ShotMap3D({
           <CameraSetup />
           <OrthographicCamera
             makeDefault
-            zoom={isModal ? 7.5 : 5.8}
+            zoom={defaultZoom}
             near={0.1}
             far={200}
-            position={[5, 60, 40]}
+            position={DEFAULT_CAM_POS}
           />
           <ShotScene
             data={data}
             teamFilter={teamFilter}
             outcomeFilter={outcomeFilter}
+            controlsRef={controlsRef}
+            breatheEnabled={breatheEnabled}
           />
         </Suspense>
       </Canvas>
 
-      <SceneOverlay data={data} teamFilter={teamFilter} />
+      <SceneOverlay
+        data={data}
+        teamFilter={teamFilter}
+        isMobile={isMobile}
+        onResetView={handleResetView}
+        onToggleFullscreen={handleToggleFullscreen}
+        isFullscreen={isFullscreen}
+      />
+
+      <TouchHint isMobile={isMobile} />
     </div>
   );
 }
