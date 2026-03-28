@@ -352,6 +352,27 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 ---
 
+## Epic 18: Animation Polish & Mobile Responsiveness
+
+**Effort:** 1-2 Sessions
+**Goal:** Make the dashboard fully responsive for mobile devices (53% of traffic) and smooth out animation rough edges (splash screen loading, tab transitions, theme toggle jank).
+**Sprint Brief:** `docs/sprints/briefs/animation-mobile-polish-brief.md`
+**Dependencies:** None
+**Status:** Ready to hand off
+
+- **Task 18.1: Animation Polish**
+  - [ ] Add loading indicator and smooth crossfade to splash screen.
+  - [ ] Implement `AnimatePresence` crossfade between `TabSkeleton` and loaded content.
+  - [ ] Remove global `html *` theme transition to fix toggle jank.
+  - [ ] Add `prefers-reduced-motion` support.
+- **Task 18.2: Mobile Responsiveness**
+  - [ ] Convert tab navigation to horizontally scrollable container on mobile.
+  - [ ] Convert fixed left Filter Panel into a bottom sheet/modal on mobile.
+  - [ ] Update chart containers to use responsive grids and dynamic dimensions.
+  - [ ] Ensure all touch targets are at least 44x44px.
+
+---
+
 ## Future / Deferred Work
 
 - **Treemap & Matrix Animation Polish:** Do not use deck.gl for these. Instead, enhance current SVG/Three.js implementations with better lighting and Framer Motion transitions.
