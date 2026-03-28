@@ -687,8 +687,8 @@ export default function PlayerStats() {
             </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <NeuCard delay={0.05} glow="cyan" className="p-4">
-              <div className="flex items-center gap-2 mb-2">
+            <NeuCard delay={0.05} glow="cyan" className="p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
                 <Crosshair size={14} className="text-cyan" />
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">
                   Total Goals
@@ -699,8 +699,8 @@ export default function PlayerStats() {
                 className="text-2xl text-cyan"
               />
             </NeuCard>
-            <NeuCard delay={0.12} glow="amber" className="p-4">
-              <div className="flex items-center gap-2 mb-2">
+            <NeuCard delay={0.12} glow="amber" className="p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
                 <TrendingUp size={14} className="text-amber" />
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">
                   Avg Goals/Player
@@ -712,8 +712,8 @@ export default function PlayerStats() {
                 className="text-2xl text-amber"
               />
             </NeuCard>
-            <NeuCard delay={0.2} glow="emerald" className="p-4">
-              <div className="flex items-center gap-2 mb-2">
+            <NeuCard delay={0.2} glow="emerald" className="p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
                 <Zap size={14} className="text-emerald" />
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">
                   Avg Assists
@@ -725,8 +725,8 @@ export default function PlayerStats() {
                 className="text-2xl text-emerald"
               />
             </NeuCard>
-            <NeuCard delay={0.3} className="p-4">
-              <div className="flex items-center gap-2 mb-2">
+            <NeuCard delay={0.3} className="p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
                 <Shield size={14} className="text-purple-400" />
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">
                   Avg Shot Acc
@@ -987,7 +987,7 @@ export default function PlayerStats() {
                   </RadarChart>
                 </ResponsiveContainer>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {(
                   [
                     {
