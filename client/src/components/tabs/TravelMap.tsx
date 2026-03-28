@@ -1356,7 +1356,7 @@ export default function TravelMap() {
 
           <div
             className="relative rounded-xl overflow-hidden"
-            style={{ height: "560px" }}
+            style={{ height: "min(560px, 70vh)" }}
           >
             <div
               ref={containerRef}

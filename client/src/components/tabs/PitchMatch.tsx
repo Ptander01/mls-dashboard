@@ -995,7 +995,7 @@ export default function PitchMatch() {
               )}
 
               {view === "heatmap" && selPlayerData && (
-                <div className="grid grid-cols-4 gap-2 mt-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
                   {[
                     {
                       label: "Minutes",

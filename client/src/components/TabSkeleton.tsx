@@ -3,11 +3,32 @@
  *
  * Matches the dashboard's neumorphic card aesthetic with CSS shimmer animation.
  * Used as the <Suspense> fallback while tab chunks are loading.
+ * Wrapped in motion.div to participate in AnimatePresence crossfade.
  */
+
+import { motion } from "framer-motion";
+
+const skeletonVariants = {
+  initial: { opacity: 0 },
+  animate: {
+    opacity: 1,
+    transition: { duration: 0.2, ease: "easeOut" as const },
+  },
+  exit: {
+    opacity: 0,
+    transition: { duration: 0.15, ease: "easeIn" as const },
+  },
+};
 
 export default function TabSkeleton() {
   return (
-    <div className="flex flex-col gap-4 py-6">
+    <motion.div
+      variants={skeletonVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="flex flex-col gap-4 py-6"
+    >
       {/* Section header skeleton */}
       <div className="flex items-center gap-2 px-1">
         <div className="skeleton-shimmer w-1 h-4 rounded-full" />
@@ -72,6 +93,6 @@ export default function TabSkeleton() {
         </div>
         <div className="skeleton-shimmer h-48 rounded-lg w-full" />
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense, useRef } from "react";
 import FilterPanel from "@/components/FilterPanel";
 import TabSkeleton from "@/components/TabSkeleton";
 import { useFilters } from "@/contexts/FilterContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useIsMobile } from "@/hooks/useMobile";
 import {
   Users,
   DollarSign,
@@ -13,8 +14,9 @@ import {
   Moon,
   Filter,
   Activity,
+  SlidersHorizontal,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 // Lazy-loaded tab components
 const PlayerStats = lazy(() => import("@/components/tabs/PlayerStats"));
@@ -51,6 +53,13 @@ const tabVariants = {
     filter: "blur(4px)",
     transition: { duration: 0.15, ease: [0.4, 0, 1, 1] as const },
   },
+};
+
+/** Reduced-motion variants — instant swap */
+const tabVariantsReduced = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.01 } },
+  exit: { opacity: 0, transition: { duration: 0.01 } },
 };
 
 /** Render the active tab component */
@@ -90,27 +99,34 @@ function TabContent({
 function ZAssemblyTitle() {
   const [phase, setPhase] = useState(0);
   const { activeSeasonData } = useFilters();
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (prefersReducedMotion) {
+      setPhase(3);
+      return;
+    }
     const timers = [
       setTimeout(() => setPhase(1), 200),
       setTimeout(() => setPhase(2), 600),
       setTimeout(() => setPhase(3), 1000),
     ];
     return () => timers.forEach(clearTimeout);
-  }, []);
+  }, [prefersReducedMotion]);
 
   const letters = "MLS".split("");
   const word2 = "Analytics".split("");
 
   return (
-    <div className="flex items-baseline gap-1 mb-1">
+    <div className="flex items-baseline gap-1 mb-1 flex-wrap">
       <div
         className="w-1 h-10 rounded-full bg-cyan"
         style={{
           opacity: phase >= 1 ? 1 : 0,
           transform: phase >= 1 ? "scaleY(1)" : "scaleY(0)",
-          transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
+          transition: prefersReducedMotion
+            ? "none"
+            : "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
           transformOrigin: "bottom",
           boxShadow: "0 0 12px var(--cyan)",
         }}
@@ -129,7 +145,9 @@ function ZAssemblyTitle() {
                   ? "perspective(800px) translateZ(0) scale(1)"
                   : `perspective(800px) translateZ(${200 + i * 100}px) scale(${1.3 + i * 0.1})`,
               filter: phase >= 1 ? "blur(0)" : `blur(${6 + i * 2}px)`,
-              transition: `all 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.08}s`,
+              transition: prefersReducedMotion
+                ? "none"
+                : `all 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.08}s`,
             }}
           >
             {l}
@@ -150,7 +168,9 @@ function ZAssemblyTitle() {
                   ? "perspective(800px) translateZ(0) translateY(0) scale(1)"
                   : `perspective(800px) translateZ(${300 + i * 80}px) translateY(-${10 + i * 3}px) scale(${1.2 + i * 0.05})`,
               filter: phase >= 2 ? "blur(0)" : `blur(${8 + i * 1.5}px)`,
-              transition: `all 0.9s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.04}s`,
+              transition: prefersReducedMotion
+                ? "none"
+                : `all 0.9s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.04}s`,
             }}
           >
             {l}
@@ -168,7 +188,9 @@ function ZAssemblyTitle() {
               ? "perspective(800px) translateZ(0)"
               : "perspective(800px) translateZ(500px)",
           filter: phase >= 3 ? "blur(0)" : "blur(12px)",
-          transition: "all 1s cubic-bezier(0.16, 1, 0.3, 1)",
+          transition: prefersReducedMotion
+            ? "none"
+            : "all 1s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
         {activeSeasonData.seasonYear} SEASON{activeSeasonData.seasonYear === 2026 && <span className="ml-1 text-emerald-400">LIVE</span>}
@@ -238,11 +260,14 @@ export default function Home() {
   const { isFilterActive, filteredPlayers, filteredTeams, filteredMatches, activeSeasonData } = useFilters();
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const isMobile = useIsMobile();
+  const prefersReducedMotion = useReducedMotion();
+  const tabScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoaded(true), 100);
+    const t = setTimeout(() => setLoaded(true), prefersReducedMotion ? 0 : 100);
     return () => clearTimeout(t);
-  }, []);
+  }, [prefersReducedMotion]);
 
   // Sync tab changes to URL
   const handleTabChange = useCallback((tabId: string) => {
@@ -250,6 +275,14 @@ export default function Home() {
     setActiveTab(tabId);
     // Clear team param when switching away from pulse
     writeUrlParams(tabId, tabId === "pulse" ? null : null);
+
+    // Scroll active tab into view on mobile
+    if (tabScrollRef.current) {
+      const activeBtn = tabScrollRef.current.querySelector(`[data-tab="${tabId}"]`);
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    }
   }, [activeTab]);
 
   // Callback for SeasonPulse to report team selection changes to the URL
@@ -270,7 +303,9 @@ export default function Home() {
             backgroundImage: `url(${HERO_IMG})`,
             filter: `brightness(${isDark ? 0.3 : 0.6}) saturate(1.3) contrast(1.1)`,
             transform: loaded ? "scale(1)" : "scale(1.1)",
-            transition: "transform 2s cubic-bezier(0.16, 1, 0.3, 1)",
+            transition: prefersReducedMotion
+              ? "none"
+              : "transform 2s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         />
         {/* Gradient overlays */}
@@ -304,13 +339,15 @@ export default function Home() {
           />
         </div>
 
-        <div className="relative z-10 h-full flex flex-col justify-end px-6 pb-5">
+        <div className="relative z-10 h-full flex flex-col justify-end px-4 md:px-6 pb-5">
           <ZAssemblyTitle />
           <div
             style={{
               opacity: loaded ? 1 : 0,
               transform: loaded ? "translateY(0)" : "translateY(20px)",
-              transition: "all 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.2s",
+              transition: prefersReducedMotion
+                ? "none"
+                : "all 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.2s",
             }}
           >
             <p className="text-xs text-muted-foreground ml-6 font-mono tracking-wider">
@@ -333,55 +370,69 @@ export default function Home() {
 
       {/* Tab Navigation — Raised Neumorphic Platform */}
       <nav
-        className="sticky top-0 z-30 px-4 py-2"
+        className="sticky top-0 z-30 px-2 md:px-4 py-2"
         style={{
           background: "var(--nav-bg)",
           backdropFilter: "blur(16px) saturate(1.5)",
           opacity: loaded ? 1 : 0,
           transform: loaded ? "translateY(0)" : "translateY(-20px)",
-          transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.8s",
+          transition: prefersReducedMotion
+            ? "none"
+            : "all 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.8s",
         }}
       >
         <div
-          className="max-w-[2400px] mx-auto neu-raised rounded-xl px-3 py-2 flex items-center"
+          className="max-w-[2400px] mx-auto neu-raised rounded-xl px-2 md:px-3 py-2 flex items-center"
           style={{
             boxShadow: isDark
               ? "4px 4px 12px rgba(0,0,0,0.5), -2px -2px 8px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.04)"
               : "4px 4px 12px rgba(0,0,0,0.1), -2px -2px 8px rgba(255,255,255,0.7), inset 0 1px 0 rgba(255,255,255,0.6)",
           }}
         >
-          {/* Tabs spread across the width */}
-          <div className="flex flex-1 items-center justify-between">
+          {/* Tabs — scrollable icon-only on mobile, full labels on desktop */}
+          <div
+            ref={tabScrollRef}
+            className="flex flex-1 items-center md:justify-between gap-1 md:gap-0 overflow-x-auto scrollbar-hide"
+            style={{ scrollSnapType: "x mandatory" }}
+          >
             {tabs.map((tab, i) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
+                  data-tab={tab.id}
                   onClick={() => handleTabChange(tab.id)}
-                  className="relative group flex-1"
+                  className="relative group flex-shrink-0 md:flex-1"
+                  title={tab.label}
                   style={{
+                    scrollSnapAlign: "center",
                     opacity: loaded ? 1 : 0,
                     transform: loaded
                       ? "perspective(800px) translateZ(0)"
                       : `perspective(800px) translateZ(${150 + i * 60}px)`,
                     filter: loaded ? "blur(0)" : `blur(${4 + i}px)`,
-                    transition: `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${0.9 + i * 0.06}s`,
+                    transition: prefersReducedMotion
+                      ? "none"
+                      : `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${0.9 + i * 0.06}s`,
                   }}
                 >
                   <div
-                    className={`tab-btn flex items-center justify-center gap-2 whitespace-nowrap ${isActive ? "active" : ""}`}
+                    className={`tab-btn flex items-center justify-center gap-2 whitespace-nowrap min-h-[44px] min-w-[44px] ${isActive ? "active" : ""}`}
                   >
-                    <Icon size={14} />
-                    {tab.label}
+                    <Icon size={isMobile ? 18 : 14} />
+                    {/* Show label only on md+ screens */}
+                    <span className="hidden md:inline">{tab.label}</span>
                   </div>
                   {/* Active indicator line */}
                   {isActive && (
                     <div
-                      className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-cyan"
+                      className="absolute bottom-0 left-2 right-2 md:left-3 md:right-3 h-[2px] rounded-full bg-cyan"
                       style={{
                         boxShadow: "0 0 8px var(--cyan)",
-                        animation: "slide-up-fade 0.3s ease-out",
+                        animation: prefersReducedMotion
+                          ? "none"
+                          : "slide-up-fade 0.3s ease-out",
                       }}
                     />
                   )}
@@ -390,14 +441,17 @@ export default function Home() {
             })}
           </div>
 
-          {/* Right side: filter badge + theme toggle */}
+          {/* Right side: mobile filter button + filter badge + theme toggle */}
           <div
-            className="flex-shrink-0 pl-3 flex items-center gap-3 border-l ml-3"
+            className="flex-shrink-0 pl-2 md:pl-3 flex items-center gap-2 md:gap-3 border-l ml-2 md:ml-3"
             style={{ borderColor: "var(--table-border)" }}
           >
+            {/* Mobile filter toggle — visible only on <1024px */}
+            <FilterPanel.MobileToggle />
+
             {isFilterActive && (
               <div
-                className="flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-lg"
+                className="hidden md:flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-lg"
                 style={{
                   background: isDark
                     ? "rgba(0, 212, 255, 0.08)"
@@ -416,11 +470,11 @@ export default function Home() {
       </nav>
 
       {/* Content Area with AnimatePresence crossfade */}
-      <main className="px-4 xl:px-6 2xl:px-8 pb-8 max-w-[2400px] mx-auto">
+      <main className="px-3 md:px-4 xl:px-6 2xl:px-8 pb-8 max-w-[2400px] mx-auto">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            variants={tabVariants}
+            variants={prefersReducedMotion ? tabVariantsReduced : tabVariants}
             initial="initial"
             animate="animate"
             exit="exit"
