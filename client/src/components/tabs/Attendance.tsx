@@ -1805,8 +1805,8 @@ export default function Attendance() {
             </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <NeuCard delay={0.05} className="p-4">
-              <div className="flex items-center gap-2 mb-2">
+            <NeuCard delay={0.05} className="p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
                 <Users size={14} className="text-cyan" />
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">
                   Total Attendance
@@ -1817,8 +1817,8 @@ export default function Attendance() {
                 className="text-2xl text-cyan"
               />
             </NeuCard>
-            <NeuCard delay={0.12} className="p-4">
-              <div className="flex items-center gap-2 mb-2">
+            <NeuCard delay={0.12} className="p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
                 <TrendingUp size={14} className="text-amber" />
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">
                   Avg per Match
@@ -1829,8 +1829,8 @@ export default function Attendance() {
                 className="text-2xl text-amber"
               />
             </NeuCard>
-            <NeuCard delay={0.2} className="p-4">
-              <div className="flex items-center gap-2 mb-2">
+            <NeuCard delay={0.2} className="p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
                 <MapPin size={14} className="text-emerald" />
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">
                   Highest
@@ -1847,8 +1847,8 @@ export default function Attendance() {
                 </div>
               )}
             </NeuCard>
-            <NeuCard delay={0.3} className="p-4">
-              <div className="flex items-center gap-2 mb-2">
+            <NeuCard delay={0.3} className="p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
                 <TrendingDown size={14} className="text-purple-400" />
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">
                   Matches
