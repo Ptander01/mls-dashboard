@@ -8,7 +8,7 @@
 import { useState, useMemo, useRef, useEffect, lazy, Suspense } from "react";
 import { useFilters } from "@/contexts/FilterContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { PLAYERS, getTeam } from "@/lib/mlsData";
+import { getTeam, type Player } from "@/lib/mlsData";
 import NeuCard from "@/components/NeuCard";
 import { ChartHeader } from "@/components/ui/ChartHeader";
 import { ChartModal, MaximizeButton } from "@/components/ChartModal";
@@ -58,7 +58,7 @@ function seededRandom(seed: number) {
 }
 
 // Generate heatmap zones based on player position and stats
-function generateHeatmap(player: (typeof PLAYERS)[0]): number[][] {
+function generateHeatmap(player: Player): number[][] {
   const rng = seededRandom(player.id * 31 + player.minutes);
   const zones: number[][] = Array.from({ length: 8 }, () => Array(12).fill(0));
   const pos = player.position;
@@ -89,7 +89,7 @@ function generateHeatmap(player: (typeof PLAYERS)[0]): number[][] {
 
 // Generate shots from player stats
 function generateShots(
-  player: (typeof PLAYERS)[0]
+  player: Player
 ): { x: number; y: number; xG: number; result: string }[] {
   if (player.shots === 0) return [];
   const rng = seededRandom(player.id * 17 + player.goals);
@@ -120,9 +120,10 @@ function generateShots(
 
 // Generate team shots
 function generateTeamShots(
-  teamId: string
+  teamId: string,
+  allPlayers: Player[]
 ): { x: number; y: number; xG: number; result: string }[] {
-  const teamPlayers = PLAYERS.filter(p => p.team === teamId && p.shots > 0);
+  const teamPlayers = allPlayers.filter(p => p.team === teamId && p.shots > 0);
   const allShots: { x: number; y: number; xG: number; result: string }[] = [];
   teamPlayers.forEach(p => {
     allShots.push(...generateShots(p));
@@ -206,7 +207,8 @@ function PitchLines() {
 }
 
 export default function PitchMatch() {
-  const { filteredTeams, filteredPlayers } = useFilters();
+  const { filteredTeams, filteredPlayers, activeSeasonData } = useFilters();
+  const allPlayers = activeSeasonData.players;
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [view, setView] = useState<PitchView>("heatmap");
@@ -244,23 +246,23 @@ export default function PitchMatch() {
 
   const playerHeatmap = useMemo(() => {
     const pid = selectedPlayer || teamPlayers[0]?.id;
-    const player = PLAYERS.find(p => p.id === pid);
+    const player = allPlayers.find(p => p.id === pid);
     if (!player) return null;
     return generateHeatmap(player);
-  }, [selectedPlayer, teamPlayers]);
+  }, [selectedPlayer, teamPlayers, allPlayers]);
 
   const teamShots = useMemo(
-    () => generateTeamShots(selectedTeam),
-    [selectedTeam]
+    () => generateTeamShots(selectedTeam, allPlayers),
+    [selectedTeam, allPlayers]
   );
   const playerShots = useMemo(() => {
     if (!selectedPlayer) return teamShots;
-    const player = PLAYERS.find(p => p.id === selectedPlayer);
+    const player = allPlayers.find(p => p.id === selectedPlayer);
     return player ? generateShots(player) : teamShots;
-  }, [selectedPlayer, teamShots]);
+  }, [selectedPlayer, teamShots, allPlayers]);
 
   const selPlayerData = selectedPlayer
-    ? PLAYERS.find(p => p.id === selectedPlayer)
+    ? allPlayers.find(p => p.id === selectedPlayer)
     : null;
 
   // Draw heatmap on canvas

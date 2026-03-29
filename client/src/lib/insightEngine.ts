@@ -9,7 +9,22 @@
  */
 
 import type { Player, Match, Team, TeamBudget } from "./mlsData";
-import { TEAMS, MATCHES, TEAM_BUDGETS, getTeam } from "./mlsData";
+import { TEAMS, getTeam } from "./mlsData";
+
+// ─── Module-level season data injection ───
+// Components set these via setInsightEngineSeasonData() so that
+// internal helpers can access season-scoped matches and budgets
+// without changing every public function signature.
+let _MATCHES: Match[] = [];
+let _TEAM_BUDGETS: Record<string, TeamBudget> = {};
+
+export function setInsightEngineSeasonData(
+  matches: Match[],
+  teamBudgets: Record<string, TeamBudget>
+): void {
+  _MATCHES = matches;
+  _TEAM_BUDGETS = teamBudgets;
+}
 import { linearRegression } from "./chartUtils";
 import type { TeamWeekStanding, SeasonEvent } from "./seasonPulse";
 import { getTeamTrajectory, getTeamEvents } from "./seasonPulse";
@@ -398,7 +413,7 @@ export function teamBudgetHeadline(teams: Team[], players: Player[]): string {
 
   const teamStats = teams
     .map(t => {
-      const budget = TEAM_BUDGETS[t.id];
+      const budget = _TEAM_BUDGETS[t.id];
       const teamPlayers = players.filter(p => p.team === t.id);
       const totalGoals = teamPlayers.reduce((s, p) => s + p.goals, 0);
       const totalSalary = budget?.totalSalary || 0;
@@ -485,12 +500,12 @@ export function teamBudgetInsights(
   if (eastTeams.length > 2 && westTeams.length > 2) {
     const eastAvg =
       eastTeams.reduce(
-        (s, t) => s + (TEAM_BUDGETS[t.id]?.totalSalary || 0),
+        (s, t) => s + (_TEAM_BUDGETS[t.id]?.totalSalary || 0),
         0
       ) / eastTeams.length;
     const westAvg =
       westTeams.reduce(
-        (s, t) => s + (TEAM_BUDGETS[t.id]?.totalSalary || 0),
+        (s, t) => s + (_TEAM_BUDGETS[t.id]?.totalSalary || 0),
         0
       ) / westTeams.length;
     const eastGoals = eastTeams.reduce(
@@ -523,7 +538,7 @@ export function teamBudgetInsights(
   // 3. Roster construction diversity
   const teamDpShares = teams
     .map(t => {
-      const b = TEAM_BUDGETS[t.id];
+      const b = _TEAM_BUDGETS[t.id];
       if (!b || b.totalSalary === 0) return null;
       return {
         team: t,
@@ -551,7 +566,7 @@ export function teamBudgetInsights(
   // 4. Biggest salary-to-output mismatch
   const teamEfficiency = teams
     .map(t => {
-      const budget = TEAM_BUDGETS[t.id];
+      const budget = _TEAM_BUDGETS[t.id];
       const teamPlayers = players.filter(
         p => p.team === t.id && p.minutes > 200
       );
@@ -676,14 +691,14 @@ export function attendanceInsights(matches: Match[], teams: Team[]): Insight[] {
   // 1. Gravitational pull — the "Messi effect"
   const homeAvgs: Record<string, number> = {};
   TEAMS.forEach(t => {
-    const hm = MATCHES.filter(m => m.homeTeam === t.id && m.attendance > 0);
+    const hm = _MATCHES.filter(m => m.homeTeam === t.id && m.attendance > 0);
     homeAvgs[t.id] =
       hm.length > 0 ? hm.reduce((s, m) => s + m.attendance, 0) / hm.length : 0;
   });
 
   const pullData = teams
     .map(t => {
-      const awayGames = MATCHES.filter(
+      const awayGames = _MATCHES.filter(
         m => m.awayTeam === t.id && m.attendance > 0
       );
       let totalDelta = 0,
@@ -814,14 +829,14 @@ export function attendanceInsights(matches: Match[], teams: Team[]): Insight[] {
 export function gravitationalPullHeadline(teams: Team[]): string {
   const homeAvgs: Record<string, number> = {};
   TEAMS.forEach(t => {
-    const hm = MATCHES.filter(m => m.homeTeam === t.id && m.attendance > 0);
+    const hm = _MATCHES.filter(m => m.homeTeam === t.id && m.attendance > 0);
     homeAvgs[t.id] =
       hm.length > 0 ? hm.reduce((s, m) => s + m.attendance, 0) / hm.length : 0;
   });
 
   const pullData = teams
     .map(t => {
-      const awayGames = MATCHES.filter(
+      const awayGames = _MATCHES.filter(
         m => m.awayTeam === t.id && m.attendance > 0
       );
       let totalDelta = 0,
@@ -1200,7 +1215,7 @@ export function budgetBarCardInsights(
 
   const teamBudgets = teams
     .map(t => {
-      const b = TEAM_BUDGETS[t.id];
+      const b = _TEAM_BUDGETS[t.id];
       const total = b ? b.totalSalary : 0;
       const dp = b ? b.dpSalary : 0;
       return {

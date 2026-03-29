@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useFilters } from "@/contexts/FilterContext";
 import { getTeam } from "@/lib/mlsData";
 import {
@@ -34,7 +34,9 @@ import {
   Shield,
   Zap,
   Palette,
+  Search,
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { InsightPanel } from "@/components/InsightPanel";
 import {
   playerStatsInsights,
@@ -158,6 +160,7 @@ export default function PlayerStats() {
   const [showScorersInsights, setShowScorersInsights] = useState(false);
   const [showRadarInsights, setShowRadarInsights] = useState(false);
   const [showTableInsights, setShowTableInsights] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const insights = useMemo(
     () => playerStatsInsights(filteredPlayers),
@@ -195,6 +198,19 @@ export default function PlayerStats() {
     });
   }, [filteredPlayers, sortKey, sortDir]);
 
+  /* Apply text search filter on top of sorted results */
+  const searchFiltered = useMemo(() => {
+    if (!searchQuery.trim()) return sorted;
+    const q = searchQuery.toLowerCase();
+    return sorted.filter(
+      p =>
+        p.name.toLowerCase().includes(q) ||
+        (getTeam(p.team)?.short || "").toLowerCase().includes(q) ||
+        (getTeam(p.team)?.name || "").toLowerCase().includes(q) ||
+        p.position.toLowerCase().includes(q)
+    );
+  }, [sorted, searchQuery]);
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => (d === "asc" ? "desc" : "asc"));
     else {
@@ -202,6 +218,27 @@ export default function PlayerStats() {
       setSortDir("desc");
     }
   };
+
+  /* ─── VIRTUALIZATION REFS ─── */
+  const cardTableScrollRef = useRef<HTMLDivElement>(null);
+  const modalTableScrollRef = useRef<HTMLDivElement>(null);
+
+  /* Row height: td padding (0.55rem * 2 = ~17.6px) + font ~12px + border-spacing 3px ≈ 36px */
+  const ROW_HEIGHT = 36;
+
+  const cardVirtualizer = useVirtualizer({
+    count: searchFiltered.length,
+    getScrollElement: () => cardTableScrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 15,
+  });
+
+  const modalVirtualizer = useVirtualizer({
+    count: searchFiltered.length,
+    getScrollElement: () => modalTableScrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 20,
+  });
 
   const topScorers = useMemo(
     () => [...filteredPlayers].sort((a, b) => b.goals - a.goals).slice(0, 10),
@@ -324,6 +361,81 @@ export default function PlayerStats() {
     if (v >= 10_000) return `${(v / 1000).toFixed(0)}K`;
     return String(v);
   };
+
+  /* ─── REUSABLE TABLE ROW ─── */
+  const PlayerRow = ({ p, onClickPlayer }: { p: typeof searchFiltered[number]; onClickPlayer: (id: number) => void }) => (
+    <tr
+      className="cursor-pointer"
+      onClick={() => onClickPlayer(p.id)}
+    >
+      <td className="font-sans text-xs font-medium">{p.name}</td>
+      <td>
+        <span className="flex items-center gap-1">
+          <span
+            className="w-2 h-2 rounded-full"
+            style={{
+              backgroundColor: mutedTeamColor(p.team, isDark),
+            }}
+          />
+          {getTeam(p.team)?.short}
+        </span>
+      </td>
+      <td>
+        <span
+          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.position === "FW" ? "bg-red-500/15 text-red-400" : p.position === "MF" ? "bg-blue-500/15 text-blue-400" : p.position === "DF" ? "bg-green-500/15 text-green-400" : "bg-yellow-500/15 text-yellow-400"}`}
+        >
+          {p.position}
+        </span>
+      </td>
+      <td>{p.age}</td>
+      <td>{p.games}</td>
+      <td>{p.minutes.toLocaleString()}</td>
+      <td className="text-cyan font-semibold">{p.goals}</td>
+      <td className="text-amber">{p.assists}</td>
+      <td>{p.shots}</td>
+      <td>{p.shotsOnTarget}</td>
+      <td>{p.shotAccuracy}%</td>
+      <td>{p.tackles}</td>
+      <td>{p.interceptions}</td>
+      <td>{p.fouls}</td>
+      <td className={p.yellowCards > 5 ? "text-amber" : ""}>
+        {p.yellowCards}
+      </td>
+      <td className={p.redCards > 0 ? "text-coral" : ""}>
+        {p.redCards}
+      </td>
+      <td className="text-emerald">
+        {p.salary >= 1000000
+          ? `$${(p.salary / 1000000).toFixed(1)}M`
+          : `$${(p.salary / 1000).toFixed(0)}K`}
+      </td>
+    </tr>
+  );
+
+  /* ─── SEARCH INPUT ─── */
+  const SearchInput = ({ className = "" }: { className?: string }) => (
+    <div className={`relative ${className}`}>
+      <Search
+        size={13}
+        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+      />
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={e => setSearchQuery(e.target.value)}
+        placeholder="Search player, team, position…"
+        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-cyan/50 transition-all"
+        style={{
+          background: "var(--neu-bg-pressed)",
+          color: "var(--foreground)",
+          fontFamily: "Space Grotesk, sans-serif",
+          boxShadow: isDark
+            ? "inset 2px 2px 4px rgba(0,0,0,0.4), inset -1px -1px 3px rgba(255,255,255,0.05)"
+            : "inset 2px 2px 4px rgba(0,0,0,0.08), inset -1px -1px 3px rgba(255,255,255,0.6)",
+        }}
+      />
+    </div>
+  );
 
   const SortHeader = ({
     label,
@@ -1074,10 +1186,10 @@ export default function PlayerStats() {
       <StaggerItem>
         <NeuCard animate={false} className="overflow-hidden">
           <div
-            className="p-3 border-b flex items-center justify-between"
+            className="p-3 border-b flex items-center justify-between gap-3"
             style={{ borderColor: "var(--table-border)" }}
           >
-            <div>
+            <div className="flex-shrink-0">
               <h3
                 className="text-sm font-semibold"
                 style={{ fontFamily: "Space Grotesk, sans-serif" }}
@@ -1089,9 +1201,10 @@ export default function PlayerStats() {
                 player radar
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground font-mono">
-                {sorted.length} players
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <SearchInput className="w-48" />
+              <span className="text-xs text-muted-foreground font-mono whitespace-nowrap">
+                {searchFiltered.length} players
               </span>
               <CardInsightToggle
                 isOpen={showTableInsights}
@@ -1099,7 +1212,7 @@ export default function PlayerStats() {
                 isDark={isDark}
                 compact
               />
-              <MaximizeButton onClick={() => setMaximized("table")} />
+              <MaximizeButton onClick={() => setMaximized("table")} isDark={isDark} />
             </div>
           </div>
           <CardInsightSection
@@ -1108,10 +1221,12 @@ export default function PlayerStats() {
             isDark={isDark}
           />
           <div
-            className="overflow-x-auto max-h-[500px] overflow-y-auto"
+            ref={cardTableScrollRef}
+            className="overflow-x-auto overflow-y-auto"
             style={{
               background: "var(--neu-bg-concave-from)",
               padding: "2px 0",
+              maxHeight: 500,
             }}
           >
             <table className="data-table">
@@ -1137,55 +1252,47 @@ export default function PlayerStats() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.slice(0, 100).map(p => (
+                {/* Spacer row before visible items */}
+                {cardVirtualizer.getVirtualItems().length > 0 && (
                   <tr
-                    key={p.id}
-                    className="cursor-pointer"
-                    onClick={() => setSelectedPlayer(p.id)}
+                    aria-hidden
+                    style={{
+                      height: cardVirtualizer.getVirtualItems()[0].start,
+                      background: "transparent",
+                      boxShadow: "none",
+                      border: "none",
+                    }}
                   >
-                    <td className="font-sans text-xs font-medium">{p.name}</td>
-                    <td>
-                      <span className="flex items-center gap-1">
-                        <span
-                          className="w-2 h-2 rounded-full"
-                          style={{
-                            backgroundColor: mutedTeamColor(p.team, isDark),
-                          }}
-                        />
-                        {getTeam(p.team)?.short}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.position === "FW" ? "bg-red-500/15 text-red-400" : p.position === "MF" ? "bg-blue-500/15 text-blue-400" : p.position === "DF" ? "bg-green-500/15 text-green-400" : "bg-yellow-500/15 text-yellow-400"}`}
-                      >
-                        {p.position}
-                      </span>
-                    </td>
-                    <td>{p.age}</td>
-                    <td>{p.games}</td>
-                    <td>{p.minutes.toLocaleString()}</td>
-                    <td className="text-cyan font-semibold">{p.goals}</td>
-                    <td className="text-amber">{p.assists}</td>
-                    <td>{p.shots}</td>
-                    <td>{p.shotsOnTarget}</td>
-                    <td>{p.shotAccuracy}%</td>
-                    <td>{p.tackles}</td>
-                    <td>{p.interceptions}</td>
-                    <td>{p.fouls}</td>
-                    <td className={p.yellowCards > 5 ? "text-amber" : ""}>
-                      {p.yellowCards}
-                    </td>
-                    <td className={p.redCards > 0 ? "text-coral" : ""}>
-                      {p.redCards}
-                    </td>
-                    <td className="text-emerald">
-                      {p.salary >= 1000000
-                        ? `$${(p.salary / 1000000).toFixed(1)}M`
-                        : `$${(p.salary / 1000).toFixed(0)}K`}
-                    </td>
+                    <td colSpan={17} style={{ padding: 0, border: "none" }} />
                   </tr>
-                ))}
+                )}
+                {cardVirtualizer.getVirtualItems().map(virtualRow => {
+                  const p = searchFiltered[virtualRow.index];
+                  return (
+                    <PlayerRow
+                      key={p.id}
+                      p={p}
+                      onClickPlayer={id => setSelectedPlayer(id)}
+                    />
+                  );
+                })}
+                {/* Spacer row after visible items */}
+                {cardVirtualizer.getVirtualItems().length > 0 && (
+                  <tr
+                    aria-hidden
+                    style={{
+                      height:
+                        cardVirtualizer.getTotalSize() -
+                        (cardVirtualizer.getVirtualItems().at(-1)!.start +
+                          cardVirtualizer.getVirtualItems().at(-1)!.size),
+                      background: "transparent",
+                      boxShadow: "none",
+                      border: "none",
+                    }}
+                  >
+                    <td colSpan={17} style={{ padding: 0, border: "none" }} />
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -1324,9 +1431,19 @@ export default function PlayerStats() {
       <ChartModal
         isOpen={maximized === "table"}
         onClose={() => setMaximized(null)}
-        title={`Player Database \u2014 ${sorted.length} players`}
+        title={`Player Database \u2014 ${searchFiltered.length} players`}
       >
-        <div className="overflow-x-auto max-h-[75vh] overflow-y-auto">
+        <div className="flex items-center gap-3 mb-3">
+          <SearchInput className="flex-1 max-w-xs" />
+          <span className="text-xs text-muted-foreground font-mono">
+            {searchFiltered.length} results
+          </span>
+        </div>
+        <div
+          ref={modalTableScrollRef}
+          className="overflow-x-auto overflow-y-auto"
+          style={{ maxHeight: "calc(75vh - 60px)" }}
+        >
           <table className="data-table">
             <thead>
               <tr>
@@ -1350,58 +1467,50 @@ export default function PlayerStats() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map(p => (
+              {/* Spacer row before visible items */}
+              {modalVirtualizer.getVirtualItems().length > 0 && (
                 <tr
-                  key={p.id}
-                  className="cursor-pointer"
-                  onClick={() => {
-                    setSelectedPlayer(p.id);
-                    setMaximized(null);
+                  aria-hidden
+                  style={{
+                    height: modalVirtualizer.getVirtualItems()[0].start,
+                    background: "transparent",
+                    boxShadow: "none",
+                    border: "none",
                   }}
                 >
-                  <td className="font-sans text-xs font-medium">{p.name}</td>
-                  <td>
-                    <span className="flex items-center gap-1">
-                      <span
-                        className="w-2 h-2 rounded-full"
-                        style={{
-                          backgroundColor: mutedTeamColor(p.team, isDark),
-                        }}
-                      />
-                      {getTeam(p.team)?.short}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${p.position === "FW" ? "bg-red-500/15 text-red-400" : p.position === "MF" ? "bg-blue-500/15 text-blue-400" : p.position === "DF" ? "bg-green-500/15 text-green-400" : "bg-yellow-500/15 text-yellow-400"}`}
-                    >
-                      {p.position}
-                    </span>
-                  </td>
-                  <td>{p.age}</td>
-                  <td>{p.games}</td>
-                  <td>{p.minutes.toLocaleString()}</td>
-                  <td className="text-cyan font-semibold">{p.goals}</td>
-                  <td className="text-amber">{p.assists}</td>
-                  <td>{p.shots}</td>
-                  <td>{p.shotsOnTarget}</td>
-                  <td>{p.shotAccuracy}%</td>
-                  <td>{p.tackles}</td>
-                  <td>{p.interceptions}</td>
-                  <td>{p.fouls}</td>
-                  <td className={p.yellowCards > 5 ? "text-amber" : ""}>
-                    {p.yellowCards}
-                  </td>
-                  <td className={p.redCards > 0 ? "text-coral" : ""}>
-                    {p.redCards}
-                  </td>
-                  <td className="text-emerald">
-                    {p.salary >= 1000000
-                      ? `$${(p.salary / 1000000).toFixed(1)}M`
-                      : `$${(p.salary / 1000).toFixed(0)}K`}
-                  </td>
+                  <td colSpan={17} style={{ padding: 0, border: "none" }} />
                 </tr>
-              ))}
+              )}
+              {modalVirtualizer.getVirtualItems().map(virtualRow => {
+                const p = searchFiltered[virtualRow.index];
+                return (
+                  <PlayerRow
+                    key={p.id}
+                    p={p}
+                    onClickPlayer={id => {
+                      setSelectedPlayer(id);
+                      setMaximized(null);
+                    }}
+                  />
+                );
+              })}
+              {/* Spacer row after visible items */}
+              {modalVirtualizer.getVirtualItems().length > 0 && (
+                <tr
+                  aria-hidden
+                  style={{
+                    height:
+                      modalVirtualizer.getTotalSize() -
+                      (modalVirtualizer.getVirtualItems().at(-1)!.start +
+                        modalVirtualizer.getVirtualItems().at(-1)!.size),
+                    background: "transparent",
+                    boxShadow: "none",
+                    border: "none",
+                  }}
+                >
+                  <td colSpan={17} style={{ padding: 0, border: "none" }} />
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

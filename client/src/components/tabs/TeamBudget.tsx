@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useFilters } from "@/contexts/FilterContext";
-import { getTeam, TEAM_BUDGETS } from "@/lib/mlsData";
+import { getTeam } from "@/lib/mlsData";
 import { Extruded3DStackedBar, Extruded3DPie } from "@/lib/chartUtils";
 import { useTheme } from "@/contexts/ThemeContext";
 import NeuCard from "@/components/NeuCard";
@@ -31,7 +31,8 @@ import { ChartHeader } from "@/components/ui/ChartHeader";
 import StaggerContainer, { StaggerItem } from "@/components/StaggerContainer";
 
 export default function TeamBudget() {
-  const { filteredTeams, filteredPlayers } = useFilters();
+  const { filteredTeams, filteredPlayers, activeSeasonData } = useFilters();
+  const TEAM_BUDGETS = activeSeasonData.teamBudgets;
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);

@@ -7,7 +7,7 @@
  */
 
 import type { Team, Player, Match } from "./mlsData";
-import { TEAMS, PLAYERS, MATCHES, getTeam, calculateDistance } from "./mlsData";
+import { TEAMS, getTeam, calculateDistance } from "./mlsData";
 
 // ═══════════════════════════════════════════
 // TYPES
@@ -362,8 +362,8 @@ function computeTeamResilience(
  */
 export function computeAllResilienceMetrics(
   teams: Team[] = TEAMS,
-  matches: Match[] = MATCHES,
-  players: Player[] = PLAYERS
+  matches: Match[],
+  players: Player[]
 ): TeamResilienceMetrics[] {
   // League averages for normalization context
   const leagueAwayPPG = (() => {

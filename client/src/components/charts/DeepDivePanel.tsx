@@ -21,8 +21,8 @@ import {
   linearRegression,
 } from "@/lib/chartUtils";
 import type { TeamResilienceMetrics } from "@/lib/resilienceUtils";
-import { TEAMS, PLAYERS, TEAM_BUDGETS, getTeam } from "@/lib/mlsData";
-import type { Player, Team } from "@/lib/mlsData";
+import { TEAMS, getTeam } from "@/lib/mlsData";
+import type { Player, Team, TeamBudget } from "@/lib/mlsData";
 import {
   ChevronDown,
   ChevronUp,
@@ -35,6 +35,7 @@ interface DeepDivePanelProps {
   metrics: TeamResilienceMetrics[];
   players: Player[];
   teams: Team[];
+  teamBudgets: Record<string, TeamBudget>;
 }
 
 // ═══════════════════════════════════════════
@@ -53,12 +54,13 @@ function squadDepthInsights(metrics: TeamResilienceMetrics[]): string {
 
 function salaryRoadInsights(
   metrics: TeamResilienceMetrics[],
-  teams: Team[]
+  teams: Team[],
+  teamBudgets: Record<string, TeamBudget> = {}
 ): string {
   if (metrics.length < 5) return "";
   const withBudget = metrics
     .map(m => {
-      const budget = TEAM_BUDGETS[m.teamId];
+      const budget = teamBudgets[m.teamId];
       return budget
         ? {
             ...m,
@@ -266,15 +268,17 @@ function SquadDepthBars({
 function SalaryRoadScatter({
   metrics,
   isDark,
+  teamBudgets = {},
 }: {
   metrics: TeamResilienceMetrics[];
   isDark: boolean;
+  teamBudgets?: Record<string, TeamBudget>;
 }) {
   const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
   const data = useMemo(() => {
     return metrics
       .map(m => {
-        const budget = TEAM_BUDGETS[m.teamId];
+        const budget = teamBudgets[m.teamId];
         if (!budget || budget.totalSalary === 0) return null;
         const dpConcentration = (budget.dpSalary / budget.totalSalary) * 100;
         return {
@@ -287,7 +291,7 @@ function SalaryRoadScatter({
       totalSalary: number;
       dpConcentration: number;
     })[];
-  }, [metrics]);
+  }, [metrics, teamBudgets]);
 
   const width = 700;
   const height = 400;
@@ -932,15 +936,15 @@ function AgeRidgeline({
 // MAIN DEEP DIVE PANEL
 // ═══════════════════════════════════════════
 
-function DeepDivePanelInner({ metrics, players, teams }: DeepDivePanelProps) {
+function DeepDivePanelInner({ metrics, players, teams, teamBudgets }: DeepDivePanelProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [isExpanded, setIsExpanded] = useState(false);
 
   const depthInsight = useMemo(() => squadDepthInsights(metrics), [metrics]);
   const salaryInsight = useMemo(
-    () => salaryRoadInsights(metrics, teams),
-    [metrics, teams]
+    () => salaryRoadInsights(metrics, teams, teamBudgets),
+    [metrics, teams, teamBudgets]
   );
   const ageInsight = useMemo(
     () => ageDistributionInsight(players, teams),
@@ -1066,7 +1070,7 @@ function DeepDivePanelInner({ metrics, players, teams }: DeepDivePanelProps) {
                     {salaryInsight}
                   </p>
                 )}
-                <SalaryRoadScatter metrics={metrics} isDark={isDark} />
+                <SalaryRoadScatter metrics={metrics} isDark={isDark} teamBudgets={teamBudgets} />
               </motion.div>
 
               {/* ─── Panel 3: Age Distribution ─── */}
@@ -1124,6 +1128,7 @@ const DeepDivePanel = memo(
   (prev, next) =>
     prev.metrics === next.metrics &&
     prev.players === next.players &&
-    prev.teams === next.teams
+    prev.teams === next.teams &&
+    prev.teamBudgets === next.teamBudgets
 );
 export default DeepDivePanel;

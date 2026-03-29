@@ -15,7 +15,7 @@
  */
 
 import type { Team, Player, Match, TeamBudget } from "./mlsData";
-import { getTeam, getTeamPlayers, getTeamMatches } from "./mlsData";
+import { getTeam } from "./mlsData";
 import {
   getTeamTrajectory,
   getTeamEvents,

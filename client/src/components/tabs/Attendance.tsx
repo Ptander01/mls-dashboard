@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useFilters, type PotteryFocus } from "@/contexts/FilterContext";
-import { TEAMS, MATCHES, getTeam } from "@/lib/mlsData";
+import { TEAMS, getTeam } from "@/lib/mlsData";
 import {
   mutedTeamColor,
   Extruded3DBar,
@@ -106,7 +106,9 @@ export default function Attendance() {
     filteredMatches,
     potteryFocus,
     setPotteryFocus,
+    activeSeasonData,
   } = useFilters();
+  const MATCHES = activeSeasonData.matches;
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
@@ -345,11 +347,11 @@ export default function Attendance() {
   );
   const awayImpactInsights = useMemo(
     () => (selectedTeam ? awayImpactCardInsights(selectedTeam, MATCHES) : []),
-    [selectedTeam]
+    [selectedTeam, MATCHES]
   );
   const homeResponseInsights = useMemo(
     () => (selectedTeam ? homeResponseCardInsights(selectedTeam, MATCHES) : []),
-    [selectedTeam]
+    [selectedTeam, MATCHES]
   );
   const gravHeadline = useMemo(
     () => gravitationalPullHeadline(filteredTeams),

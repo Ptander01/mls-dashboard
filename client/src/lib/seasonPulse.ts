@@ -11,7 +11,7 @@
  */
 
 import type { Match, Team } from "./mlsData";
-import { TEAMS, MATCHES, TOTAL_WEEKS, getTeam } from "./mlsData";
+import { TEAMS, getTeam } from "./mlsData";
 
 // ═══════════════════════════════════════════
 // TYPES
@@ -293,8 +293,8 @@ function cacheKey(
  */
 export function computeWeeklyStandings(
   teams: Team[] = TEAMS,
-  matches: Match[] = MATCHES,
-  totalWeeks: number = TOTAL_WEEKS
+  matches: Match[],
+  totalWeeks: number
 ): TeamWeekStanding[][] {
   const key = cacheKey(teams, matches, totalWeeks);
   const cached = _matrixCache.get(key);
@@ -435,8 +435,8 @@ export function computeWeeklyStandings(
 
 export function detectInflectionEvents(
   teams: Team[] = TEAMS,
-  matches: Match[] = MATCHES,
-  totalWeeks: number = TOTAL_WEEKS
+  matches: Match[],
+  totalWeeks: number
 ): SeasonEvent[] {
   const key = cacheKey(teams, matches, totalWeeks);
   const cached = _eventsCache.get(key);
@@ -678,8 +678,8 @@ export function detectInflectionEvents(
 export function getWeekStandings(
   week: number,
   teams: Team[] = TEAMS,
-  matches: Match[] = MATCHES,
-  totalWeeks: number = TOTAL_WEEKS
+  matches: Match[],
+  totalWeeks: number
 ): TeamWeekStanding[] {
   const matrix = computeWeeklyStandings(teams, matches, totalWeeks);
   return matrix[week - 1] || [];
@@ -690,8 +690,8 @@ export function getWeekStandings(
  */
 export function getLatestWeek(
   teams: Team[] = TEAMS,
-  matches: Match[] = MATCHES,
-  totalWeeks: number = TOTAL_WEEKS
+  matches: Match[],
+  totalWeeks: number
 ): number {
   const matrix = computeWeeklyStandings(teams, matches, totalWeeks);
   return matrix.length;
@@ -703,8 +703,8 @@ export function getLatestWeek(
 export function getTeamTrajectory(
   teamId: string,
   teams: Team[] = TEAMS,
-  matches: Match[] = MATCHES,
-  totalWeeks: number = TOTAL_WEEKS
+  matches: Match[],
+  totalWeeks: number
 ): TeamWeekStanding[] {
   const matrix = computeWeeklyStandings(teams, matches, totalWeeks);
   return matrix.map(
@@ -718,8 +718,8 @@ export function getTeamTrajectory(
 export function getTeamEvents(
   teamId: string,
   teams: Team[] = TEAMS,
-  matches: Match[] = MATCHES,
-  totalWeeks: number = TOTAL_WEEKS
+  matches: Match[],
+  totalWeeks: number
 ): SeasonEvent[] {
   return detectInflectionEvents(teams, matches, totalWeeks).filter(
     (e) => e.teamId === teamId
@@ -729,7 +729,7 @@ export function getTeamEvents(
 /**
  * Get the max week number in the data.
  */
-export function getMaxWeek(totalWeeks: number = TOTAL_WEEKS): number {
+export function getMaxWeek(totalWeeks: number): number {
   return totalWeeks;
 }
 
@@ -759,8 +759,8 @@ const _weekResultsCache = new Map<string, Map<number, WeekMatchResult[]>>();
 export function getTeamWeeklyResults(
   teamId: string,
   teams: Team[] = TEAMS,
-  matches: Match[] = MATCHES,
-  totalWeeks: number = TOTAL_WEEKS
+  matches: Match[],
+  totalWeeks: number
 ): Map<number, WeekMatchResult[]> {
   const key = `${teamId}-${cacheKey(teams, matches, totalWeeks)}`;
   const cached = _weekResultsCache.get(key);

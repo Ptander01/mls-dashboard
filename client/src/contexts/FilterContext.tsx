@@ -8,22 +8,18 @@ import React, {
 } from "react";
 import {
   TEAMS,
-  PLAYERS,
-  MATCHES,
-  TEAM_BUDGETS,
-  TOTAL_WEEKS,
-  SEASON_YEAR,
   type Player,
   type Match,
   type Team,
   type TeamBudget,
 } from "@/lib/mlsData";
 import {
-  load2026Data,
+  loadSeasonData,
   getSeasonDataSync,
   type SeasonYear,
   type SeasonData,
 } from "@/lib/seasonDataLoader";
+import { setInsightEngineSeasonData } from "@/lib/insightEngine";
 
 export interface Filters {
   selectedTeams: string[];
@@ -60,7 +56,7 @@ interface FilterContextType {
     seasonYear: SeasonYear;
     teams: Team[];
   };
-  /** Whether the 2026 data is still loading */
+  /** Whether season data is still loading */
   seasonLoading: boolean;
 }
 
@@ -77,30 +73,47 @@ const defaultFilters: Filters = {
 
 const FilterContext = createContext<FilterContextType | null>(null);
 
+/** Empty season data placeholder while loading */
+const EMPTY_SEASON: SeasonData = {
+  matches: [],
+  players: [],
+  teamBudgets: {},
+  totalWeeks: 0,
+  seasonYear: 2025,
+};
+
 export function FilterProvider({ children }: { children: React.ReactNode }) {
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [potteryFocus, setPotteryFocus] = useState<PotteryFocus>({
     emphasizedTeam: null,
   });
+  const [season2025Data, setSeason2025Data] = useState<SeasonData | null>(
+    getSeasonDataSync(2025)
+  );
   const [season2026Data, setSeason2026Data] = useState<SeasonData | null>(
     getSeasonDataSync(2026)
   );
   const [seasonLoading, setSeasonLoading] = useState(false);
 
-  // Load 2026 data on mount (or when season switches to 2026)
+  // Load the selected season's data on mount or when season changes
   useEffect(() => {
-    if (filters.selectedSeason === 2026 && !season2026Data) {
-      setSeasonLoading(true);
-      load2026Data()
-        .then((data) => {
-          setSeason2026Data(data);
-          setSeasonLoading(false);
-        })
-        .catch(() => {
-          setSeasonLoading(false);
-        });
-    }
-  }, [filters.selectedSeason, season2026Data]);
+    const season = filters.selectedSeason;
+    const cached =
+      season === 2025 ? season2025Data : season2026Data;
+
+    if (cached) return; // Already loaded
+
+    setSeasonLoading(true);
+    loadSeasonData(season)
+      .then((data) => {
+        if (season === 2025) setSeason2025Data(data);
+        else setSeason2026Data(data);
+        setSeasonLoading(false);
+      })
+      .catch(() => {
+        setSeasonLoading(false);
+      });
+  }, [filters.selectedSeason, season2025Data, season2026Data]);
 
   const resetFilters = useCallback(
     () =>
@@ -126,28 +139,27 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
     );
   }, [filters]);
 
-  // Resolve active season data
+  // Resolve active season data — returns empty placeholder if still loading
   const activeSeasonData = useMemo(() => {
-    if (filters.selectedSeason === 2026 && season2026Data) {
-      return {
-        matches: season2026Data.matches,
-        players: season2026Data.players,
-        teamBudgets: season2026Data.teamBudgets,
-        totalWeeks: season2026Data.totalWeeks,
-        seasonYear: 2026 as SeasonYear,
-        teams: TEAMS, // Teams are shared across seasons
-      };
-    }
-    // Default: 2025
+    const seasonData =
+      filters.selectedSeason === 2026 ? season2026Data : season2025Data;
+
+    const resolved = seasonData || EMPTY_SEASON;
+
     return {
-      matches: MATCHES,
-      players: PLAYERS,
-      teamBudgets: TEAM_BUDGETS,
-      totalWeeks: TOTAL_WEEKS,
-      seasonYear: 2025 as SeasonYear,
-      teams: TEAMS,
+      matches: resolved.matches,
+      players: resolved.players,
+      teamBudgets: resolved.teamBudgets,
+      totalWeeks: resolved.totalWeeks,
+      seasonYear: filters.selectedSeason,
+      teams: TEAMS, // Teams are shared across seasons
     };
-  }, [filters.selectedSeason, season2026Data]);
+  }, [filters.selectedSeason, season2025Data, season2026Data]);
+
+  // Keep insightEngine in sync with the active season data
+  useEffect(() => {
+    setInsightEngineSeasonData(activeSeasonData.matches, activeSeasonData.teamBudgets);
+  }, [activeSeasonData.matches, activeSeasonData.teamBudgets]);
 
   const filteredTeams = useMemo(() => {
     let t = [...TEAMS];

@@ -10,10 +10,10 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useFilters } from "@/contexts/FilterContext";
 import {
   TEAMS,
-  MATCHES,
-  PLAYERS,
   getTeam,
   calculateDistance,
+  type Match,
+  type Team,
 } from "@/lib/mlsData";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
@@ -850,7 +850,7 @@ function TooltipOverlay({
 // Main Component
 // ═══════════════════════════════════════════
 export default function TravelMap() {
-  const { filteredTeams, filteredMatches, filteredPlayers } = useFilters();
+  const { filteredTeams, filteredMatches, filteredPlayers, activeSeasonData } = useFilters();
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [currentWeek, setCurrentWeek] = useState(1);
@@ -897,9 +897,9 @@ export default function TravelMap() {
           return { match: m, home, away, distance: dist };
         })
         .filter(Boolean) as {
-        match: (typeof MATCHES)[0];
-        home: (typeof TEAMS)[0];
-        away: (typeof TEAMS)[0];
+        match: Match;
+        home: Team;
+        away: Team;
         distance: number;
       }[],
     [filteredMatches]
@@ -1589,6 +1589,7 @@ export default function TravelMap() {
               metrics={resilienceMetrics}
               players={filteredPlayers}
               teams={filteredTeams}
+              teamBudgets={activeSeasonData.teamBudgets}
             />
           </NeuCard>
         </div>
