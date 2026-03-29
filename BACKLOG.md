@@ -377,6 +377,26 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 
 ---
 
+## Epic 19: Data Payload Decoupling & Table Virtualization
+
+**Effort:** 1 Session
+**Goal:** Extract the 28,000+ line inline JSON data from `mlsData.ts` into an asynchronous payload to slash initial bundle size. Implement DOM virtualization (`@tanstack/react-virtual`) for the Player Stats table to guarantee 60fps scrolling, and add a text search filter.
+**Sprint Brief:** `docs/sprints/briefs/data-decoupling-virtualization-brief.md`
+**Dependencies:** None
+**Status:** Ready to hand off
+
+- **Task 19.1: Data Decoupling**
+  - [ ] Extract `PLAYERS`, `MATCHES`, and `TEAM_BUDGETS` into `client/public/data/mls2025.json`.
+  - [ ] Refactor `seasonDataLoader.ts` to fetch 2025 data asynchronously.
+  - [ ] Update `FilterContext.tsx` to handle the async load gracefully.
+  - [ ] Strip `mlsData.ts` down to just interfaces and the `TEAMS` array.
+- **Task 19.2: Table Virtualization & Search**
+  - [ ] Install `@tanstack/react-virtual`.
+  - [ ] Implement `useVirtualizer` in both the main and maximized Player Stats tables.
+  - [ ] Add a text search input above the table to filter by player name or team.
+
+---
+
 ## Future / Deferred Work
 
 - **Treemap & Matrix Animation Polish:** Do not use deck.gl for these. Instead, enhance current SVG/Three.js implementations with better lighting and Framer Motion transitions.
