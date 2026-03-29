@@ -155,16 +155,9 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 - **Task 9.2:** TBD
 - **Task 9.3:** TBD
 
-## Epic 10: Race Chart Tab
+## Epic 10: Race Chart Tab — CANCELLED
 
-**Effort:** 1 Session
-**Goal:** Add a high-impact animated horizontal bar chart race.
-**Files Touched:** New `RaceChart.tsx`, `Home.tsx`
-**Dependencies:** All analytical layers
-
-- **Task 10.1: Implement Race Chart Tab**
-  - Animated horizontal bar chart race synchronized to a matchweek timeline scrubber.
-  - Metrics toggle: cumulative points, goals, attendance, salary spend.
+**Status:** Removed from scope (Mar 29, 2026). The existing BumpChart on the Season Pulse tab — with event symbology, interactive filters, and week-range slider — provides a richer, more explorable visualization of season progression than a single-axis race animation would. Issue #20 closed as "not planned."
 
 ## Epic 11: Season Pulse Tab (Merged from former Epics 11+12)
 
