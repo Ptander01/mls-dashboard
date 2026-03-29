@@ -383,17 +383,18 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 **Goal:** Extract the 28,000+ line inline JSON data from `mlsData.ts` into an asynchronous payload to slash initial bundle size. Implement DOM virtualization (`@tanstack/react-virtual`) for the Player Stats table to guarantee 60fps scrolling, and add a text search filter.
 **Sprint Brief:** `docs/sprints/briefs/data-decoupling-virtualization-brief.md`
 **Dependencies:** None
-**Status:** Ready to hand off
+**Status:** COMPLETE (commit `b1c17ee`, Issue #86 closed)
 
 - **Task 19.1: Data Decoupling**
-  - [ ] Extract `PLAYERS`, `MATCHES`, and `TEAM_BUDGETS` into `client/public/data/mls2025.json`.
-  - [ ] Refactor `seasonDataLoader.ts` to fetch 2025 data asynchronously.
-  - [ ] Update `FilterContext.tsx` to handle the async load gracefully.
-  - [ ] Strip `mlsData.ts` down to just interfaces and the `TEAMS` array.
+  - [x] Extracted `PLAYERS` (882), `MATCHES` (510), and `TEAM_BUDGETS` (30) into `client/public/data/mls2025.json`.
+  - [x] Refactored `seasonDataLoader.ts` to fetch 2025 data asynchronously (same pattern as 2026).
+  - [x] Updated `FilterContext.tsx` with async loading, `isLoading` state, and insight engine sync.
+  - [x] Stripped `mlsData.ts` from 28,400+ lines to interfaces + `TEAMS` array only. **Net: -27,991 lines removed.**
+  - [x] Migrated all 9 downstream consumers: Attendance, PitchMatch, TeamBudget, TravelMap, DeepDivePanel, insightEngine, resilienceUtils, seasonPulse, aiNarrativeEngine.
 - **Task 19.2: Table Virtualization & Search**
-  - [ ] Install `@tanstack/react-virtual`.
-  - [ ] Implement `useVirtualizer` in both the main and maximized Player Stats tables.
-  - [ ] Add a text search input above the table to filter by player name or team.
+  - [x] Installed `@tanstack/react-virtual`.
+  - [x] Implemented `useVirtualizer` in both main card and maximized modal tables (spacer-row technique preserving native `<table>` layout).
+  - [x] Added neumorphic `SearchInput` component filtering by player name, team, and position.
 
 ---
 
