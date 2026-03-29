@@ -113,18 +113,23 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 - **Task 7.3: Color System**
   - [x] Implement `TERRAIN`/`TEAMS` color toggle and flood animation.
 
-## Epic 8: Pitch Match Real Data Integration
+## Epic 8: Pitch Match Real Data Integration (COMPLETE)
 
 **Effort:** 2 Sessions
 **Goal:** Replace dummy data on the PitchMatch tab with real StatsBomb open data.
-**Files Touched:** `scripts/fetch_miami_network.py`, `PitchMatch.tsx`, `PassingNetwork3D.tsx`, `GlassNode.tsx`, `NeonTube.tsx`
+**Files Touched:** `scripts/fetch_miami_network.py`, `scripts/fetch_miami_shots.py`, `PitchMatch.tsx`, `PassingNetwork3D.tsx`, `ShotMap3D.tsx`, `GlassNode.tsx`, `NeonTube.tsx`
 **Dependencies:** None
+**Status:** COMPLETE — All 3 tasks done. Both the 3D Passing Network and 3D Shot Map are fully implemented with immersive cameras, symbology toggles, and glassmorphism UI.
 
 - **Task 8.1: Data Preparation**
   - [x] Python script (`scripts/fetch_miami_network.py`) fetches, parses, and computes centrality metrics for Inter Miami 2023 event data. Outputs `miami_network.json`.
-- **Task 8.2: Shot Map Visualization (Ready for Handoff)**
-  - [ ] Build frontend data loading hooks and match selector UI.
-  - [ ] Implement 3D Shot Map (spheres colored by outcome mapped to Three.js coordinates).
+- **Task 8.2: 3D Shot Map & xG Analysis — COMPLETE (Commits `6c4c663`→`02ddb84`; Issue #83)**
+  - [x] `ShotMap3D.tsx`: Three.js scene with xG-scaled glass spheres, parabolic arc trajectories, Bloom post-processing.
+  - [x] `fetch_miami_shots.py`: StatsBomb event extraction script outputting `miami_shots.json`.
+  - [x] Immersive `PerspectiveCamera` with scroll-zoom to ground level, orbit around individual shots, eye-level perspective.
+  - [x] Symbology toggle (OUTCOME/TEAM) switching sphere/arc colors and legend simultaneously.
+  - [x] Glassmorphism legend panel with 12px dot indicators and 13px labels.
+  - [x] Deemphasis interaction pattern matching the Passing Network (hover/click to isolate).
   - *Sprint Brief:* `docs/sprints/briefs/shot-map-brief.md`
 - **Task 8.3: Cinematic 3D Passing Network — COMPLETE (Commits `24bb251`, `8791e89`; Issue #41 closed)**
   - [x] `PassingNetwork3D.tsx` (1,003 lines): Three.js scene with stadium floodlights, atmospheric haze, exponential fog, Bloom post-processing.
