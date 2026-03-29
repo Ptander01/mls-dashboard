@@ -10,12 +10,11 @@ import {
   BarChart3,
   Map,
   Target,
-  Sun,
-  Moon,
   Filter,
   Activity,
   SlidersHorizontal,
 } from "lucide-react";
+import { ThemeToggleCompact } from "@/components/ThemeToggleCompact";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 // Lazy-loaded tab components
@@ -199,32 +198,7 @@ function ZAssemblyTitle() {
   );
 }
 
-function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === "dark";
-  return (
-    <button
-      onClick={toggleTheme}
-      className={`theme-toggle-3d ${isDark ? "is-dark" : "is-light"}`}
-      title={`Switch to ${isDark ? "light" : "dark"} mode`}
-      aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
-    >
-      {/* Glow emanation behind the button */}
-      <div className="toggle-glow" />
-      {/* Recessed cavity */}
-      <div className="toggle-cavity" />
-      {/* Raised pill that sinks on toggle */}
-      <div className="toggle-pill">
-        <div className="toggle-icon icon-moon">
-          <Moon size={14} style={{ color: "#00d4ff" }} />
-        </div>
-        <div className="toggle-icon icon-sun">
-          <Sun size={14} style={{ color: "#d97706" }} />
-        </div>
-      </div>
-    </button>
-  );
-}
+/* ThemeToggle — now using ThemeToggleCompact from @/components/ThemeToggleCompact */
 
 /** Valid tab IDs for URL deep-linking */
 const VALID_TABS = new Set(tabs.map((t) => t.id));
@@ -464,7 +438,7 @@ export default function Home() {
                 <span className="text-cyan">filtered</span>
               </div>
             )}
-            <ThemeToggle />
+            <ThemeToggleCompact />
           </div>
         </div>
       </nav>
