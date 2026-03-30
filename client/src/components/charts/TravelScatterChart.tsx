@@ -57,7 +57,6 @@ function TeamInsightSection({
         isOpen={isOpen}
         isDark={isDark}
         variant="compact"
-        showDepression={isOpen}
       >
         <AnimatePresence mode="wait">
           {isOpen && (

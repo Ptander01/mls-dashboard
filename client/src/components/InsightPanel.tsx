@@ -3,13 +3,15 @@
  *
  * Layout:
  *   [ANALYZE button]                    ← always visible, outside the container
- *   [NeuInsightContainer]               ← depression groove when closed, elevated with cards when open
+ *   [NeuInsightContainer]               ← mechanical-door reveal when opened, invisible when closed
  *     └── Header line                   ← describes what the panel shows
  *     └── 2x2 grid of InsightCards      ← tactile 3D cards with embossed borders
  *
- * The container always renders (showing the depression floor when collapsed).
- * When the user clicks ANALYZE, the container rises above surrounding content
- * with deeper shadows than standard NeuCards, and the insight cards animate in.
+ * The container renders nothing when collapsed — no depression groove.
+ * When the user clicks ANALYZE, a cinematic mechanical-door sequence plays:
+ *   Stage 1: Dark bay cavity appears, doors part horizontally
+ *   Stage 2: Elevated container rises out of the cavity
+ *   Stage 3: Content blooms in with staggered fade
  */
 
 import { useState } from "react";
@@ -118,12 +120,11 @@ export function InsightPanel({
         {isOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
       </button>
 
-      {/* NeuInsightContainer — shows depression groove when closed, rises when open */}
+      {/* NeuInsightContainer — mechanical door reveal when opened, invisible when closed */}
       <NeuInsightContainer
         isOpen={isOpen}
         isDark={isDark}
         variant="full"
-        showDepression={true}
       >
         <AnimatePresence mode="wait">
           {isOpen && (
@@ -264,7 +265,7 @@ function InsightCard({
       initial={{ opacity: 0, y: 14, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{
-        delay: index * 0.08 + 0.12,
+        delay: index * 0.08 + 0.08,
         duration: 0.35,
         ease: [0.4, 0, 0.2, 1],
       }}

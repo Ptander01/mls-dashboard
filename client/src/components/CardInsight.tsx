@@ -4,10 +4,10 @@
  * When the user clicks the lightbulb button in a card header, a new
  * NeuInsightContainer appears INSIDE the card body (below the header,
  * above the chart/content), pushing the content down. The container
- * uses the same depression-to-elevation animation as the tab-wide
- * ANALYZE panel, creating a consistent "insight rises above data" metaphor.
+ * uses the same mechanical-door animation as the tab-wide ANALYZE panel,
+ * scaled down for the compact variant.
  *
- * The CardInsightToggle now renders as an IconAction (Lightbulb, amber active)
+ * The CardInsightToggle renders as an IconAction (Lightbulb, amber active)
  * for consistent Three-Zone architecture integration.
  */
 
@@ -94,7 +94,6 @@ export function CardInsightSection({
         isOpen={isOpen}
         isDark={isDark}
         variant="compact"
-        showDepression={isOpen}
       >
         <AnimatePresence mode="wait">
           {isOpen && (
