@@ -56,6 +56,11 @@
    ═══════════════════════════════════════════════════ */
 :root {
   --radius: 0.75rem;
+
+  /* Solar arc transition (0 = day, 1 = night) */
+  --solar-progress: 0;
+  --solar-overlay-opacity: 0;
+
   --background: oklch(0.13 0.01 280);
   --foreground: oklch(0.92 0.005 280);
   --card: oklch(0.17 0.012 280);
@@ -882,12 +887,63 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* Old CSS-only theme toggle removed — now using ThemeToggleCompact (Framer Motion) */
 
-/* ============ THEME TRANSITION ============ */
-/* Instant swap — CSS custom properties on :root change in a single frame.
-   No per-element transitions needed; the toggle knob animation provides
-   all the visual feedback the user needs. Eliminates the "lights turning
-   off room-by-room" stagger caused by hundreds of elements transitioning
-   at slightly different paint times. */
+/* ============ SOLAR ARC THEME TRANSITION ============ */
+/* A single CSS variable --solar-progress (0 = day, 1 = night) is animated
+   via rAF in ThemeContext. This drives:
+   1. A full-viewport overlay that sweeps warm→cool color temperature
+   2. Shadow rotation on neumorphic surfaces (light source moves)
+   3. Shadow depth intensification as the "sun sets"
+   The actual .light/.dark class swap fires at the 45% mark so colors
+   flip when the sun is near the horizon — seamless day→dusk→night arc. */
+
+/* --- Solar overlay: unified color temperature sweep --- */
+/* A fixed overlay driven by --solar-overlay-opacity (set by JS alongside
+   --solar-progress). Peaks at the midpoint of the arc ("golden hour"),
+   fades to 0 at both endpoints. GPU-composited via opacity + will-change. */
+.solar-transitioning body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  will-change: opacity;
+  background: radial-gradient(
+    ellipse 120% 80% at 50% -10%,
+    rgba(255, 180, 80, 0.14) 0%,
+    rgba(255, 160, 60, 0.06) 40%,
+    transparent 70%
+  );
+  opacity: var(--solar-overlay-opacity, 0);
+  transition: none;
+}
+
+/* --- Shadow rotation during arc --- */
+/* During the transition, neumorphic shadows rotate their offset angle.
+   At progress 0 (day): light from upper-left (shadow bottom-right)
+   At progress 0.5 (dusk): light from directly above (shadow straight down)
+   At progress 1 (night): light from upper-right (shadow bottom-left)
+   Uses calc() on the shadow offsets driven by --solar-progress. */
+.solar-transitioning .neu-flat {
+  box-shadow:
+    calc(6px - 12px * var(--solar-progress)) calc(6px + 2px * var(--solar-progress)) 12px var(--neu-shadow-dark),
+    calc(-6px + 12px * var(--solar-progress)) calc(-6px - 2px * var(--solar-progress)) 12px var(--neu-shadow-light);
+}
+.solar-transitioning .neu-raised {
+  box-shadow:
+    calc(8px - 16px * var(--solar-progress)) calc(8px + 3px * var(--solar-progress)) 16px var(--neu-shadow-dark-strong),
+    calc(-8px + 16px * var(--solar-progress)) calc(-8px - 3px * var(--solar-progress)) 16px var(--neu-shadow-light-strong),
+    inset 0 1px 0 var(--neu-inset-highlight);
+}
+.solar-transitioning .neu-pressed {
+  box-shadow:
+    inset calc(4px - 8px * var(--solar-progress)) calc(4px + 1px * var(--solar-progress)) 8px var(--neu-shadow-dark),
+    inset calc(-4px + 8px * var(--solar-progress)) calc(-4px - 1px * var(--solar-progress)) 8px var(--neu-shadow-light);
+}
+.solar-transitioning .neu-concave {
+  box-shadow:
+    inset calc(2px - 4px * var(--solar-progress)) calc(2px + 1px * var(--solar-progress)) 5px var(--neu-shadow-dark),
+    inset calc(-2px + 4px * var(--solar-progress)) calc(-2px - 1px * var(--solar-progress)) 5px var(--neu-shadow-light);
+}
 
 /* ============ PREFERS REDUCED MOTION ============ */
 @media (prefers-reduced-motion: reduce) {
