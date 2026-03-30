@@ -882,40 +882,12 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* Old CSS-only theme toggle removed — now using ThemeToggleCompact (Framer Motion) */
 
-/* ============ SMOOTH THEME TRANSITION ============ */
-/* Targeted theme transitions — avoids the global html * selector that caused
-   layout jank on complex DOM trees (charts, 3D scenes, tables). Only the
-   elements that visibly change between themes get a transition. */
-body,
-.neu-raised,
-.neu-flat,
-.neu-pressed,
-.neu-concave,
-.glass,
-.glass-sm,
-.noise-bg,
-.tab-btn,
-.data-table tbody tr,
-.data-table th,
-[data-slot="sheet-content"],
-[data-slot="sheet-overlay"] {
-  transition-property: background-color, border-color, box-shadow, color;
-  transition-duration: 0.35s;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-/* Text elements that change color on theme toggle */
-.text-primary,
-.text-muted-foreground,
-.text-foreground,
-.text-cyan,
-p,
-h1, h2, h3, h4, h5, h6,
-span,
-label {
-  transition-property: color;
-  transition-duration: 0.35s;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* ============ THEME TRANSITION ============ */
+/* Instant swap — CSS custom properties on :root change in a single frame.
+   No per-element transitions needed; the toggle knob animation provides
+   all the visual feedback the user needs. Eliminates the "lights turning
+   off room-by-room" stagger caused by hundreds of elements transitioning
+   at slightly different paint times. */
 
 /* ============ PREFERS REDUCED MOTION ============ */
 @media (prefers-reduced-motion: reduce) {
