@@ -15,6 +15,8 @@ Data sources:
   - ASA get_players() for player metadata (name, nationality, DOB, position)
   - Fox Sports (via temp_fox_stats.json) for counting stats:
     yellowCards, redCards, offsides, fouls, fouled, tackles, interceptions
+  - MLSPA 2025 Fall Salary Guide + DirecTV 2026 Payrolls for salary data
+    (via fetch_spotrac_salaries.py → salary_data_2026.json)
 
 Output: JSON with { matches: Match[], players: Player[], teamBudgets: {}, totalWeeks: N }
 """
@@ -61,6 +63,7 @@ POS_MAP = {
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FOX_STATS_PATH = os.path.join(SCRIPT_DIR, "temp_fox_stats.json")
+SALARY_DATA_PATH = os.path.join(SCRIPT_DIR, "salary_data_2026.json")
 
 OUTPUT_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -160,6 +163,49 @@ def match_fox_stats(player_name, player_team, exact_lookup, last_name_lookup):
     return None
 
 
+# ──────────────────────────────────────────────
+# SALARY DATA LOADER
+# ──────────────────────────────────────────────
+
+def load_salary_data():
+    """
+    Load pre-compiled salary data from salary_data_2026.json.
+
+    If the file doesn't exist, runs fetch_spotrac_salaries.py to generate it.
+
+    Returns:
+        - salary_lookup: dict[name|team] → salary (int)
+        - team_budgets: dict[team_id] → budget breakdown
+    """
+    if not os.path.exists(SALARY_DATA_PATH):
+        print("⚠️  Salary data not found — running fetch_spotrac_salaries.py...")
+        import subprocess
+        result = subprocess.run(
+            [sys.executable, os.path.join(SCRIPT_DIR, "fetch_spotrac_salaries.py")],
+            capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            print(f"   ❌ Salary script failed: {result.stderr}")
+            return {}, {}
+        print(result.stdout)
+
+    if not os.path.exists(SALARY_DATA_PATH):
+        print("⚠️  Salary data still not found after running script.")
+        return {}, {}
+
+    with open(SALARY_DATA_PATH) as f:
+        data = json.load(f)
+
+    salary_lookup = data.get("playerSalaries", {})
+    team_budgets = data.get("teamBudgets", {})
+
+    non_zero = sum(1 for v in salary_lookup.values() if v > 0)
+    print(f"📂 Loaded salary data: {len(salary_lookup)} players, {non_zero} with salary > 0")
+    print(f"   Team budgets: {len(team_budgets)} teams")
+
+    return salary_lookup, team_budgets
+
+
 def main():
     print("🔄 Initializing ASA client...")
     client = AmericanSoccerAnalysis()
@@ -169,6 +215,12 @@ def main():
     # ──────────────────────────────────────────
     fox_exact, fox_last = load_fox_stats()
     has_fox_data = bool(fox_exact)
+
+    # ──────────────────────────────────────────
+    # 0b. LOAD SALARY DATA
+    # ──────────────────────────────────────────
+    salary_lookup, precomputed_budgets = load_salary_data()
+    has_salary_data = bool(salary_lookup)
 
     # ──────────────────────────────────────────
     # 1. TEAM MAPPING
@@ -263,6 +315,8 @@ def main():
     players = []
     fox_matched = 0
     fox_unmatched = 0
+    salary_matched = 0
+    salary_unmatched = 0
 
     for idx, pxg in enumerate(player_xgoals):
         pid = pxg["player_id"]
@@ -334,6 +388,16 @@ def main():
             else:
                 fox_unmatched += 1
 
+        # ── Salary merge ──
+        salary = 0
+        if has_salary_data:
+            salary_key = f"{name}|{team}"
+            salary = salary_lookup.get(salary_key, 0)
+            if salary > 0:
+                salary_matched += 1
+            else:
+                salary_unmatched += 1
+
         players.append({
             "id": idx + 1,
             "name": name,
@@ -357,7 +421,7 @@ def main():
             "interceptions": interceptions,
             "crosses": 0,       # Not available from Fox Sports
             "offsides": offsides,
-            "salary": 0,        # 2026 salary data not yet published
+            "salary": salary,
         })
 
     print(f"   Built {len(players)} player records")
@@ -365,11 +429,20 @@ def main():
         print(f"   Fox Sports merge: {fox_matched} matched, {fox_unmatched} unmatched")
         pct = round(fox_matched / (fox_matched + fox_unmatched) * 100, 1) if (fox_matched + fox_unmatched) > 0 else 0
         print(f"   Match rate: {pct}%")
+    if has_salary_data:
+        print(f"   Salary merge: {salary_matched} matched, {salary_unmatched} unmatched")
+        pct = round(salary_matched / (salary_matched + salary_unmatched) * 100, 1) if (salary_matched + salary_unmatched) > 0 else 0
+        print(f"   Match rate: {pct}%")
 
     # ──────────────────────────────────────────
-    # 6. TEAM BUDGETS (placeholder from 2025)
+    # 6. TEAM BUDGETS
     # ──────────────────────────────────────────
-    team_budgets = {}  # Empty — will fall back to 2025 data in the dashboard
+    if precomputed_budgets:
+        team_budgets = precomputed_budgets
+        print(f"💰 Using precomputed team budgets for {len(team_budgets)} teams")
+    else:
+        team_budgets = {}  # Empty — will fall back to 2025 data in the dashboard
+        print("⚠️  No salary data — teamBudgets will be empty (dashboard falls back to 2025)")
 
     # ──────────────────────────────────────────
     # 7. OUTPUT
@@ -455,6 +528,25 @@ def main():
         print("\n   Top yellow card earners:")
         for p in top_yc:
             print(f"     {p['name']} ({p['team']}): {p['yellowCards']} YC")
+
+    # Salary merge validation
+    if has_salary_data:
+        print("\n💰 Salary merge validation:")
+        non_zero_sal = sum(1 for p in players if p["salary"] > 0)
+        print(f"   Players with salary > 0: {non_zero_sal}/{len(players)}")
+
+        # Show top earners
+        top_sal = sorted(players, key=lambda p: -p["salary"])[:10]
+        print("\n   Top 10 earners:")
+        for p in top_sal:
+            print(f"     {p['name']} ({p['team']}): ${p['salary']:,}")
+
+        # Team budget summary
+        print("\n   Team budget summary:")
+        for tid in sorted(team_budgets.keys()):
+            tb = team_budgets[tid]
+            print(f"     {tid:5s} ${tb['totalSalary']:>12,}  "
+                  f"DP:{tb['dpCount']} TAM:{tb['tamCount']} Reg:{tb['regularCount']}")
 
 
 if __name__ == "__main__":
