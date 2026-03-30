@@ -2,8 +2,10 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 
 type Theme = "light" | "dark";
 
-/** Duration of the solar arc animation in ms */
-const ARC_DURATION = 800;
+/** Duration of the solar arc animation in ms.
+ *  1800ms gives a slow, cinematic sweep — long enough to see the shadows
+ *  rotate and the golden hour wash build and fade. */
+const ARC_DURATION = 1800;
 
 /** Easing: cubic-bezier approximation (ease-in-out cubic) */
 function easeInOut(t: number): number {
