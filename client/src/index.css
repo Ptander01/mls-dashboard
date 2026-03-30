@@ -930,30 +930,30 @@ input[type="range"]::-webkit-slider-thumb {
    Uses calc() on the shadow offsets driven by --solar-progress. */
 /* Shadow swing is dramatic — designed to be clearly visible on a large monitor.
    X offset: swings a full ±30px arc (day→dusk→night)
-   Y offset: deepens by up to +16px at dusk (long, stretched shadows)
+   Y offset: deepens by up to +32px at dusk (very long, stretched shadows)
    Blur: increases significantly mid-arc (+10-14px) for soft, diffuse dusk shadows
    Spread: adds 2-4px spread mid-arc to make shadows visibly darker/larger
    The combined effect looks like a low sun casting long, dark shadows. */
 .solar-transitioning .neu-flat {
   box-shadow:
-    calc(6px - 28px * var(--solar-progress)) calc(6px + 14px * var(--solar-progress)) calc(12px + 10px * var(--solar-progress)) calc(0px + 2px * var(--solar-progress)) var(--neu-shadow-dark),
-    calc(-6px + 28px * var(--solar-progress)) calc(-6px - 14px * var(--solar-progress)) calc(12px + 10px * var(--solar-progress)) var(--neu-shadow-light);
+    calc(6px - 28px * var(--solar-progress)) calc(6px + 28px * var(--solar-progress)) calc(12px + 10px * var(--solar-progress)) calc(0px + 2px * var(--solar-progress)) var(--neu-shadow-dark),
+    calc(-6px + 28px * var(--solar-progress)) calc(-6px - 28px * var(--solar-progress)) calc(12px + 10px * var(--solar-progress)) var(--neu-shadow-light);
 }
 .solar-transitioning .neu-raised {
   box-shadow:
-    calc(8px - 36px * var(--solar-progress)) calc(8px + 16px * var(--solar-progress)) calc(16px + 14px * var(--solar-progress)) calc(0px + 4px * var(--solar-progress)) var(--neu-shadow-dark-strong),
-    calc(-8px + 36px * var(--solar-progress)) calc(-8px - 16px * var(--solar-progress)) calc(16px + 14px * var(--solar-progress)) var(--neu-shadow-light-strong),
+    calc(8px - 36px * var(--solar-progress)) calc(8px + 32px * var(--solar-progress)) calc(16px + 14px * var(--solar-progress)) calc(0px + 4px * var(--solar-progress)) var(--neu-shadow-dark-strong),
+    calc(-8px + 36px * var(--solar-progress)) calc(-8px - 32px * var(--solar-progress)) calc(16px + 14px * var(--solar-progress)) var(--neu-shadow-light-strong),
     inset 0 1px 0 var(--neu-inset-highlight);
 }
 .solar-transitioning .neu-pressed {
   box-shadow:
-    inset calc(4px - 18px * var(--solar-progress)) calc(4px + 10px * var(--solar-progress)) calc(8px + 8px * var(--solar-progress)) calc(0px + 2px * var(--solar-progress)) var(--neu-shadow-dark),
-    inset calc(-4px + 18px * var(--solar-progress)) calc(-4px - 10px * var(--solar-progress)) calc(8px + 8px * var(--solar-progress)) var(--neu-shadow-light);
+    inset calc(4px - 18px * var(--solar-progress)) calc(4px + 20px * var(--solar-progress)) calc(8px + 8px * var(--solar-progress)) calc(0px + 2px * var(--solar-progress)) var(--neu-shadow-dark),
+    inset calc(-4px + 18px * var(--solar-progress)) calc(-4px - 20px * var(--solar-progress)) calc(8px + 8px * var(--solar-progress)) var(--neu-shadow-light);
 }
 .solar-transitioning .neu-concave {
   box-shadow:
-    inset calc(2px - 12px * var(--solar-progress)) calc(2px + 8px * var(--solar-progress)) calc(5px + 6px * var(--solar-progress)) calc(0px + 1px * var(--solar-progress)) var(--neu-shadow-dark),
-    inset calc(-2px + 12px * var(--solar-progress)) calc(-2px - 8px * var(--solar-progress)) calc(5px + 6px * var(--solar-progress)) var(--neu-shadow-light);
+    inset calc(2px - 12px * var(--solar-progress)) calc(2px + 16px * var(--solar-progress)) calc(5px + 6px * var(--solar-progress)) calc(0px + 1px * var(--solar-progress)) var(--neu-shadow-dark),
+    inset calc(-2px + 12px * var(--solar-progress)) calc(-2px - 16px * var(--solar-progress)) calc(5px + 6px * var(--solar-progress)) var(--neu-shadow-light);
 }
 
 /* ============ PREFERS REDUCED MOTION ============ */
