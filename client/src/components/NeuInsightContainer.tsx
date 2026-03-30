@@ -1,25 +1,14 @@
 /**
- * NeuInsightContainer — Cinematic "Mechanical Door" Animation
+ * NeuInsightContainer — Clean elevated reveal
  *
- * Replaces the old depression-groove approach with a three-stage
- * Iron-Man-style reveal sequence:
+ * When collapsed: renders absolutely nothing — no groove, no border,
+ * no visual artifact of any kind.
  *
- *   Stage 1 — The Parting Doors (0–300ms)
- *     A dark recessed cavity appears. Pseudo-door panels scale inward
- *     on the X-axis (scaleX 1→0), revealing the bay underneath.
+ * When opened: the elevated container fades in and rises smoothly
+ * into view with deep neumorphic shadows. Content blooms in with
+ * a subtle scale-up handled by the parent's stagger delays.
  *
- *   Stage 2 — The Ascent (300–600ms)
- *     The elevated insight container rises out of the cavity
- *     (translateY +40 → −6), masked by the bay's overflow-hidden.
- *
- *   Stage 3 — Content Bloom (500–800ms)
- *     Internal children fade in and scale 0.95→1, handled by the
- *     parent (InsightPanel / CardInsightSection) via stagger delays.
- *
- * When collapsed the component renders **nothing** — no depression,
- * no groove, no residual artifact.
- *
- * Shadow depth comparison (unchanged):
+ * Shadow depth comparison:
  *   neu-flat:    6px/6px/12px   (base level)
  *   neu-raised:  8px/8px/16px   (standard cards)
  *   THIS active: 18px/18px/40px + translateY(-6px)
@@ -84,7 +73,6 @@ export function NeuInsightContainer({
 
   /* ── Colors ─────────────────────────────────────────────── */
   const activeBg = isDark ? "#232340" : "#ebedf6";
-  const bayBg = isDark ? "#141422" : "#d0d0dc";
 
   const activeBorder = isDark
     ? "1.5px solid rgba(255,255,255,0.06)"
@@ -93,15 +81,9 @@ export function NeuInsightContainer({
   const rounding = isCompact ? "rounded-lg" : "rounded-2xl";
   const padding = isCompact ? 10 : 20;
 
-  /* ── Bay inner shadow — deep mechanical recess look ───── */
-  const bayInnerShadow = isDark
-    ? "inset 0 4px 16px rgba(0,0,0,0.6), inset 0 1px 4px rgba(0,0,0,0.4)"
-    : "inset 0 4px 16px rgba(0,0,0,0.1), inset 0 1px 4px rgba(0,0,0,0.06)";
-
-  /* ── Timing constants ──────────────────────────────────── */
-  const doorDuration = isCompact ? 0.2 : 0.3;
-  const riseDuration = isCompact ? 0.25 : 0.35;
-  const riseDelay = isCompact ? 0.12 : 0.2;
+  /* ── Timing ────────────────────────────────────────────── */
+  const duration = isCompact ? 0.3 : 0.4;
+  const ease: [number, number, number, number] = [0.22, 1, 0.36, 1];
   const riseY = isCompact ? -2 : -6;
 
   /* ── Render nothing when collapsed ─────────────────────── */
@@ -109,163 +91,72 @@ export function NeuInsightContainer({
     <AnimatePresence mode="wait">
       {isOpen && (
         <motion.div
-          key="bay-wrapper"
-          /* Stage 1 — Bay Wrapper: the cavity that parts open */
+          key="insight-container"
           initial={{
             height: 0,
             opacity: 0,
+            y: 20,
             marginTop: 0,
             marginBottom: 0,
           }}
           animate={{
-            height: contentHeight + padding * 2 + 16, // extra room for float
+            height: contentHeight + padding * 2,
             opacity: 1,
+            y: riseY,
             marginTop: isCompact ? 4 : 8,
             marginBottom: isCompact ? 4 : 16,
           }}
           exit={{
             height: 0,
             opacity: 0,
+            y: 20,
             marginTop: 0,
             marginBottom: 0,
           }}
           transition={{
-            height: {
-              type: "spring",
-              stiffness: isCompact ? 350 : 300,
-              damping: isCompact ? 35 : 30,
-            },
-            opacity: { duration: 0.15 },
-            marginTop: { duration: doorDuration },
-            marginBottom: { duration: doorDuration },
+            height: { duration, ease },
+            opacity: { duration: duration * 0.6 },
+            y: { duration, ease },
+            marginTop: { duration: duration * 0.5 },
+            marginBottom: { duration: duration * 0.5 },
           }}
-          className={`${rounding} overflow-hidden relative ${className}`}
+          className={`${rounding} overflow-hidden ${className}`}
           style={{
-            background: bayBg,
-            boxShadow: bayInnerShadow,
+            position: "relative",
             zIndex: 10,
+            background: activeBg,
+            boxShadow: activeShadow,
+            border: activeBorder,
           }}
         >
-          {/* ── Door panels — scale X from 1→0 to reveal the bay ── */}
-          {/* Left door */}
-          <motion.div
-            initial={{ scaleX: 1 }}
-            animate={{ scaleX: 0 }}
-            exit={{ scaleX: 1 }}
-            transition={{
-              duration: doorDuration,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="absolute inset-0 z-20 pointer-events-none"
-            style={{
-              transformOrigin: "left center",
-              background: isDark
-                ? "linear-gradient(90deg, #1a1a2e 0%, #141422 100%)"
-                : "linear-gradient(90deg, #dcdce6 0%, #d0d0dc 100%)",
-              borderRight: isDark
-                ? "1px solid rgba(255,255,255,0.04)"
-                : "1px solid rgba(0,0,0,0.04)",
-            }}
-          />
-          {/* Right door */}
-          <motion.div
-            initial={{ scaleX: 1 }}
-            animate={{ scaleX: 0 }}
-            exit={{ scaleX: 1 }}
-            transition={{
-              duration: doorDuration,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="absolute inset-0 z-20 pointer-events-none"
-            style={{
-              transformOrigin: "right center",
-              background: isDark
-                ? "linear-gradient(270deg, #1a1a2e 0%, #141422 100%)"
-                : "linear-gradient(270deg, #dcdce6 0%, #d0d0dc 100%)",
-              borderLeft: isDark
-                ? "1px solid rgba(255,255,255,0.04)"
-                : "1px solid rgba(0,0,0,0.04)",
-            }}
-          />
-
-          {/* ── Center seam line — the split where doors part ── */}
-          <motion.div
-            initial={{ opacity: 0.8, scaleY: 1 }}
-            animate={{ opacity: 0, scaleY: 0.5 }}
-            exit={{ opacity: 0.8, scaleY: 1 }}
-            transition={{ duration: doorDuration * 0.6 }}
-            className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[1px] z-30 pointer-events-none"
-            style={{
-              background: isDark
-                ? "rgba(0,212,255,0.25)"
-                : "rgba(8,145,178,0.2)",
-              boxShadow: isDark
-                ? "0 0 8px rgba(0,212,255,0.3)"
-                : "0 0 8px rgba(8,145,178,0.2)",
-            }}
-          />
-
-          {/* ── Stage 2 — Rising container ── */}
-          <motion.div
-            initial={{ y: 40, opacity: 0 }}
-            animate={{ y: riseY, opacity: 1 }}
-            exit={{ y: 40, opacity: 0 }}
-            transition={{
-              y: {
-                type: "spring",
-                stiffness: isCompact ? 350 : 280,
-                damping: isCompact ? 30 : 26,
-                delay: riseDelay,
-              },
-              opacity: {
-                duration: 0.2,
-                delay: riseDelay,
-              },
-            }}
-            className={`${rounding} relative z-10`}
-            style={{
-              background: activeBg,
-              boxShadow: activeShadow,
-              border: activeBorder,
-              margin: isCompact ? 4 : 8,
-            }}
-          >
-            {/* Bottom edge shadow line — reinforces floating effect */}
-            {!isCompact && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: riseDelay + 0.15, duration: 0.3 }}
-                className="absolute inset-x-0 bottom-0 h-[1px] pointer-events-none"
-                style={{
-                  background: isDark
-                    ? "linear-gradient(90deg, transparent 10%, rgba(0,0,0,0.4) 50%, transparent 90%)"
-                    : "linear-gradient(90deg, transparent 10%, rgba(0,0,0,0.08) 50%, transparent 90%)",
-                }}
-              />
-            )}
-
-            {/* Content wrapper */}
+          {/* Bottom edge shadow line — reinforces the floating effect */}
+          {!isCompact && (
             <motion.div
-              ref={contentRef}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{
-                opacity: {
-                  duration: 0.25,
-                  delay: riseDelay + 0.1,
-                },
-                scale: {
-                  duration: 0.25,
-                  delay: riseDelay + 0.1,
-                  ease: [0.22, 1, 0.36, 1],
-                },
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.3 }}
+              className="absolute inset-x-0 bottom-0 h-[1px] pointer-events-none"
+              style={{
+                background: isDark
+                  ? "linear-gradient(90deg, transparent 10%, rgba(0,0,0,0.4) 50%, transparent 90%)"
+                  : "linear-gradient(90deg, transparent 10%, rgba(0,0,0,0.08) 50%, transparent 90%)",
               }}
-              style={{ padding }}
-            >
-              {children}
-            </motion.div>
+            />
+          )}
+
+          {/* Content */}
+          <motion.div
+            ref={contentRef}
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{
+              opacity: { duration: 0.25, delay: duration * 0.4 },
+              scale: { duration: 0.25, delay: duration * 0.4, ease },
+            }}
+            style={{ padding }}
+          >
+            {children}
           </motion.div>
         </motion.div>
       )}
