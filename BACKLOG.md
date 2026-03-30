@@ -270,7 +270,7 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - [x] Create `scripts/update_data.sh` to run both scripts in sequence.
 - **Task 14.4: Verification** ✅ Session 1
   - [x] `mls2026.json` updated: yellowCards (0→199), redCards (0→13), fouls (0→90), fouled (0→87), tackles (0→354), interceptions (0→273), offsides (0→106).
-  - [x] Remaining gaps: `crosses` (no Fox Sports source), `salary` (MLSPA guide pending).
+  - [x] Remaining gaps: `crosses` (no Fox Sports source), ~~`salary` (MLSPA guide pending)~~ — resolved in Epic 20.
 
 ## Epic 15: AI-Powered Holistic Team Commentary — COMPLETE
 
@@ -394,6 +394,32 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - [x] Implemented `useVirtualizer` in both main card and maximized modal tables (spacer-row technique preserving native `<table>` layout).
   - [x] Added neumorphic `SearchInput` component filtering by player name, team, and position.
 
+## Epic 20: 2026 Salary Data Pipeline — COMPLETE
+
+**Effort:** 1 Session
+**Goal:** Populate the empty 2026 salary fields and team budgets by compiling data from DirecTV Insider 2026 MLS Payrolls (team totals + top 40 earners) and the MLSPA 2025 Fall Salary Guide (returning player baseline), then integrating into the existing ASA pipeline.
+**Sprint Brief:** `docs/sprints/briefs/2026-salary-data.md`
+**Completion Report:** `docs/sprints/briefs/2026-salary-data-completed.md`
+**Dependencies:** Epic 12 (2026 data integration), Epic 14 (data pipeline polish)
+**Commit:** `b2f0b81`
+**Status:** COMPLETE
+
+- **Task 20.1: Multi-Source Data Compilation** ✅
+  - [x] DirecTV Insider 2026 team totals for all 30 clubs hardcoded as authoritative source.
+  - [x] DirecTV top 40 highest-paid players (Son Heung-min, Messi, Almirón, etc.) as priority overlay.
+  - [x] MLSPA 2025 Fall Salary Guide PDF parsed for 920 returning players as baseline.
+- **Task 20.2: Fuzzy Name Matching** ✅
+  - [x] `scripts/fetch_spotrac_salaries.py` — 4-tier matching strategy: exact → fuzzy team (≥82) → last-name team → cross-team fuzzy (≥92).
+  - [x] 574/620 players matched (92.6%). 46 unmatched are primarily new 2026 signings.
+- **Task 20.3: Budget Tier Calculation** ✅
+  - [x] DP (≥$1,683,750), TAM ($683,750–$1,683,750), Regular (<$683,750) classification per 2026 CBA.
+  - [x] Proportional salary distribution for unmatched players using DirecTV team total remainder (≥$67,360 minimum).
+- **Task 20.4: Pipeline Integration & Verification** ✅
+  - [x] Integrated into `fetch_2026_season.py` — salary merge + `teamBudgets` generation.
+  - [x] `mls2026.json` updated: 574 players with salary, 30 teams with full budget breakdowns.
+  - [x] Frontend verified: stacked bar chart, positional donut, top earners table all rendering correctly.
+  - [x] League totals: $392.2M total spend, $13.1M avg budget, LAFC highest at $22.8M.
+
 ---
 
 ## Future / Deferred Work
@@ -422,3 +448,5 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
 - **[MLS Player Stats](https://www.mlssoccer.com/stats/)**: Key passes and touches.
 - **[MLS Club Stats](https://www.mlssoccer.com/stats/clubs/)**: General, Passing, Attacking, Defending aggregates.
 - **[ESPN MLS Performance Stats](https://www.espn.com/soccer/stats/_/league/USA.1/season/2025/view/performance)**: Streak data (winning, unbeaten, losing streaks).
+- **[DirecTV Insider 2026 MLS Payrolls](https://www.directv.com/insider/mls-payrolls/)**: Team total wages and top 40 highest-paid players for 2026.
+- **[MLSPA 2025 Fall Salary Guide](https://mlsplayers.org/resources/salary-guide)**: Comprehensive baseline salary data for returning players (PDF).
