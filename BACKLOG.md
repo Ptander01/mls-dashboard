@@ -420,6 +420,32 @@ This document serves as the prioritized backlog and work plan for the MLS Analyt
   - [x] Frontend verified: stacked bar chart, positional donut, top earners table all rendering correctly.
   - [x] League totals: $392.2M total spend, $13.1M avg budget, LAFC highest at $22.8M.
 
+## Epic 21: InsightPanel UI Redesign — COMPLETE
+
+**Effort:** 1 Session (3 iterations)
+**Goal:** Remove the persistent static depression artifact from the collapsed InsightPanel and redesign the open/close animation to be clean and unobtrusive.
+**Sprint Brief:** `docs/sprints/briefs/insight-panel-redesign.md`
+**Dependencies:** None
+**Commits:** `172a711` → `cae0e87` → `0ef8313`
+**Status:** COMPLETE
+
+- **Iteration 1: Mechanical Door Concept** (`172a711`)
+  - [x] Refactored `NeuInsightContainer` with dark recessed cavity and horizontal sliding doors.
+  - [x] Technically functional but animation too rapid to read as cinematic; persistent bay wrapper left a "sloppy border" artifact.
+- **Iteration 2: Clean Fade and Rise** (`cae0e87`)
+  - [x] Scrapped door/bay concept entirely. Component renders nothing when collapsed (zero visual footprint).
+  - [x] Open state uses fade-in + upward translation (`translateY: 20 → -6`) with deep neumorphic shadows.
+  - [x] Eliminated the depression groove in closed state, but opened state still had an outer border/background "moat."
+- **Iteration 3: Fully Transparent Orchestrator** (`0ef8313`)
+  - [x] Stripped all container-level backgrounds, borders, and inset shadows from `NeuInsightContainer`.
+  - [x] Component now functions purely as a `framer-motion` `AnimatePresence` wrapper — zero visual styling.
+  - [x] Insight cards float directly on the page surface without any enclosing wrapper.
+- **Files Modified:**
+  - [x] `NeuInsightContainer.tsx` — rewritten as pure animation orchestrator.
+  - [x] `InsightPanel.tsx` — removed hardcoded `showDepression={true}` prop.
+  - [x] `CardInsight.tsx` — updated compact variant, removed legacy props.
+  - [x] `TravelScatterChart.tsx` — removed legacy `showDepression` props.
+
 ---
 
 ## Future / Deferred Work
