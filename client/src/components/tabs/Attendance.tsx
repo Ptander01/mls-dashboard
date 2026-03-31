@@ -501,7 +501,7 @@ export default function Attendance() {
             <Bar
               dataKey={dataKey}
               radius={[4, 4, 0, 0]}
-              cursor="pointer"
+              cursor={{ fill: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }}
               onClick={(d: any) => handleBarClick(d)}
               isAnimationActive={!suppressBarAnim.current}
               animationDuration={700}
@@ -1419,7 +1419,7 @@ export default function Attendance() {
             <Bar
               dataKey="totalDelta"
               radius={[0, 4, 4, 0]}
-              cursor="pointer"
+              cursor={{ fill: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }}
               onClick={(d: any) => handleBarClick(d)}
               shape={(props: any) => {
                 const teamId = props.payload?.id;
