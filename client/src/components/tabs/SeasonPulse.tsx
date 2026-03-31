@@ -387,15 +387,17 @@ export default function SeasonPulse({
   const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
 
   // ─── Event filter state (shared between BumpChart & SeasonTimeline) ───
+  // Reversed logic: start with NO filters active. Clicking a category
+  // adds it to the set (shows only those event types). When the set is
+  // empty, event view mode is off and all lines render normally.
   const [activeFilters, setActiveFilters] = useState<Set<string>>(
-    () => new Set(EVENT_CATEGORIES.map((c) => c.id))
+    () => new Set<string>()
   );
 
   const toggleFilter = useCallback((catId: string) => {
     setActiveFilters((prev) => {
       const next = new Set(prev);
       if (next.has(catId)) {
-        if (next.size <= 1) return prev;
         next.delete(catId);
       } else {
         next.add(catId);

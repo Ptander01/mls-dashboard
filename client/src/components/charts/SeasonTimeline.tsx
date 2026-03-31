@@ -327,8 +327,9 @@ export default function SeasonTimeline({
   );
 
   // Apply event category filters
+  // With reversed logic: empty set = show all events, non-empty = show only selected categories
   const events = useMemo(() => {
-    if (activeFilters.size === EVENT_CATEGORIES.length) return allEvents;
+    if (activeFilters.size === 0) return allEvents;
     const allowedTypes = new Set<EventType>();
     for (const cat of EVENT_CATEGORIES) {
       if (activeFilters.has(cat.id)) {
@@ -546,7 +547,7 @@ export default function SeasonTimeline({
                         : "rgba(0,0,0,0.3)",
                     opacity: isActive ? 1 : 0.6,
                   }}
-                  title={`${isActive ? "Hide" : "Show"} ${cat.label.toLowerCase()} events`}
+                  title={`${isActive ? "Remove" : "Filter for"} ${cat.label.toLowerCase()} events`}
                 >
                   <span
                     className="w-1.5 h-1.5 rounded-full"

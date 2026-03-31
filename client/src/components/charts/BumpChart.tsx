@@ -915,9 +915,9 @@ export default function BumpChart({
   }, [selectedTeam, startWeek, endWeek, teams, matches, totalWeeks]);
 
   // ─── Event View Mode detection ───
-  // Event view activates when NOT all filter categories are active
+  // Event view activates when ANY filter category is selected
   const isEventViewMode = useMemo(() => {
-    return activeFilters.size < EVENT_CATEGORIES.length;
+    return activeFilters.size > 0;
   }, [activeFilters]);
 
   // ─── Compute allowed event types from active filters ───
@@ -1354,7 +1354,7 @@ export default function BumpChart({
                   <button
                     key={cat.id}
                     onClick={(e) => { e.stopPropagation(); onToggleFilter(cat.id); }}
-                    title={`${isActive ? 'Hide' : 'Show'} ${cat.label}`}
+                    title={`${isActive ? 'Remove' : 'Filter for'} ${cat.label}`}
                     className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-semibold tracking-wide transition-all duration-200"
                     style={{
                       fontFamily: 'Space Grotesk, sans-serif',

@@ -6,6 +6,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import NeuCard from "@/components/NeuCard";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import { ChartModal, MaximizeButton } from "@/components/ChartModal";
+import { ToggleAction } from "@/components/ui/ChartControls";
 import {
   BarChart,
   Bar,
@@ -15,7 +16,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { DollarSign, TrendingUp, Users, Trophy } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Trophy, BarChart3, Percent } from "lucide-react";
 import { InsightPanel } from "@/components/InsightPanel";
 import {
   teamBudgetInsights,
@@ -41,6 +42,7 @@ export default function TeamBudget() {
   const [showPieInsights, setShowPieInsights] = useState(false);
   const [showEarnersInsights, setShowEarnersInsights] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showPercentage, setShowPercentage] = useState(false);
 
   // Auto-select team when exactly one team is filtered globally
   useEffect(() => {
@@ -66,6 +68,18 @@ export default function TeamBudget() {
         })
         .sort((a, b) => b.total - a.total),
     [filteredTeams]
+  );
+
+  // Normalized percentage data: each team's categories as % of their total
+  const normalizedBudgetData = useMemo(
+    () =>
+      budgetData.map(t => ({
+        ...t,
+        dpPct: t.total > 0 ? +((t.dp / t.total) * 100).toFixed(1) : 0,
+        tamPct: t.total > 0 ? +((t.tam / t.total) * 100).toFixed(1) : 0,
+        regularPct: t.total > 0 ? +((t.regular / t.total) * 100).toFixed(1) : 0,
+      })),
+    [budgetData]
   );
 
   const totalBudget = budgetData.reduce((s, t) => s + t.total, 0);
@@ -139,119 +153,147 @@ export default function TeamBudget() {
     [selTeam, filteredPlayers]
   );
 
-  const BudgetBarContent = ({ height = 350 }: { height?: number }) => (
-    <div style={{ height }}>
-      <ResponsiveContainer>
-        <BarChart
-          data={budgetData}
-          margin={{ top: 5, right: 10, bottom: 60, left: 0 }}
-          onClick={(state: any) => {
-            if (state?.activePayload?.[0]?.payload?.id) {
-              const id = state.activePayload[0].payload.id;
-              setSelectedTeam(id === selectedTeam ? null : id);
-            }
-          }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
-          <XAxis
-            dataKey="name"
-            stroke="var(--table-header-color)"
-            fontSize={9}
-            tickLine={false}
-            angle={-45}
-            textAnchor="end"
-            interval={0}
-            tickMargin={6}
-          />
-          <YAxis
-            stroke="var(--table-header-color)"
-            fontSize={10}
-            tickLine={false}
-            label={{
-              value: "$ Millions",
-              angle: -90,
-              position: "insideLeft",
-              fill: "var(--table-header-color)",
-              fontSize: 10,
+  const BudgetBarContent = ({ height = 350 }: { height?: number }) => {
+    const chartData = showPercentage ? normalizedBudgetData : budgetData;
+    const dpKey = showPercentage ? "dpPct" : "dp";
+    const tamKey = showPercentage ? "tamPct" : "tam";
+    const regularKey = showPercentage ? "regularPct" : "regular";
+
+    return (
+      <div style={{ height }}>
+        <ResponsiveContainer>
+          <BarChart
+            data={chartData}
+            margin={{ top: 5, right: 10, bottom: 60, left: 0 }}
+            onClick={(state: any) => {
+              if (state?.activePayload?.[0]?.payload?.id) {
+                const id = state.activePayload[0].payload.id;
+                setSelectedTeam(id === selectedTeam ? null : id);
+              }
             }}
-          />
-          <Tooltip
-            content={({ payload }) => {
-              if (!payload?.length) return null;
-              const d = payload[0].payload;
-              return (
-                <div
-                  className="glass-sm p-2 text-xs"
-                  style={{ fontFamily: "JetBrains Mono, monospace" }}
-                >
-                  <div className="text-amber font-semibold">{d.name}</div>
-                  <div>
-                    Total: <span className="text-amber">${d.total}M</span>
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--table-border)" />
+            <XAxis
+              dataKey="name"
+              stroke="var(--table-header-color)"
+              fontSize={9}
+              tickLine={false}
+              angle={-45}
+              textAnchor="end"
+              interval={0}
+              tickMargin={6}
+            />
+            <YAxis
+              stroke="var(--table-header-color)"
+              fontSize={10}
+              tickLine={false}
+              domain={showPercentage ? [0, 100] : [0, "auto"]}
+              tickFormatter={showPercentage ? (v: number) => `${v}%` : undefined}
+              label={{
+                value: showPercentage ? "% of Total" : "$ Millions",
+                angle: -90,
+                position: "insideLeft",
+                fill: "var(--table-header-color)",
+                fontSize: 10,
+              }}
+            />
+            <Tooltip
+              content={({ payload }) => {
+                if (!payload?.length) return null;
+                const d = payload[0].payload;
+                return (
+                  <div
+                    className="glass-sm p-2 text-xs"
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                  >
+                    <div className="text-amber font-semibold">{d.name}</div>
+                    {showPercentage ? (
+                      <>
+                        <div>
+                          DP: <span className="text-cyan">{d.dpPct}%</span>
+                          <span className="text-muted-foreground ml-1">(${d.dp}M)</span>
+                        </div>
+                        <div>
+                          TAM: <span className="text-emerald">{d.tamPct}%</span>
+                          <span className="text-muted-foreground ml-1">(${d.tam}M)</span>
+                        </div>
+                        <div>
+                          Regular: <span style={{ color: "var(--glass-text)" }}>{d.regularPct}%</span>
+                          <span className="text-muted-foreground ml-1">(${d.regular}M)</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          Total: <span className="text-amber">${d.total}M</span>
+                        </div>
+                        <div>
+                          DP: <span className="text-cyan">${d.dp}M</span>
+                        </div>
+                        <div>
+                          TAM: <span className="text-emerald">${d.tam}M</span>
+                        </div>
+                        <div style={{ color: "var(--glass-text-muted)" }}>
+                          Regular: ${d.regular}M
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div>
-                    DP: <span className="text-cyan">${d.dp}M</span>
-                  </div>
-                  <div>
-                    TAM: <span className="text-emerald">${d.tam}M</span>
-                  </div>
-                  <div style={{ color: "var(--glass-text-muted)" }}>
-                    Regular: ${d.regular}M
-                  </div>
-                </div>
-              );
-            }}
-          />
-          <Bar
-            dataKey="dp"
-            stackId="a"
-            fill={isDark ? "#1A4A6A" : "#2A5A7A"}
-            name="DP Spend"
-            radius={[0, 0, 0, 0]}
-            shape={(props: any) => (
-              <Extruded3DStackedBar
-                {...props}
-                stackPosition="bottom"
-                onBarClick={(p: any) =>
-                  setSelectedTeam(p.id === selectedTeam ? null : p.id)
-                }
-              />
-            )}
-          />
-          <Bar
-            dataKey="tam"
-            stackId="a"
-            fill={isDark ? "#8B6914" : "#9A7828"}
-            name="TAM Spend"
-            shape={(props: any) => (
-              <Extruded3DStackedBar
-                {...props}
-                stackPosition="middle"
-                onBarClick={(p: any) =>
-                  setSelectedTeam(p.id === selectedTeam ? null : p.id)
-                }
-              />
-            )}
-          />
-          <Bar
-            dataKey="regular"
-            stackId="a"
-            fill={isDark ? "#1A3A1A" : "#2A4A2A"}
-            name="Regular"
-            radius={[3, 3, 0, 0]}
-            shape={(props: any) => (
-              <Extruded3DStackedBar
-                {...props}
-                stackPosition="top"
-                onBarClick={(p: any) =>
-                  setSelectedTeam(p.id === selectedTeam ? null : p.id)
-                }
-              />
-            )}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
+                );
+              }}
+            />
+            <Bar
+              dataKey={dpKey}
+              stackId="a"
+              fill={isDark ? "#1A4A6A" : "#2A5A7A"}
+              name="DP Spend"
+              radius={[0, 0, 0, 0]}
+              shape={(props: any) => (
+                <Extruded3DStackedBar
+                  {...props}
+                  stackPosition="bottom"
+                  onBarClick={(p: any) =>
+                    setSelectedTeam(p.id === selectedTeam ? null : p.id)
+                  }
+                />
+              )}
+            />
+            <Bar
+              dataKey={tamKey}
+              stackId="a"
+              fill={isDark ? "#8B6914" : "#9A7828"}
+              name="TAM Spend"
+              shape={(props: any) => (
+                <Extruded3DStackedBar
+                  {...props}
+                  stackPosition="middle"
+                  onBarClick={(p: any) =>
+                    setSelectedTeam(p.id === selectedTeam ? null : p.id)
+                  }
+                />
+              )}
+            />
+            <Bar
+              dataKey={regularKey}
+              stackId="a"
+              fill={isDark ? "#1A3A1A" : "#2A4A2A"}
+              name="Regular"
+              radius={[3, 3, 0, 0]}
+              shape={(props: any) => (
+                <Extruded3DStackedBar
+                  {...props}
+                  stackPosition="top"
+                  onBarClick={(p: any) =>
+                    setSelectedTeam(p.id === selectedTeam ? null : p.id)
+                  }
+                />
+              )}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
 
   return (
     <StaggerContainer className="space-y-6 mt-4">
@@ -358,21 +400,35 @@ export default function TeamBudget() {
       <StaggerItem>
         <NeuCard animate={false} className="p-4">
           <ChartHeader
-            title="Team Salary Breakdown ($ Millions)"
+            title={showPercentage ? "Budget Allocation by Category (%)" : "Team Salary Breakdown ($ Millions)"}
             description={
-              <>
-                Where does the money go in MLS? Each bar stacks a team's
-                spending into three buckets:{" "}
-                <strong className="text-foreground/80">
-                  Designated Players
-                </strong>{" "}
-                (the marquee stars exempt from the cap),{" "}
-                <strong className="text-foreground/80">TAM</strong> (Targeted
-                Allocation Money for mid-tier signings), and{" "}
-                <strong className="text-foreground/80">regular roster</strong>{" "}
-                slots. Click any team to drill into their positional salary
-                split and see exactly how they invest across the pitch.
-              </>
+              showPercentage ? (
+                <>
+                  How does each club divide its salary pie? This normalized view
+                  shows the{" "}
+                  <strong className="text-foreground/80">percentage</strong> of
+                  each team's total payroll allocated to{" "}
+                  <strong className="text-foreground/80">DP</strong>,{" "}
+                  <strong className="text-foreground/80">TAM</strong>, and{" "}
+                  <strong className="text-foreground/80">regular</strong>{" "}
+                  contracts. Every bar reaches 100%, making it easy to compare
+                  allocation strategies regardless of total spend.
+                </>
+              ) : (
+                <>
+                  Where does the money go in MLS? Each bar stacks a team's
+                  spending into three buckets:{" "}
+                  <strong className="text-foreground/80">
+                    Designated Players
+                  </strong>{" "}
+                  (the marquee stars exempt from the cap),{" "}
+                  <strong className="text-foreground/80">TAM</strong> (Targeted
+                  Allocation Money for mid-tier signings), and{" "}
+                  <strong className="text-foreground/80">regular roster</strong>{" "}
+                  slots. Click any team to drill into their positional salary
+                  split and see exactly how they invest across the pitch.
+                </>
+              )
             }
             methods={
               <>
@@ -381,9 +437,21 @@ export default function TeamBudget() {
                 cap threshold). TAM = Targeted Allocation Money, used to sign
                 players above the senior roster budget but below DP level.
                 Regular = all remaining senior roster players within the salary
-                cap. Stacked bar values in $ millions. Teams sorted descending
-                by total payroll. Data: 2025 MLS season salary disclosures.
+                cap. {showPercentage
+                  ? "Percentage values computed as (category / total payroll) × 100 for each team. All bars sum to 100%."
+                  : "Stacked bar values in $ millions. Teams sorted descending by total payroll."
+                } Data: 2025 MLS season salary disclosures.
               </>
+            }
+            zone1Toolbar={
+              <ToggleAction
+                icon={showPercentage ? <BarChart3 size={13} /> : <Percent size={13} />}
+                label={showPercentage ? "Absolute" : "Percentage"}
+                tooltip={showPercentage ? "Switch to absolute dollar values" : "Switch to percentage of total budget"}
+                isActive={showPercentage}
+                onToggle={() => setShowPercentage(!showPercentage)}
+                isDark={isDark}
+              />
             }
             zone2Analysis={
               <CardInsightToggle
@@ -603,8 +671,30 @@ export default function TeamBudget() {
       <ChartModal
         isOpen={maximized === "budget"}
         onClose={() => setMaximized(null)}
-        title="Team Salary Breakdown ($ Millions)"
+        title={showPercentage ? "Budget Allocation by Category (%)" : "Team Salary Breakdown ($ Millions)"}
       >
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            onClick={() => setShowPercentage(!showPercentage)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-all duration-300"
+            style={{
+              background: showPercentage
+                ? isDark
+                  ? "rgba(0, 212, 255, 0.12)"
+                  : "rgba(8, 145, 178, 0.1)"
+                : isDark
+                  ? "rgba(255, 255, 255, 0.04)"
+                  : "rgba(0, 0, 0, 0.04)",
+              color: showPercentage
+                ? "var(--cyan)"
+                : "var(--table-header-color)",
+              border: `1px solid ${showPercentage ? (isDark ? "rgba(0, 212, 255, 0.3)" : "rgba(8, 145, 178, 0.3)") : isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)"}`,
+            }}
+          >
+            {showPercentage ? <BarChart3 size={11} /> : <Percent size={11} />}
+            {showPercentage ? "Absolute" : "Percentage"}
+          </button>
+        </div>
         <BudgetBarContent height={600} />
       </ChartModal>
       <ChartModal
