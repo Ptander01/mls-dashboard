@@ -538,7 +538,7 @@ export function Extruded3DBarFillRate(props: any) {
  *   - top: front gradient + side face + top face cap, no shadow/bottom
  */
 export function Extruded3DStackedBar(
-  props: any & { stackPosition?: "bottom" | "middle" | "top" }
+  props: any & { stackPosition?: "bottom" | "middle" | "top"; dpValue?: number; tamValue?: number }
 ) {
   const {
     x,
@@ -549,6 +549,8 @@ export function Extruded3DStackedBar(
     stackPosition = "bottom",
     onBarClick,
     payload,
+    dpValue,
+    tamValue,
     ...restProps
   } = props;
   if (!rawH || rawH <= 0 || !width || width <= 0) return null;
@@ -561,7 +563,18 @@ export function Extruded3DStackedBar(
 
   const extrudeX = 4;
   const extrudeY = 4;
-  const isBottom = stackPosition === "bottom";
+
+  // Dynamically detect if this segment is the actual visual bottom:
+  // - "bottom" (dp) is always the visual bottom when it has a value
+  // - "middle" (tam) becomes the visual bottom when dp === 0
+  // - "top" (regular) becomes the visual bottom when both dp === 0 and tam === 0
+  const dp = dpValue ?? payload?.dp ?? 0;
+  const tam = tamValue ?? payload?.tam ?? 0;
+  const isVisualBottom =
+    stackPosition === "bottom" ||
+    (stackPosition === "middle" && dp === 0) ||
+    (stackPosition === "top" && dp === 0 && tam === 0);
+  const isBottom = isVisualBottom;
   const isTop = stackPosition === "top";
 
   // Shift all bars up by extrudeY so the 3D bottom-face extrusion
@@ -659,12 +672,20 @@ export function Extruded3DStackedBar(
       <rect x={x} y={y} width={width} height={h} fill={`url(#${id})`} />
 
       {/* === TOP FACE — only on top segment (cap) === */}
+      {/* Use an opaque lighter base to prevent the dark gradient stop from bleeding through */}
       {isTop && (
-        <path
-          d={`M${x},${y} L${x + extrudeX},${y - extrudeY + 1} L${x + width + extrudeX},${y - extrudeY + 1} L${x + width},${y} Z`}
-          fill={highlightColor}
-          fillOpacity={0.35}
-        />
+        <>
+          <path
+            d={`M${x},${y} L${x + extrudeX},${y - extrudeY + 1} L${x + width + extrudeX},${y - extrudeY + 1} L${x + width},${y} Z`}
+            fill={lighten(baseColor, 0.15)}
+            fillOpacity={0.92}
+          />
+          <path
+            d={`M${x},${y} L${x + extrudeX},${y - extrudeY + 1} L${x + width + extrudeX},${y - extrudeY + 1} L${x + width},${y} Z`}
+            fill={highlightColor}
+            fillOpacity={0.4}
+          />
+        </>
       )}
 
       {/* Top highlight line — only on top segment */}
@@ -1549,11 +1570,22 @@ export function Extruded3DPie({
       })}
 
       {/* ── Layer 8: Specular highlight overlay — radial glow from upper-left ── */}
+      {/* Clip the specular highlight to the donut ring area to prevent bleed onto background */}
+      <defs>
+        <clipPath id={`${id}_donutClip`}>
+          {/* Create a donut-shaped clip by drawing outer circle and cutting inner circle */}
+          <path
+            d={`M${cx - outerRadius},${cy} A${outerRadius},${outerRadius} 0 1,1 ${cx + outerRadius},${cy} A${outerRadius},${outerRadius} 0 1,1 ${cx - outerRadius},${cy} Z M${cx - innerRadius},${cy} A${innerRadius},${innerRadius} 0 1,0 ${cx + innerRadius},${cy} A${innerRadius},${innerRadius} 0 1,0 ${cx - innerRadius},${cy} Z`}
+            clipRule="evenodd"
+          />
+        </clipPath>
+      </defs>
       <circle
         cx={cx - outerRadius * 0.18}
         cy={cy - outerRadius * 0.18}
         r={outerRadius * 0.9}
         fill={`url(#${id}_specular)`}
+        clipPath={`url(#${id}_donutClip)`}
         style={{ pointerEvents: "none" }}
       />
 

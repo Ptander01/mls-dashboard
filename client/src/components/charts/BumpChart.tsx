@@ -779,7 +779,7 @@ export default function BumpChart({
 
   // View mode: "focus" (default), "colors" (all team colors), "allFocus" (all 3D highlighted)
   type ViewMode = "focus" | "colors" | "allFocus";
-  const [viewMode, setViewMode] = useState<ViewMode>("focus");
+  const [viewMode, setViewMode] = useState<ViewMode>("allFocus");
   const cycleViewMode = useCallback(() => {
     setViewMode((prev) => {
       if (prev === "focus") return "colors";
