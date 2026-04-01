@@ -1,0 +1,7 @@
+Shell_Entity_Name,Parent_Company,Confidence_Score,Evidence_Link,Target_Cluster
+Razor5 LLC,AWS / Amazon Data Services,High,https://www.datacenterdynamics.com/en/news/aws-announces-11bn-data-center-campus-in-indiana/,Indiana
+Amazon Data Services Inc.,AWS / Amazon Web Services,High,https://ecm.idem.in.gov/cs/idcplg?IdcService=GET_FILE&dID=83732301&dDocName=83736344&allowInterrupt=1,Indiana
+Microsoft Corporation,Microsoft,High,https://rcedc.org/microsoft-in-racine-county/,Wisconsin
+VDC Wisco Realty Investments 1 LLC,Vantage Data Centers / OpenAI,Medium,https://finance.yahoo.com/news/microsoft-expands-racine-county-data-170646070.html,Wisconsin
+Amazon Data Services Inc.,AWS / Amazon Web Services,High,https://opcgis.deq.state.ms.us/ensearchonline/ai_info.aspx?ai=86219,Mississippi
+Amazon.com Services LLC,AWS / Amazon Web Services,High,https://opcgis.deq.state.ms.us/ensearchonline/ai_info.aspx?ai=80079,Mississippi
