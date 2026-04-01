@@ -70,15 +70,20 @@ export default function TeamBudget() {
     [filteredTeams]
   );
 
-  // Normalized percentage data: each team's categories as % of their total
+  // Normalized percentage data: each team's categories as % of the sum of
+  // dp + tam + regular (NOT totalSalary, which can differ from the sum of
+  // the three sub-categories in the source data).
   const normalizedBudgetData = useMemo(
     () =>
-      budgetData.map(t => ({
-        ...t,
-        dpPct: t.total > 0 ? +((t.dp / t.total) * 100).toFixed(1) : 0,
-        tamPct: t.total > 0 ? +((t.tam / t.total) * 100).toFixed(1) : 0,
-        regularPct: t.total > 0 ? +((t.regular / t.total) * 100).toFixed(1) : 0,
-      })),
+      budgetData.map(t => {
+        const partsSum = t.dp + t.tam + t.regular;
+        return {
+          ...t,
+          dpPct: partsSum > 0 ? +((t.dp / partsSum) * 100).toFixed(1) : 0,
+          tamPct: partsSum > 0 ? +((t.tam / partsSum) * 100).toFixed(1) : 0,
+          regularPct: partsSum > 0 ? +((t.regular / partsSum) * 100).toFixed(1) : 0,
+        };
+      }),
     [budgetData]
   );
 
@@ -188,6 +193,8 @@ export default function TeamBudget() {
               fontSize={10}
               tickLine={false}
               domain={showPercentage ? [0, 100] : [0, "auto"]}
+              allowDataOverflow={false}
+              ticks={showPercentage ? [0, 25, 50, 75, 100] : undefined}
               tickFormatter={showPercentage ? (v: number) => `${v}%` : undefined}
               label={{
                 value: showPercentage ? "% of Total" : "$ Millions",
