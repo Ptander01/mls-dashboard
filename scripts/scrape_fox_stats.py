@@ -37,9 +37,11 @@ OUTPUT_PATH = os.path.join(SCRIPT_DIR, "temp_fox_stats.json")
 # Fox Sports team abbreviations → Dashboard 3-letter codes
 # (only listing exceptions; most are identical)
 FOX_TO_DASH = {
-    "NY":  "RBNY",
-    "NYC": "NYC",
-    "LA":  "LA",
+    "NY":   "NYRB",
+    "RBNY": "NYRB",
+    "NYC":  "NYC",
+    "LA":   "LA",
+    "LAG":  "LA",
     # All others pass through unchanged
 }
 
