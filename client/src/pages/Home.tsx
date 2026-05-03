@@ -324,17 +324,33 @@ export default function Home() {
                 : "all 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.2s",
             }}
           >
-            <p className="text-xs text-muted-foreground ml-6 font-mono tracking-wider">
-              <span style={{ color: "var(--subtitle-color)" }}>///</span>{" "}
-              {filteredTeams.length} teams{" "}
-              <span style={{ color: "var(--dot-separator)" }}>·</span>{" "}
-              {filteredPlayers.length} players{" "}
-              <span style={{ color: "var(--dot-separator)" }}>·</span>{" "}
-              {filteredMatches.length} matches
-              {isFilterActive && (
-                <span className="text-cyan ml-2 inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan animate-glow-pulse" />
-                  filtered
+            <p className="text-xs text-muted-foreground ml-6 font-mono tracking-wider flex flex-wrap items-center gap-x-2">
+              <span>
+                <span style={{ color: "var(--subtitle-color)" }}>///</span>{" "}
+                {filteredTeams.length} teams{" "}
+                <span style={{ color: "var(--dot-separator)" }}>·</span>{" "}
+                {filteredPlayers.length} players{" "}
+                <span style={{ color: "var(--dot-separator)" }}>·</span>{" "}
+                {filteredMatches.length} matches
+                {isFilterActive && (
+                  <span className="text-cyan ml-2 inline-flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan animate-glow-pulse" />
+                    filtered
+                  </span>
+                )}
+              </span>
+              {activeSeasonData.fetchedAt && (
+                <span
+                  className="opacity-50"
+                  style={{ fontSize: "9px", letterSpacing: "0.04em", textTransform: "uppercase" }}
+                >
+                  Data as of{" "}
+                  {new Date(activeSeasonData.fetchedAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    timeZone: "UTC",
+                  })}
                 </span>
               )}
             </p>
