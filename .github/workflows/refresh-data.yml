@@ -29,11 +29,10 @@ jobs:
         run: pip install requests beautifulsoup4 itscalledsoccer thefuzz python-Levenshtein
       - name: Run MLS data pipeline
         run: bash scripts/update_data.sh
-        working-directory: mls-dashboard
       - name: Check if data changed
         id: diff
         run: |
-          git diff --quiet mls-dashboard/client/public/data/mls2026.json \
+          git diff --quiet client/public/data/mls2026.json \
             && echo "changed=false" >> $GITHUB_OUTPUT \
             || echo "changed=true" >> $GITHUB_OUTPUT
       - name: Commit and push updated data
@@ -41,9 +40,9 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add mls-dashboard/client/public/data/mls2026.json
-          WEEK=$(python3 -c "import json; d=json.load(open('mls-dashboard/client/public/data/mls2026.json')); print(d['totalWeeks'])")
-          MATCHES=$(python3 -c "import json; d=json.load(open('mls-dashboard/client/public/data/mls2026.json')); print(len(d['matches']))")
+          git add client/public/data/mls2026.json
+          WEEK=$(python3 -c "import json; d=json.load(open('client/public/data/mls2026.json')); print(d['totalWeeks'])")
+          MATCHES=$(python3 -c "import json; d=json.load(open('client/public/data/mls2026.json')); print(len(d['matches']))")
           git commit -m "data: refresh MLS 2026 — MW${WEEK}, ${MATCHES} matches [skip ci]"
           git push
       - name: No changes detected
