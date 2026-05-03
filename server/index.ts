@@ -2,22 +2,21 @@ import express from "express";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
-import OpenAI from "openai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// OpenAI client (uses OPENAI_API_KEY and OPENAI_BASE_URL from env)
-const openai = new OpenAI();
+const GEMINI_BASE_URL = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
+const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  // Parse JSON bodies for API routes
   app.use(express.json({ limit: "64kb" }));
 
-  // ─── AI Commentary API Route ───
+  // ─── AI Commentary API Route (powered by Gemini via Replit AI integrations) ───
   app.post("/api/ai-commentary", async (req, res) => {
     try {
       const { systemPrompt, userPrompt, teamId, seasonYear } = req.body;
@@ -27,41 +26,60 @@ async function startServer() {
         return;
       }
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
+      if (!GEMINI_BASE_URL || !GEMINI_API_KEY) {
+        res.status(503).json({ error: "AI integration not configured" });
+        return;
+      }
+
+      const url = `${GEMINI_BASE_URL}/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+      const geminiRes = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: systemPrompt }],
+          },
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: userPrompt }],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 600,
+            temperature: 0.7,
+          },
+        }),
       });
 
-      const commentary = completion.choices?.[0]?.message?.content;
+      if (!geminiRes.ok) {
+        const errText = await geminiRes.text().catch(() => "unknown");
+        console.error("[AI Commentary] Gemini error:", geminiRes.status, errText);
+        res.status(502).json({ error: `Gemini API error: ${geminiRes.status}` });
+        return;
+      }
+
+      const data = await geminiRes.json();
+      const commentary = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!commentary) {
-        res.status(502).json({ error: "No response from AI model" });
+        res.status(502).json({ error: "No response from Gemini" });
         return;
       }
 
       res.json({
         commentary: commentary.trim(),
-        model: "gpt-4.1-mini",
+        model: GEMINI_MODEL,
         teamId,
         seasonYear,
       });
     } catch (err: any) {
       console.error("[AI Commentary] Error:", err.message || err);
-      const status = err.status || err.statusCode || 500;
-      const message =
-        err.message || "Internal server error during AI commentary generation";
-      res.status(status >= 400 && status < 600 ? status : 500).json({
-        error: message,
-      });
+      res.status(500).json({ error: err.message || "Internal server error" });
     }
   });
 
-  // Serve static files from dist/public in production
   const staticPath =
     process.env.NODE_ENV === "production"
       ? path.resolve(__dirname, "public")
@@ -69,7 +87,6 @@ async function startServer() {
 
   app.use(express.static(staticPath));
 
-  // Handle client-side routing - serve index.html for all routes
   app.get("*", (_req, res) => {
     res.sendFile(path.join(staticPath, "index.html"));
   });
