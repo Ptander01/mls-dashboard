@@ -1322,7 +1322,7 @@ export default function TravelMap() {
 
       {/* 3D Map */}
       <StaggerItem>
-        <NeuCard animate={false} className="p-4 overflow-hidden">
+        <NeuCard animate={false} className="p-4 overflow-hidden" source="MLS Official Schedule">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3
