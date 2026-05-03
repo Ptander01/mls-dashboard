@@ -470,7 +470,7 @@ export default function PitchMatch() {
       {/* ═══════════════════════════════════════════ */}
       {view === "shotmap3d" && (
         <StaggerItem>
-          <NeuCard delay={0.08} className="p-5">
+          <NeuCard delay={0.08} className="p-5" source="Fox Sports Stats · MLS Official">
             <ChartHeader
               title="3D Shot Map x xG Analysis"
               description={
@@ -740,7 +740,7 @@ export default function PitchMatch() {
       {/* Passing Network — Full-width cinematic 3D card */}
       {view === "passing" && (
         <StaggerItem>
-          <NeuCard delay={0.08} className="p-5">
+          <NeuCard delay={0.08} className="p-5" source="Fox Sports Stats · MLS Official">
             <ChartHeader
               title="Passing Network x Centrality Analysis"
               description={
