@@ -51,17 +51,20 @@ FILES = {
     "client/src/components/tabs/TravelMap.tsx":           "client/src/components/tabs/TravelMap.tsx",
     "client/src/components/tabs/PitchMatch.tsx":          "client/src/components/tabs/PitchMatch.tsx",
     "client/src/components/tabs/SeasonPulse.tsx":         "client/src/components/tabs/SeasonPulse.tsx",
+    "client/src/lib/insightEngine.ts":                    "client/src/lib/insightEngine.ts",
+    "client/src/components/charts/SeasonTimeline.tsx":    "client/src/components/charts/SeasonTimeline.tsx",
     ".github/workflows/refresh-data.yml":                 ".github/workflows/refresh-data.yml",
 }
 
 COMMIT_MESSAGE = (
-    "feat: daily auto-refresh, Gemini AI commentary, Canadian salaries, RBNY fix\n\n"
-    "- .github/workflows/refresh-data.yml: runs pipeline daily at 7am UTC\n"
-    "- server/index.ts: swap OpenAI for free Gemini 2.5 Flash\n"
-    "- scripts/fetch_2026_season.py: fix NaN attendance crash\n"
-    "- scripts/fetch_spotrac_salaries.py: add MTL/TOR/VAN salary estimates\n"
-    "- scripts/scrape_fox_stats.py: correct RBNY team code mapping\n"
-    "- client/public/data/mls2026.json: refreshed — 147 matches, 683 players, MW11"
+    "feat: replace broken AI API with rich local narrative engine\n\n"
+    "- insightEngine.ts: rewrite seasonSummaryNarrative into full 3-paragraph\n"
+    "  analyst-quality text using trajectory, events, home/away splits, form,\n"
+    "  top scorers, salary context, and underperformer detection\n"
+    "- SeasonTimeline.tsx: pass players + teamBudgets into narrative; remove\n"
+    "  'AI analysis unavailable' error indicator; remove unused AlertCircle import\n"
+    "  Narrative now always shows quality content — Gemini API becomes an\n"
+    "  optional upgrade rather than the primary experience"
 )
 
 
