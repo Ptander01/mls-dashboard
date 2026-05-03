@@ -16,6 +16,8 @@ export interface SeasonData {
   teamBudgets: Record<string, TeamBudget>;
   totalWeeks: number;
   seasonYear: SeasonYear;
+  /** ISO timestamp from the data pipeline — when the JSON was last generated */
+  fetchedAt?: string;
 }
 
 // ─── Shared parser for season JSON payloads ───
@@ -68,6 +70,7 @@ function parseSeasonJson(
       : fallbackBudgets || {};
 
   const totalWeeks: number = json.totalWeeks || 5;
+  const fetchedAt: string | undefined = json.fetchedAt;
 
   return {
     matches,
@@ -75,6 +78,7 @@ function parseSeasonJson(
     teamBudgets,
     totalWeeks,
     seasonYear,
+    fetchedAt,
   };
 }
 
