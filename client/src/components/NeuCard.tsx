@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { ChartSource } from "@/components/ui/ChartSource";
 
 interface NeuCardProps {
   children: ReactNode;
@@ -9,6 +10,8 @@ interface NeuCardProps {
   delay?: number;
   /** Allow content to overflow the card boundary (used by Gravitational Pull ABSOLUTE mode) */
   overflowVisible?: boolean;
+  /** Editorial data-source attribution shown at the bottom-right of the card */
+  source?: string;
 }
 
 export default function NeuCard({
@@ -19,6 +22,7 @@ export default function NeuCard({
   animate = true,
   delay = 0,
   overflowVisible = false,
+  source,
 }: NeuCardProps) {
   const variantClass = {
     raised: "neu-raised",
@@ -38,6 +42,7 @@ export default function NeuCard({
       style={animate ? { animationDelay: `${delay}s` } : undefined}
     >
       {children}
+      {source && <ChartSource source={source} />}
     </div>
   );
 }
