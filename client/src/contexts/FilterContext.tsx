@@ -55,6 +55,8 @@ interface FilterContextType {
     totalWeeks: number;
     seasonYear: SeasonYear;
     teams: Team[];
+    /** ISO timestamp of when the data pipeline last ran */
+    fetchedAt?: string;
   };
   /** Whether season data is still loading */
   seasonLoading: boolean;
@@ -153,6 +155,7 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
       totalWeeks: resolved.totalWeeks,
       seasonYear: filters.selectedSeason,
       teams: TEAMS, // Teams are shared across seasons
+      fetchedAt: resolved.fetchedAt,
     };
   }, [filters.selectedSeason, season2025Data, season2026Data]);
 
