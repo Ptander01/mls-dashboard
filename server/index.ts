@@ -6,9 +6,11 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const GEMINI_BASE_URL = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
-const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
-const GEMINI_MODEL = "gemini-2.5-flash";
+// Google Gemini — free tier, no credit card needed.
+// Get a key at https://aistudio.google.com/app/apikey
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL   = "gemini-1.5-flash";
+const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 async function startServer() {
   const app = express();
@@ -16,7 +18,7 @@ async function startServer() {
 
   app.use(express.json({ limit: "64kb" }));
 
-  // ─── AI Commentary API Route (powered by Gemini via Replit AI integrations) ───
+  // ─── AI Commentary Route (Google Gemini free tier) ───
   app.post("/api/ai-commentary", async (req, res) => {
     try {
       const { systemPrompt, userPrompt, teamId, seasonYear } = req.body;
@@ -26,14 +28,13 @@ async function startServer() {
         return;
       }
 
-      if (!GEMINI_BASE_URL || !GEMINI_API_KEY) {
-        res.status(503).json({ error: "AI integration not configured" });
+      if (!GEMINI_API_KEY) {
+        // Graceful fallback — client will use rule-based narrative
+        res.status(503).json({ error: "GEMINI_API_KEY not configured" });
         return;
       }
 
-      const url = `${GEMINI_BASE_URL}/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-
-      const geminiRes = await fetch(url, {
+      const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -41,10 +42,7 @@ async function startServer() {
             parts: [{ text: systemPrompt }],
           },
           contents: [
-            {
-              role: "user",
-              parts: [{ text: userPrompt }],
-            },
+            { role: "user", parts: [{ text: userPrompt }] },
           ],
           generationConfig: {
             maxOutputTokens: 600,
@@ -53,27 +51,22 @@ async function startServer() {
         }),
       });
 
-      if (!geminiRes.ok) {
-        const errText = await geminiRes.text().catch(() => "unknown");
-        console.error("[AI Commentary] Gemini error:", geminiRes.status, errText);
-        res.status(502).json({ error: `Gemini API error: ${geminiRes.status}` });
+      if (!response.ok) {
+        const errText = await response.text().catch(() => "unknown");
+        console.error("[AI Commentary] Gemini error:", response.status, errText);
+        res.status(502).json({ error: `Gemini API error ${response.status}` });
         return;
       }
 
-      const data = await geminiRes.json();
+      const data = await response.json();
       const commentary = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!commentary) {
-        res.status(502).json({ error: "No response from Gemini" });
+        res.status(502).json({ error: "Empty response from Gemini" });
         return;
       }
 
-      res.json({
-        commentary: commentary.trim(),
-        model: GEMINI_MODEL,
-        teamId,
-        seasonYear,
-      });
+      res.json({ commentary: commentary.trim(), model: GEMINI_MODEL, teamId, seasonYear });
     } catch (err: any) {
       console.error("[AI Commentary] Error:", err.message || err);
       res.status(500).json({ error: err.message || "Internal server error" });
@@ -92,7 +85,6 @@ async function startServer() {
   });
 
   const port = process.env.PORT || 3001;
-
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
