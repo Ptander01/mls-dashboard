@@ -141,6 +141,11 @@ DIRECTV_TEAM_WAGES = {
     "SKC": 8_461_110,
     "DC": 6_306_244,
     "PHI": 6_126_110,
+    # Canadian clubs — not in DirecTV article; estimated from known contracts
+    # VAN: Ryan Gauld ($3.5M) + squad depth; TOR/MTL: mid-range rebuild budgets
+    "VAN": 13_500_000,
+    "TOR": 9_500_000,
+    "MTL": 10_200_000,
 }
 
 # DirecTV top 40 highest-paid players (2026)
