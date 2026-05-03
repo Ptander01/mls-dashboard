@@ -20,7 +20,6 @@ import {
   Trophy,
   Info,
   Sparkles,
-  AlertCircle,
   Share2,
   Filter,
 } from "lucide-react";
@@ -373,8 +372,8 @@ export default function SeasonTimeline({
   );
 
   const summaryNarrative = useMemo(
-    () => seasonSummaryNarrative(teamId, teams, matches, totalWeeks),
-    [teamId, teams, matches, totalWeeks]
+    () => seasonSummaryNarrative(teamId, teams, matches, totalWeeks, players, teamBudgets),
+    [teamId, teams, matches, totalWeeks, players, teamBudgets]
   );
 
   // AI-generated holistic commentary (with fallback to rule-based narrative)
@@ -1457,26 +1456,6 @@ function SummaryCard({
           {narrative}
         </p>
 
-        {/* Error notice (subtle, non-blocking) */}
-        {error && !isAi && (
-          <div
-            className="flex items-center gap-1.5 mt-3 pt-2"
-            style={{
-              color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)",
-              borderTop: isDark
-                ? "1px solid rgba(255,255,255,0.04)"
-                : "1px solid rgba(0,0,0,0.04)",
-            }}
-          >
-            <AlertCircle size={10} />
-            <span
-              className="text-[9px]"
-              style={{ fontFamily: "JetBrains Mono, monospace" }}
-            >
-              AI analysis unavailable — showing algorithmic summary
-            </span>
-          </div>
-        )}
       </motion.div>
 
       {/* Cast shadow below elevated card (matching NeuInsightContainer) */}
