@@ -18,6 +18,14 @@ export interface SeasonData {
   seasonYear: SeasonYear;
   /** ISO timestamp from the data pipeline — when the JSON was last generated */
   fetchedAt?: string;
+  /**
+   * Which MLSPA disclosure year the salary data comes from.
+   * 2025 = MLSPA Fall 2025 (as of Sep 15 2025), the most recent published guide.
+   * For the 2026 season this is 2025 because MLSPA Spring 2026 hasn't been published yet.
+   */
+  salaryYear?: number;
+  /** Human-readable description of the salary data source, suitable for UI display. */
+  salarySource?: string;
 }
 
 // ─── Shared parser for season JSON payloads ───
@@ -71,6 +79,8 @@ function parseSeasonJson(
 
   const totalWeeks: number = json.totalWeeks || 5;
   const fetchedAt: string | undefined = json.fetchedAt;
+  const salaryYear: number | undefined = json.salaryYear;
+  const salarySource: string | undefined = json.salarySource;
 
   return {
     matches,
@@ -79,6 +89,8 @@ function parseSeasonJson(
     totalWeeks,
     seasonYear,
     fetchedAt,
+    salaryYear,
+    salarySource,
   };
 }
 
