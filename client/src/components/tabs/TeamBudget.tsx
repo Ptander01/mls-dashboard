@@ -405,7 +405,7 @@ export default function TeamBudget() {
 
       {/* Budget Breakdown */}
       <StaggerItem>
-        <NeuCard animate={false} className="p-4" source="Spotrac · MLSPA Disclosures">
+        <NeuCard animate={false} className="p-4" source={`MLSPA ${activeSeasonData.salaryYear ?? 2025} Salary Disclosure`}>
           <ChartHeader
             title={showPercentage ? "Budget Allocation by Category (%)" : "Team Salary Breakdown ($ Millions)"}
             description={
@@ -420,6 +420,11 @@ export default function TeamBudget() {
                   <strong className="text-foreground/80">regular</strong>{" "}
                   contracts. Every bar reaches 100%, making it easy to compare
                   allocation strategies regardless of total spend.
+                  {activeSeasonData.seasonYear === 2026 && (
+                    <span className="block mt-1 text-muted-foreground">
+                      Salary composition reflects 2025 contracts — MLSPA Spring 2026 disclosure typically published mid-May.
+                    </span>
+                  )}
                 </>
               ) : (
                 <>
@@ -434,12 +439,21 @@ export default function TeamBudget() {
                   <strong className="text-foreground/80">regular roster</strong>{" "}
                   slots. Click any team to drill into their positional salary
                   split and see exactly how they invest across the pitch.
+                  {activeSeasonData.seasonYear === 2026 && (
+                    <span className="block mt-1 text-muted-foreground">
+                      Salary composition reflects 2025 contracts — MLSPA Spring 2026 disclosure typically published mid-May.
+                    </span>
+                  )}
                 </>
               )
             }
             methods={
               <>
-                Salary data sourced from MLSPA salary disclosures (2025 season).
+                Salary data: {activeSeasonData.salarySource ?? `MLSPA Fall ${activeSeasonData.salaryYear ?? 2025} official salary disclosure`}.
+                {activeSeasonData.seasonYear === 2026
+                  ? " Viewing 2026 match-week stats alongside 2025 contract values — the most recent published MLSPA data. Spring 2026 disclosure expected mid-May 2026."
+                  : " Player salaries matched directly from the public MLSPA salary guide."
+                }{" "}
                 DP = Designated Player slots (max 3 per team, salaries above the
                 cap threshold). TAM = Targeted Allocation Money, used to sign
                 players above the senior roster budget but below DP level.
@@ -447,7 +461,7 @@ export default function TeamBudget() {
                 cap. {showPercentage
                   ? "Percentage values computed as (category / total payroll) × 100 for each team. All bars sum to 100%."
                   : "Stacked bar values in $ millions. Teams sorted descending by total payroll."
-                } Data: 2025 MLS season salary disclosures.
+                }
               </>
             }
             zone1Toolbar={
@@ -522,7 +536,7 @@ export default function TeamBudget() {
       <StaggerItem>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Salary Pie */}
-          <NeuCard delay={0.25} className="p-4" source="Spotrac · MLSPA Disclosures">
+          <NeuCard delay={0.25} className="p-4" source={`MLSPA ${activeSeasonData.salaryYear ?? 2025} Salary Disclosure`}>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3
@@ -584,7 +598,7 @@ export default function TeamBudget() {
           </NeuCard>
 
           {/* Top Earners */}
-          <NeuCard delay={0.35} className="p-4" source="Spotrac · MLSPA Disclosures">
+          <NeuCard delay={0.35} className="p-4" source={`MLSPA ${activeSeasonData.salaryYear ?? 2025} Salary Disclosure`}>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3
