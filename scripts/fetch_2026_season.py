@@ -260,7 +260,12 @@ def main():
         except Exception:
             date_str = dt_str[:10]
 
-        attendance = int(row["attendance"]) if row["attendance"] and int(row["attendance"]) > 0 else 0
+        try:
+            att_val = row["attendance"]
+            import math
+            attendance = int(att_val) if (att_val is not None and not (isinstance(att_val, float) and math.isnan(att_val)) and int(att_val) > 0) else 0
+        except (ValueError, TypeError):
+            attendance = 0
         venue = stadium_names.get(row["stadium_id"], "Unknown Stadium")
 
         matches.append({
