@@ -1867,7 +1867,7 @@ export default function Attendance() {
 
       {/* Home Attendance with Fill Rate Toggle */}
       <StaggerItem>
-        <NeuCard animate={false} className="p-4">
+        <NeuCard animate={false} className="p-4" source="MLS Official Match Records">
           <ChartHeader
             title={
               showFillRate
@@ -1940,7 +1940,7 @@ export default function Attendance() {
 
       {/* Weekly Trend with Team Filter */}
       <StaggerItem>
-        <NeuCard animate={false} className="p-4">
+        <NeuCard animate={false} className="p-4" source="MLS Official Match Records">
           <ChartHeader
             title={`Home Attendance by Matchweek${trendTeamObj ? ` — ${trendTeamObj.short}` : ""}`}
             description={
@@ -2043,6 +2043,7 @@ export default function Attendance() {
           animate={false}
           className={`p-4 ${gravMode === "FULL SCALE" ? "z-10 relative" : ""}`}
           overflowVisible={gravMode === "FULL SCALE"}
+          source="MLS Official Match Records"
         >
           <ChartHeader
             title="Gravitational Pull — League-Wide Away Team Impact"
