@@ -858,7 +858,7 @@ export default function PlayerStats() {
       <StaggerItem>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Scatter Plot with Axis Selectors, Color Mode, and Trend Line */}
-          <NeuCard animate={false} className="p-4 lg:col-span-2">
+          <NeuCard animate={false} className="p-4 lg:col-span-2" source="American Soccer Analysis · Fox Sports">
             <ChartHeader
               title="Player Comparison"
               description={
@@ -1019,7 +1019,7 @@ export default function PlayerStats() {
       {/* Player Radar (if selected) */}
       {selPlayer && radarData && (
         <StaggerItem>
-          <NeuCard animate={false} glow="cyan" className="p-4">
+          <NeuCard animate={false} glow="cyan" className="p-4" source="American Soccer Analysis · Fox Sports">
             <ChartHeader
               title={selPlayer.name}
               subtitle={`${getTeam(selPlayer.team)?.short} · ${selPlayer.position} · Age ${selPlayer.age}`}
@@ -1184,7 +1184,7 @@ export default function PlayerStats() {
 
       {/* Full Player Table */}
       <StaggerItem>
-        <NeuCard animate={false} className="overflow-hidden">
+        <NeuCard animate={false} className="overflow-hidden" source="American Soccer Analysis · Fox Sports">
           <div
             className="p-3 border-b flex items-center justify-between gap-3"
             style={{ borderColor: "var(--table-border)" }}
