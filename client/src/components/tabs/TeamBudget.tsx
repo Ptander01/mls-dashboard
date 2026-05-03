@@ -405,7 +405,7 @@ export default function TeamBudget() {
 
       {/* Budget Breakdown */}
       <StaggerItem>
-        <NeuCard animate={false} className="p-4">
+        <NeuCard animate={false} className="p-4" source="Spotrac · MLSPA Disclosures">
           <ChartHeader
             title={showPercentage ? "Budget Allocation by Category (%)" : "Team Salary Breakdown ($ Millions)"}
             description={
@@ -522,7 +522,7 @@ export default function TeamBudget() {
       <StaggerItem>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Salary Pie */}
-          <NeuCard delay={0.25} className="p-4">
+          <NeuCard delay={0.25} className="p-4" source="Spotrac · MLSPA Disclosures">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3
@@ -584,7 +584,7 @@ export default function TeamBudget() {
           </NeuCard>
 
           {/* Top Earners */}
-          <NeuCard delay={0.35} className="p-4">
+          <NeuCard delay={0.35} className="p-4" source="Spotrac · MLSPA Disclosures">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3
