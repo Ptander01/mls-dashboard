@@ -543,7 +543,7 @@ export default function SeasonPulse({
       <StaggerContainer className="space-y-4">
         {/* ═══ SNAPSHOT TABLE (Layer 1) ═══ */}
         <StaggerItem>
-          <NeuCard className="p-4 md:p-5">
+          <NeuCard className="p-4 md:p-5" source="MLS Official Standings">
             <ChartHeader
               title={`Season Pulse — Power Rankings`}
               subtitle={`${seasonYear} · Week ${selectedWeek} of ${maxWeek} · ${filteredStandings.length} teams`}
