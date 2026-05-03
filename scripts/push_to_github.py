@@ -32,14 +32,26 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Files to push: local path (relative to project root) → GitHub repo path
 FILES = {
-    "server/index.ts":                            "server/index.ts",
-    "api/ai-commentary.js":                       "api/ai-commentary.js",
-    "scripts/fetch_2026_season.py":               "scripts/fetch_2026_season.py",
-    "scripts/fetch_spotrac_salaries.py":          "scripts/fetch_spotrac_salaries.py",
-    "scripts/scrape_fox_stats.py":                "scripts/scrape_fox_stats.py",
-    "scripts/push_to_github.py":                  "scripts/push_to_github.py",
-    "client/public/data/mls2026.json":            "client/public/data/mls2026.json",
-    ".github/workflows/refresh-data.yml":         ".github/workflows/refresh-data.yml",
+    "server/index.ts":                                    "server/index.ts",
+    "api/ai-commentary.js":                               "api/ai-commentary.js",
+    "scripts/fetch_2026_season.py":                       "scripts/fetch_2026_season.py",
+    "scripts/fetch_spotrac_salaries.py":                  "scripts/fetch_spotrac_salaries.py",
+    "scripts/scrape_fox_stats.py":                        "scripts/scrape_fox_stats.py",
+    "scripts/push_to_github.py":                          "scripts/push_to_github.py",
+    "client/public/data/mls2026.json":                    "client/public/data/mls2026.json",
+    # UI: last-updated timestamp + editorial source attribution
+    "client/src/components/ui/ChartSource.tsx":           "client/src/components/ui/ChartSource.tsx",
+    "client/src/components/NeuCard.tsx":                  "client/src/components/NeuCard.tsx",
+    "client/src/lib/seasonDataLoader.ts":                 "client/src/lib/seasonDataLoader.ts",
+    "client/src/contexts/FilterContext.tsx":              "client/src/contexts/FilterContext.tsx",
+    "client/src/pages/Home.tsx":                          "client/src/pages/Home.tsx",
+    "client/src/components/tabs/TeamBudget.tsx":          "client/src/components/tabs/TeamBudget.tsx",
+    "client/src/components/tabs/PlayerStats.tsx":         "client/src/components/tabs/PlayerStats.tsx",
+    "client/src/components/tabs/Attendance.tsx":          "client/src/components/tabs/Attendance.tsx",
+    "client/src/components/tabs/TravelMap.tsx":           "client/src/components/tabs/TravelMap.tsx",
+    "client/src/components/tabs/PitchMatch.tsx":          "client/src/components/tabs/PitchMatch.tsx",
+    "client/src/components/tabs/SeasonPulse.tsx":         "client/src/components/tabs/SeasonPulse.tsx",
+    ".github/workflows/refresh-data.yml":                 ".github/workflows/refresh-data.yml",
 }
 
 COMMIT_MESSAGE = (
