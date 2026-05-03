@@ -1,0 +1,51 @@
+name: Refresh MLS 2026 Data
+
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-mls-${{ hashFiles('**/requirements-data.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-mls-
+      - name: Install Python dependencies
+        run: pip install requests beautifulsoup4 itscalledsoccer thefuzz python-Levenshtein
+      - name: Run MLS data pipeline
+        run: bash scripts/update_data.sh
+        working-directory: mls-dashboard
+      - name: Check if data changed
+        id: diff
+        run: |
+          git diff --quiet mls-dashboard/client/public/data/mls2026.json \
+            && echo "changed=false" >> $GITHUB_OUTPUT \
+            || echo "changed=true" >> $GITHUB_OUTPUT
+      - name: Commit and push updated data
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add mls-dashboard/client/public/data/mls2026.json
+          WEEK=$(python3 -c "import json; d=json.load(open('mls-dashboard/client/public/data/mls2026.json')); print(d['totalWeeks'])")
+          MATCHES=$(python3 -c "import json; d=json.load(open('mls-dashboard/client/public/data/mls2026.json')); print(len(d['matches']))")
+          git commit -m "data: refresh MLS 2026 — MW${WEEK}, ${MATCHES} matches [skip ci]"
+          git push
+      - name: No changes detected
+        if: steps.diff.outputs.changed == 'false'
+        run: echo "✅ Data is already up to date — no commit needed."
