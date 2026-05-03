@@ -2219,78 +2219,138 @@ export function seasonSummaryNarrative(
   teamId: string,
   teams: Team[],
   matches: Match[],
-  totalWeeks: number
+  totalWeeks: number,
+  players: Player[] = [],
+  teamBudgets: Record<string, TeamBudget> = {}
 ): string {
   const trajectory = getTeamTrajectory(teamId, teams, matches, totalWeeks);
   const events = getTeamEvents(teamId, teams, matches, totalWeeks);
   const team = getTeam(teamId);
   const teamName = team?.name || teamId;
+  const conf = team?.conference === "Eastern" ? "East" : "West";
+  const teamPlayers = players.filter((p) => p.team === teamId);
+  const budget = teamBudgets[teamId];
 
   if (!trajectory || trajectory.length === 0) return `No season data for ${teamName}.`;
-
   const last = trajectory[trajectory.length - 1];
   const first = trajectory[0];
   if (!last || last.played === 0) return `${teamName}'s season has not yet begun.`;
 
-  const parts: string[] = [];
+  const paragraphs: string[] = [];
+  const rankDelta = first.powerRank - last.powerRank; // positive = climbed
+  const gdStr = last.goalDifference >= 0 ? `+${last.goalDifference}` : `${last.goalDifference}`;
+  const record = `${last.wins}W-${last.draws}D-${last.losses}L`;
 
-  // Opening: overall trajectory
-  const rankDelta = first.powerRank - last.powerRank;
-  if (Math.abs(rankDelta) >= 5) {
-    const verb = rankDelta > 0 ? "climbed" : "dropped";
-    parts.push(
-      `${teamName} ${verb} from ${ordinalSuffix(first.powerRank)} to ${ordinalSuffix(last.powerRank)} in the power rankings over ${totalWeeks} weeks.`
-    );
+  // ─── Para 1: Season arc & standing ───
+  let para1: string;
+  if (rankDelta >= 5) {
+    para1 = `${teamName} have been one of the ${conf}'s more compelling stories through ${totalWeeks} matchweeks, climbing from ${ordinalSuffix(first.powerRank)} to ${ordinalSuffix(last.powerRank)} in the power rankings. Their ${record} record — ${last.ppg.toFixed(2)} points per game — reflects a team that has found something real over the course of the campaign, with a ${gdStr} goal difference that backs up the results.`;
+  } else if (rankDelta <= -5) {
+    para1 = `Through ${totalWeeks} matchweeks, ${teamName} have underdelivered relative to preseason expectations, sliding from ${ordinalSuffix(first.powerRank)} to ${ordinalSuffix(last.powerRank)} in the power rankings. A ${record} record and ${last.ppg.toFixed(2)} PPG tells the story of a side still searching for answers — the ${gdStr} goal difference suggests the defensive and offensive deficiencies are real.`;
+  } else if (last.tier === "Title Contenders") {
+    para1 = `${teamName} look exactly like what they are: a genuine title contender. Through ${totalWeeks} weeks, a ${record} record and ${last.ppg.toFixed(2)} points-per-game pace have cemented ${ordinalSuffix(last.powerRank)} place in the power rankings. The ${gdStr} goal difference underlines the margin they have established over the rest of the field.`;
+  } else if (last.tier === "Rebuilding") {
+    para1 = `It has been a difficult opening stretch for ${teamName}. Sitting ${ordinalSuffix(last.powerRank)} in the power rankings after ${totalWeeks} matchweeks, their ${record} record and ${last.ppg.toFixed(2)} PPG reflect a team in genuine transition — the ${gdStr} goal difference confirms they are giving up more than they are creating at this stage.`;
   } else {
-    parts.push(
-      `${teamName} finished ${ordinalSuffix(last.powerRank)} in the power rankings with ${last.points} points from ${last.played} matches.`
-    );
+    const descriptor = Math.abs(rankDelta) <= 2 ? "consistency" : "measured progress";
+    para1 = `Through ${totalWeeks} matchweeks, ${teamName} have been a portrait of ${descriptor} — sitting ${ordinalSuffix(last.powerRank)} in the power rankings on a ${record} record. Their ${last.ppg.toFixed(2)} points-per-game average and ${gdStr} goal difference paint a team with a clear identity, for better or worse.`;
   }
+  paragraphs.push(para1);
 
-  // Middle: key events
-  const positiveEvents = events.filter(
-    (e) =>
-      e.type === "winning_streak" ||
-      e.type === "unbeaten_run" ||
-      e.type === "rank_surge" ||
-      e.type === "upset_win"
+  // ─── Para 2: Events + home/away split + form ───
+  const positiveEvents = events.filter((e) =>
+    ["winning_streak", "unbeaten_run", "rank_surge", "upset_win"].includes(e.type)
   );
-  const negativeEvents = events.filter(
-    (e) =>
-      e.type === "losing_streak" ||
-      e.type === "winless_run" ||
-      e.type === "rank_collapse" ||
-      e.type === "upset_loss"
+  const negativeEvents = events.filter((e) =>
+    ["losing_streak", "winless_run", "rank_collapse", "upset_loss"].includes(e.type)
   );
+  const topPos = [...positiveEvents].sort((a, b) => b.severity - a.severity)[0];
+  const topNeg = [...negativeEvents].sort((a, b) => b.severity - a.severity)[0];
+  const homeGap = last.homeWins - last.awayWins;
+  const formStr = last.form.slice(0, 5).join("-");
 
-  const topPositive = [...positiveEvents].sort((a, b) => b.severity - a.severity)[0];
-  const topNegative = [...negativeEvents].sort((a, b) => b.severity - a.severity)[0];
-
-  if (topPositive && topNegative) {
-    parts.push(
-      `A ${topPositive.title.toLowerCase()} in Week ${topPositive.week} was the season highlight, while a ${topNegative.title.toLowerCase()} in Week ${topNegative.week} marked the low point.`
+  const p2: string[] = [];
+  if (topPos && topNeg) {
+    p2.push(
+      `The season has had clear peaks and valleys: a ${topPos.title.toLowerCase()} through Week ${topPos.week} was the defining high, while a ${topNeg.title.toLowerCase()} in Week ${topNeg.week} served as the sobering check.`
     );
-  } else if (topPositive) {
-    parts.push(
-      `The defining moment was a ${topPositive.title.toLowerCase()} in Week ${topPositive.week}.`
+  } else if (topPos) {
+    p2.push(
+      `The defining stretch was a ${topPos.title.toLowerCase()} through Week ${topPos.week} — the run that most explains their current position in the table.`
     );
-  } else if (topNegative) {
-    parts.push(
-      `A ${topNegative.title.toLowerCase()} in Week ${topNegative.week} defined a difficult campaign.`
-    );
-  }
-
-  // Closing: final form
-  if (last.played >= 5) {
-    const formStr = last.form.slice(0, 5).join("");
-    parts.push(
-      `They closed with a ${formStr} run, finishing on ${last.ppg.toFixed(2)} PPG and a ${last.goalDifference > 0 ? "+" : ""}${last.goalDifference} goal difference.`
+  } else if (topNeg) {
+    p2.push(
+      `A ${topNeg.title.toLowerCase()} in Week ${topNeg.week} has been the lasting mark on this campaign — a stretch that cost points they may struggle to recover before the season is out.`
     );
   }
+  if (last.played >= 6 && Math.abs(homeGap) >= 2) {
+    const homeRec = `${last.homeWins}W-${last.homeDraws}D-${last.homeLosses}L`;
+    const awayRec = `${last.awayWins}W-${last.awayDraws}D-${last.awayLosses}L`;
+    if (homeGap > 0) {
+      p2.push(
+        `Their home form (${homeRec}) has been the engine of their season; the road numbers (${awayRec}) remain a work in progress.`
+      );
+    } else {
+      p2.push(
+        `Unusually, they have been more effective away from home (${awayRec}) than in front of their own supporters (${homeRec}) — a dynamic worth watching as the schedule tightens.`
+      );
+    }
+  }
+  if (last.played >= 4) {
+    p2.push(`They carry a ${formStr} run into the next stretch of fixtures.`);
+  }
+  if (p2.length > 0) paragraphs.push(p2.join(" "));
 
-  if (events.length === 0) {
-    return `${teamName} had a steady season with no major inflection events — finishing ${ordinalSuffix(last.powerRank)} with ${last.points} points (${last.ppg.toFixed(2)} PPG).`;
+  // ─── Para 3: Roster & salary context (when data is available) ───
+  if (teamPlayers.length > 0) {
+    const p3: string[] = [];
+    const scorers = [...teamPlayers].filter((p) => p.goals > 0).sort((a, b) => b.goals - a.goals);
+    const assisters = [...teamPlayers].filter((p) => p.assists > 0).sort((a, b) => b.assists - a.assists);
+    const topScorer = scorers[0];
+    const topAssister = assisters[0];
+
+    if (topScorer) {
+      const combo = topScorer.assists > 0 ? `${topScorer.goals}g/${topScorer.assists}a` : `${topScorer.goals} goals`;
+      let scorerLine = `${topScorer.name} leads the attack with ${combo} in ${topScorer.minutes} minutes`;
+      if (topAssister && topAssister.name !== topScorer.name && topAssister.assists >= 3) {
+        scorerLine += `, while ${topAssister.name} has been the primary creative force with ${topAssister.assists} assists`;
+      }
+      p3.push(scorerLine + ".");
+    }
+
+    if (budget) {
+      const highPaid = [...teamPlayers]
+        .filter((p) => p.salary >= 1_500_000 && p.position !== "GK" && p.minutes > 250)
+        .sort((a, b) => b.salary - a.salary);
+      const underperformer = highPaid.find((p) => {
+        const gpg = last.played > 0 ? p.goals / last.played : 0;
+        const apg = last.played > 0 ? p.assists / last.played : 0;
+        return gpg < 0.2 && apg < 0.2;
+      });
+      const overachiever = [...teamPlayers].find(
+        (p) => p.salary < 500_000 && p.goals + p.assists >= 4 && p.minutes > 400
+      );
+      if (underperformer) {
+        const sal =
+          underperformer.salary >= 1_000_000
+            ? `$${(underperformer.salary / 1_000_000).toFixed(1)}M`
+            : `$${Math.round(underperformer.salary / 1000)}K`;
+        p3.push(
+          `The salary question hanging over the team is ${underperformer.name} (${sal}) — ${underperformer.goals}g/${underperformer.assists}a in ${underperformer.minutes} minutes is not the return that investment demands.`
+        );
+      } else if (overachiever) {
+        p3.push(
+          `The value story of the campaign is ${overachiever.name} — ${overachiever.goals + overachiever.assists} combined goal involvements on a modest contract, the kind of discovery that makes front offices look smart.`
+        );
+      }
+    }
+
+    if (p3.length > 0) paragraphs.push(p3.join(" "));
   }
 
-  return parts.join(" ");
+  if (paragraphs.length === 0) {
+    return `${teamName} have played ${last.played} matches through Week ${totalWeeks}, sitting ${ordinalSuffix(last.powerRank)} in the power rankings on ${last.points} points (${last.ppg.toFixed(2)} PPG).`;
+  }
+
+  return paragraphs.join("\n\n");
 }
