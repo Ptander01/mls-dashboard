@@ -2924,7 +2924,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 48,
@@ -3024,7 +3024,7 @@
       "interceptions": 3,
       "crosses": 0,
       "offsides": 1,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 52,
@@ -3299,7 +3299,7 @@
       "interceptions": 3,
       "crosses": 0,
       "offsides": 0,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 63,
@@ -3399,7 +3399,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 67,
@@ -3649,7 +3649,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 77,
@@ -4124,7 +4124,7 @@
       "interceptions": 1,
       "crosses": 0,
       "offsides": 0,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 96,
@@ -4399,7 +4399,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 107,
@@ -4499,7 +4499,7 @@
       "interceptions": 1,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 111,
@@ -4724,7 +4724,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 0
+      "salary": 401609
     },
     {
       "id": 120,
@@ -6123,7 +6123,7 @@
       "tackles": 0,
       "interceptions": 0,
       "crosses": 0,
-      "offsides": 1,
+      "offsides": 2,
       "salary": 443478
     },
     {
@@ -6399,7 +6399,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 187,
@@ -6574,7 +6574,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 0
+      "salary": 3200000
     },
     {
       "id": 194,
@@ -6807,7 +6807,7 @@
       "team": "CHI",
       "position": "MF",
       "nationality": "Ivory Coast",
-      "age": 22,
+      "age": 23,
       "games": 10,
       "starts": 10,
       "minutes": 792,
@@ -6899,7 +6899,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 207,
@@ -7548,7 +7548,7 @@
       "tackles": 10,
       "interceptions": 3,
       "crosses": 0,
-      "offsides": 0,
+      "offsides": 1,
       "salary": 443478
     },
     {
@@ -7999,7 +7999,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 2,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 251,
@@ -8624,7 +8624,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 276,
@@ -9174,7 +9174,7 @@
       "interceptions": 3,
       "crosses": 0,
       "offsides": 1,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 298,
@@ -10024,7 +10024,7 @@
       "interceptions": 4,
       "crosses": 0,
       "offsides": 0,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 332,
@@ -10374,7 +10374,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 346,
@@ -10399,7 +10399,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 2,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 347,
@@ -10549,7 +10549,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 0
+      "salary": 545799
     },
     {
       "id": 353,
@@ -10699,7 +10699,7 @@
       "interceptions": 1,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 359,
@@ -10724,7 +10724,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 8,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 360,
@@ -10949,7 +10949,7 @@
       "interceptions": 4,
       "crosses": 0,
       "offsides": 3,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 369,
@@ -11724,7 +11724,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 1,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 400,
@@ -12649,7 +12649,7 @@
       "interceptions": 2,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 437,
@@ -12674,7 +12674,7 @@
       "interceptions": 1,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 438,
@@ -12974,7 +12974,7 @@
       "interceptions": 9,
       "crosses": 0,
       "offsides": 1,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 450,
@@ -13174,7 +13174,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 2,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 458,
@@ -13249,7 +13249,7 @@
       "interceptions": 3,
       "crosses": 0,
       "offsides": 2,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 461,
@@ -13374,7 +13374,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 466,
@@ -13474,7 +13474,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 470,
@@ -13599,7 +13599,7 @@
       "interceptions": 6,
       "crosses": 0,
       "offsides": 1,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 475,
@@ -13649,7 +13649,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 477,
@@ -14024,7 +14024,7 @@
       "interceptions": 1,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 492,
@@ -14624,7 +14624,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 516,
@@ -14674,7 +14674,7 @@
       "interceptions": 4,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 518,
@@ -14824,7 +14824,7 @@
       "interceptions": 5,
       "crosses": 0,
       "offsides": 1,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 524,
@@ -15074,7 +15074,7 @@
       "interceptions": 9,
       "crosses": 0,
       "offsides": 0,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 534,
@@ -15574,7 +15574,7 @@
       "interceptions": 2,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 554,
@@ -16174,7 +16174,7 @@
       "interceptions": 1,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 578,
@@ -16624,7 +16624,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 596,
@@ -16774,7 +16774,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 602,
@@ -17024,7 +17024,7 @@
       "interceptions": 1,
       "crosses": 0,
       "offsides": 1,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 612,
@@ -17774,7 +17774,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 0,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 642,
@@ -18024,7 +18024,7 @@
       "interceptions": 0,
       "crosses": 0,
       "offsides": 1,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 652,
@@ -18424,7 +18424,7 @@
       "interceptions": 1,
       "crosses": 0,
       "offsides": 4,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 668,
@@ -18449,7 +18449,7 @@
       "interceptions": 2,
       "crosses": 0,
       "offsides": 1,
-      "salary": 571789
+      "salary": 545799
     },
     {
       "id": 669,
@@ -18699,7 +18699,7 @@
       "interceptions": 2,
       "crosses": 0,
       "offsides": 1,
-      "salary": 558200
+      "salary": 401609
     },
     {
       "id": 679,
@@ -19040,13 +19040,13 @@
     },
     "ATX": {
       "totalSalary": 12838622,
-      "playerCount": 23,
-      "dpSalary": 0,
-      "dpCount": 0,
+      "playerCount": 25,
+      "dpSalary": 3200000,
+      "dpCount": 1,
       "tamSalary": 0,
       "tamCount": 0,
-      "regularSalary": 12838600,
-      "regularCount": 23
+      "regularSalary": 9638616,
+      "regularCount": 24
     },
     "CHI": {
       "totalSalary": 17617709,
@@ -19300,13 +19300,13 @@
     },
     "STL": {
       "totalSalary": 12007588,
-      "playerCount": 21,
+      "playerCount": 22,
       "dpSalary": 0,
       "dpCount": 0,
       "tamSalary": 0,
       "tamCount": 0,
-      "regularSalary": 12007569,
-      "regularCount": 21
+      "regularSalary": 12007578,
+      "regularCount": 22
     },
     "TOR": {
       "totalSalary": 9500000,
@@ -19331,5 +19331,5 @@
   },
   "totalWeeks": 11,
   "seasonYear": 2026,
-  "fetchedAt": "2026-05-04T09:22:06.220906Z"
+  "fetchedAt": "2026-05-05T09:09:24.217273Z"
 }
