@@ -7557,7 +7557,7 @@
       "team": "MIN",
       "position": "FW",
       "nationality": "Italy",
-      "age": 25,
+      "age": 26,
       "games": 11,
       "starts": 11,
       "minutes": 1029,
@@ -8957,7 +8957,7 @@
       "team": "SJ",
       "position": "GK",
       "nationality": "Brazil",
-      "age": 31,
+      "age": 32,
       "games": 11,
       "starts": 11,
       "minutes": 1096,
@@ -19331,5 +19331,5 @@
   },
   "totalWeeks": 11,
   "seasonYear": 2026,
-  "fetchedAt": "2026-05-05T09:09:24.217273Z"
+  "fetchedAt": "2026-05-06T09:24:49.373744Z"
 }
