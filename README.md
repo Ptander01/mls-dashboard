@@ -4,6 +4,8 @@
 
 An advanced interactive dashboard for Major League Soccer statistical analysis featuring the live 2026 season and complete 2025 historical data. Built with React 19, Tailwind CSS 4, Recharts, and Three.js, the dashboard showcases a custom **Industrial Neumorphic 3D** design system with extruded chart elements, gradient lighting, cast shadows, and glassmorphic overlays.
 
+Built to see whether a full analytics product could run with no backend at all — 881 players, 510 matches and real MLSPA wage data compiled into a typed module at build time, with a Python pipeline refreshing the live season on demand. The answer is yes, and the constraint is what makes it load instantly.
+
 ![Player Stats — Scatter plot, top scorers, and full player database](docs/assets/screenshots/01-player-stats.webp)
 
 ---
@@ -63,6 +65,52 @@ The dashboard operates entirely without a backend database, using a hybrid data 
 1. **Static 2025 Core:** The foundational dataset (881 players, 510 matches, real MLSPA wages) is embedded directly in a highly optimized TypeScript file (`mlsData.ts`), ensuring instant load times.
 2. **Live 2026 Integration:** A Python pipeline (`scripts/fetch_2026_season.py`) pulls live match and xG data from the American Soccer Analysis (ASA) API, generating a lightweight JSON payload.
 3. **Season Toggle:** A global context provider allows users to instantly switch the entire application state between the complete 2025 historical record and the live 2026 season.
+
+```mermaid
+flowchart LR
+    MLSPA["MLSPA salary releases"]:::src
+    ASA["American Soccer Analysis API<br/>matches + xG"]:::src
+
+    PY["scripts/fetch_2026_season.py"]
+    TS["mlsData.ts<br/>881 players, 510 matches<br/>typed, compiled in"]:::gen
+    JSON["2026 season payload<br/>lightweight JSON"]:::gen
+
+    CTX{{"season context<br/>2025 | 2026"}}
+    ENG["Insight Engine<br/>streaks, collapses, surges"]
+    TABS["6 analytical tabs"]
+
+    MLSPA --> TS
+    ASA --> PY --> JSON
+    TS --> CTX
+    JSON --> CTX
+    CTX --> ENG
+    CTX --> TABS
+    ENG --> TABS
+
+    classDef src fill:#1f2933,stroke:#7ecfb2,color:#e6edf3
+    classDef gen fill:#22272e,stroke:#f0c96e,color:#e6edf3
+```
+
+The important edge: **the season toggle is a context provider, not two builds.**
+Both datasets are resolved at the same boundary, so every tab, chart and the
+Insight Engine switch together and no component needs to know which season it is
+rendering.
+
+**The details that would have made it wrong:**
+
+- **Cost-per-goal divides by goals, which is zero for most players.** The metric is
+  only computed where the denominator is meaningful; showing an infinite or blank
+  efficiency figure across a squad would make the whole table untrustworthy.
+- **The composite Power Score is a weighted blend, not a standing.** Points, form,
+  goal difference and momentum on one axis is a ranking this dashboard invents —
+  useful for narrative, not the league table, and labelled as such.
+- **xG is a model output, not an observation.** It arrives from ASA already
+  estimated; treating it as a counted quantity alongside actual goals is the most
+  common way to misread a chart like this.
+- **The 2025 data is compiled in, not fetched.** That is what makes first paint
+  instant, and it means the historical record is a snapshot with a date rather
+  than a live view.
+
 
 ---
 
@@ -158,6 +206,32 @@ scripts/
 ```
 
 ---
+
+## Limits
+
+**"Live 2026" is live when you refresh it.** The deployed build serves whatever
+`fetch_2026_season.py` last produced. Nothing polls, so a season payload ages
+until someone re-runs the script and redeploys.
+
+**Salary figures are MLSPA release snapshots.** They are published periodically
+and describe base compensation as reported — not total earnings, and not
+continuously current. Cost-per-goal inherits that lag.
+
+**xG comes from a third-party model.** Different providers produce different xG
+for the same shot. These figures are internally consistent because they all come
+from ASA, and they are not comparable against xG quoted from anywhere else.
+
+**The 3D treatment costs precision.** Extruded bars, cast shadows and the donut
+depth are a deliberate aesthetic, and they make close values harder to compare
+than flat marks would. Where exact comparison matters, the sortable tables are the
+honest surface and the charts are the entry point to them.
+
+**No backend means no user state.** Filters, comparisons and drill-downs live for
+one session; nothing is saved, shared or linkable.
+
+**One league, two seasons.** Nothing here generalises to other competitions
+without new ingestion — the schema is shaped around MLS roster rules, including
+Designated Players and TAM, which do not exist elsewhere.
 
 ## Documentation
 
